@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CharacterSummary } from '../training/client';
-import { pathName } from './CharacterCard';
+import { CombatTraitFilter, CombatTraitIcon } from './CombatTrait';
 import type {
   Catalog,
   InventoryLightCone,
@@ -45,7 +45,8 @@ export function CharacterLightCone(props: LightConeProps) {
         onClick={() => setOpen(true)}
       >
         <strong>选择光锥</strong>
-        <span className="muted">
+        <span className="muted combat-trait-inline">
+          {data && <CombatTraitIcon kind="path" id={data.path} />}
           {selected
             ? `${data?.name ?? selected.data_id} · Lv. ${selected.level} · S${selected.superimposition} · ${value?.source === 'custom' ? '自选' : '光锥库'}`
             : value?.source === 'inventory'
@@ -89,9 +90,6 @@ function LightConePicker({
 
   const definitions = new Map(
     catalog.light_cones.map((data) => [data.default.data_id, data]),
-  );
-  const paths = [...new Set(catalog.light_cones.map((cone) => cone.path))].sort(
-    (a, b) => pathName(a).localeCompare(pathName(b), 'zh-CN'),
   );
   const owned: ConeChoice[] = inventory.flatMap((item) => {
     const data = definitions.get(item.cone.data_id);
@@ -204,21 +202,13 @@ function LightConePicker({
         >
           {source === key && (
             <>
-              <div className="picker-filters">
-                <label>
-                  命途
-                  <select
-                    value={path}
-                    onChange={(event) => setPath(event.target.value)}
-                  >
-                    <option value="">全部命途</option>
-                    {paths.map((path) => (
-                      <option key={path} value={path}>
-                        {pathName(path)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <div className="light-cone-filters">
+                <CombatTraitFilter
+                  kind="path"
+                  options={catalog.light_cones.map((cone) => cone.path)}
+                  value={path}
+                  onChange={setPath}
+                />
                 {source === 'custom' && (
                   <LightConeRank value={rank} onChange={setRank} />
                 )}
@@ -267,8 +257,9 @@ function LightConePicker({
                           onClick={() => chooseCone(choice)}
                         >
                           <strong>{data.name}</strong>
-                          <span className="muted">
-                            {pathName(data.path)} · {data.rarity} 星
+                          <span className="muted combat-trait-inline">
+                            <CombatTraitIcon kind="path" id={data.path} />
+                            <span>{data.rarity} 星</span>
                           </span>
                           {owned && (
                             <span className="muted">
@@ -304,30 +295,36 @@ export function LightConeFields({
   value: LightCone | null;
   onChange: (cone: LightCone | null) => void;
 }) {
+  const selected = cones.find(
+    (cone) => cone.default.data_id === value?.data_id,
+  );
   return (
     <>
-      <label>
-        {label}
-        <select
-          value={value?.data_id ?? ''}
-          onChange={(event) => {
-            const id = event.target.value;
-            onChange(
-              saved?.data_id === id
-                ? saved
-                : (cones.find((cone) => cone.default.data_id === id)?.default ??
-                    null),
-            );
-          }}
-        >
-          <option value="">选择光锥</option>
-          {sortLightCones(cones).map((cone) => (
-            <option key={cone.default.data_id} value={cone.default.data_id}>
-              {cone.name} · {cone.rarity} 星 · {pathName(cone.path)}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="light-cone-field">
+        <label>
+          {label}
+          <select
+            value={value?.data_id ?? ''}
+            onChange={(event) => {
+              const id = event.target.value;
+              onChange(
+                saved?.data_id === id
+                  ? saved
+                  : (cones.find((cone) => cone.default.data_id === id)
+                      ?.default ?? null),
+              );
+            }}
+          >
+            <option value="">选择光锥</option>
+            {sortLightCones(cones).map((cone) => (
+              <option key={cone.default.data_id} value={cone.default.data_id}>
+                {cone.name} · {cone.rarity} 星
+              </option>
+            ))}
+          </select>
+        </label>
+        {selected && <CombatTraitIcon kind="path" id={selected.path} />}
+      </div>
       {value && (
         <LightConeRank
           value={value.superimposition}
@@ -367,13 +364,6 @@ function LightConeRank({
 function sortLightCones(cones: LightConeSummary[]) {
   return [...cones].sort(
     (a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name, 'zh-CN'),
-  );
-}
-
-export function lightConeName(catalog: Catalog, cone: LightCone) {
-  return (
-    catalog.light_cones.find((data) => data.default.data_id === cone.data_id)
-      ?.name ?? cone.data_id
   );
 }
 

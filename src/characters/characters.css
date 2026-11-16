@@ -32,8 +32,7 @@
   border-radius: 0.5rem;
 }
 
-.character-roster-card .character-card-name,
-.character-roster-card .character-card-meta {
+.character-roster-card .character-card-name {
   white-space: normal;
 }
 
@@ -94,18 +93,83 @@
   font-weight: 500;
 }
 
-.character-card-name,
-.character-card-meta {
+.character-card-name {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.character-card-meta {
+.combat-trait-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.4rem;
+}
+
+.character-stat-name .combat-trait-inline {
+  justify-content: center;
+}
+
+.combat-trait-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+@media (prefers-color-scheme: light) {
+  .combat-trait-icon[data-kind='element'] {
+    padding: 0.0625rem;
+    border-radius: 0.25rem;
+    background: #26334c;
+  }
+
+  .combat-trait-icon[data-kind='path'] {
+    filter: brightness(0.27);
+  }
+}
+
+.character-trait-filters,
+.light-cone-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem clamp(0.75rem, 3vw, 1.5rem);
+}
+
+.combat-trait-filter {
+  margin: 0;
+}
+
+.combat-trait-filter legend {
   color: var(--muted);
-  font-size: 0.77rem;
-  font-weight: 400;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.combat-trait-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.combat-trait-options button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.8rem;
+}
+
+.combat-trait-options button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--selected);
+  box-shadow: inset 0 -2px var(--accent);
 }
 
 .character-stats {
@@ -238,11 +302,18 @@
   margin-top: 0.65rem;
 }
 
-@media (max-width: 420px) {
-  .ally-slot .character-card-meta {
-    font-size: 0.65rem;
-  }
+.light-cone-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.5rem;
+}
 
+.light-cone-field > .combat-trait-icon {
+  margin-bottom: 0.6rem;
+}
+
+@media (max-width: 420px) {
   .ally-slot .character-stat {
     font-size: 0.59rem;
   }

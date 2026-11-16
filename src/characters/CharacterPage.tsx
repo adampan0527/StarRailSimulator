@@ -4,11 +4,11 @@ import {
   CharacterCardBody,
   CharacterPortrait,
   CharacterStatGrid,
-  elementName,
-  pathName,
 } from './CharacterCard';
+import { CharacterFilters, matchesCharacterTraits } from './CharacterFilters';
 import { CharacterLightCone, sameLightCone } from './CharacterLightCone';
 import { CharacterRelics } from './CharacterRelics';
+import { CombatTraitIcon } from './CombatTrait';
 import {
   catalogError,
   characters,
@@ -34,6 +34,7 @@ type CharacterEditorData = {
 export function CharacterPage({ catalog }: { catalog: Catalog }) {
   const [selected, setSelected] = useState<string>();
   const [query, setQuery] = useState('');
+  const [traits, setTraits] = useState({ element: '', path: '' });
   const [locked, setLocked] = useState(false);
   const editorHeading = useRef<HTMLHeadingElement>(null);
   const listPosition = useRef<{ card: HTMLButtonElement; scrollY: number }>(
@@ -43,7 +44,11 @@ export function CharacterPage({ catalog }: { catalog: Catalog }) {
   const activeId = active?.id;
   const nameFilter = query.trim().toLowerCase();
   const results = catalog.characters
-    .filter((entry) => entry.name.toLowerCase().includes(nameFilter))
+    .filter(
+      (entry) =>
+        entry.name.toLowerCase().includes(nameFilter) &&
+        matchesCharacterTraits(entry, traits),
+    )
     .sort(compareCharacterRelease);
 
   useLayoutEffect(() => {
@@ -72,7 +77,7 @@ export function CharacterPage({ catalog }: { catalog: Catalog }) {
               {results.length
                 ? `${results.length} 个角色`
                 : catalog.characters.length
-                  ? '没有符合搜索条件的角色。'
+                  ? '没有符合条件的角色。'
                   : '角色目录为空。'}
             </p>
           </div>
@@ -86,6 +91,13 @@ export function CharacterPage({ catalog }: { catalog: Catalog }) {
             />
           </label>
         </div>
+        {catalog.characters.length > 0 && (
+          <CharacterFilters
+            roster={catalog.characters}
+            value={traits}
+            onChange={setTraits}
+          />
+        )}
         {results.length > 0 && (
           <ul className="character-roster" role="list">
             {results.map((entry) => (
@@ -268,9 +280,10 @@ function CharacterForm({
       <div className="character-identity">
         <CharacterPortrait character={active} />
         <div className="field-stack">
-          <p className="muted">
-            Lv. {profile.level} · {elementName(active.element)} ·{' '}
-            {pathName(active.path)}
+          <p className="muted combat-trait-inline">
+            <CombatTraitIcon kind="element" id={active.element} />
+            <CombatTraitIcon kind="path" id={active.path} />
+            <span>Lv. {profile.level}</span>
           </p>
           <div>
             <p className="muted">角色属性 · 已保存配装</p>

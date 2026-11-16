@@ -117,13 +117,18 @@ export function TeamBoard({
                   data-filled={member ? 'true' : undefined}
                   title={member?.name}
                   aria-label={`站位 ${position + 1}：${member?.name ?? '空位'}`}
-                  aria-describedby={member ? statsId : undefined}
+                  aria-describedby={
+                    member ? `${statsId}-traits ${statsId}` : undefined
+                  }
                   aria-haspopup="dialog"
                   disabled={saving || busy}
                   onClick={() => setPicking(position)}
                 >
                   <span className="slot-number numeric">{position + 1}</span>
-                  <CharacterCardBody character={member}>
+                  <CharacterCardBody
+                    character={member}
+                    traitsId={`${statsId}-traits`}
+                  >
                     {member && (
                       <CharacterStatGrid
                         id={statsId}

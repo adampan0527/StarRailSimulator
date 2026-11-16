@@ -4,30 +4,7 @@ import type {
   CharacterSummary,
   ScaledStat,
 } from '../training/client';
-
-const elements: Record<string, string> = {
-  physical: '物理',
-  fire: '火',
-  ice: '冰',
-  thunder: '雷',
-  wind: '风',
-  quantum: '量子',
-  imaginary: '虚数',
-};
-const paths: Record<string, string> = {
-  destruction: '毁灭',
-  hunt: '巡猎',
-  erudition: '智识',
-  harmony: '同谐',
-  nihility: '虚无',
-  preservation: '存护',
-  abundance: '丰饶',
-  remembrance: '记忆',
-  elation: '欢愉',
-};
-
-export const elementName = (id: string) => elements[id] ?? id;
-export const pathName = (id: string) => paths[id] ?? id;
+import { CombatTraitIcon } from './CombatTrait';
 
 const localPortraits = import.meta.glob<string>(
   '/.m03-data/4.7.0/avatars/*.png',
@@ -67,7 +44,7 @@ function Stat({
   label,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -108,7 +85,13 @@ function PrimaryStat({
   );
 }
 
-function RatioStat({ label, value }: { label: string; value: number | null }) {
+function RatioStat({
+  label,
+  value,
+}: {
+  label: React.ReactNode;
+  value: number | null;
+}) {
   const percent = value === null ? null : (value * 100).toFixed(1);
   const trailingZero = percent?.endsWith('.0');
   return (
@@ -151,7 +134,12 @@ export function CharacterStatGrid({
       <RatioStat label="暴击伤害" value={values.crit_damage} />
       <RatioStat label="效果抵抗" value={values.effect_resistance} />
       <RatioStat
-        label={`${elementName(element)}属性伤害提高`}
+        label={
+          <span className="combat-trait-inline">
+            <CombatTraitIcon kind="element" id={element} />
+            属性伤害提高
+          </span>
+        }
         value={values.element_damage}
       />
     </span>
@@ -161,9 +149,11 @@ export function CharacterStatGrid({
 export function CharacterCardBody({
   character,
   children,
+  traitsId,
 }: {
   character?: CharacterSummary;
   children?: React.ReactNode;
+  traitsId?: string;
 }) {
   return (
     <span className="character-card-body">
@@ -173,8 +163,9 @@ export function CharacterCardBody({
       </strong>
       {character && (
         <>
-          <span className="character-card-meta">
-            {elementName(character.element)} · {pathName(character.path)}
+          <span className="combat-trait-inline" id={traitsId}>
+            <CombatTraitIcon kind="element" id={character.element} />
+            <CombatTraitIcon kind="path" id={character.path} />
           </span>
           {children}
         </>

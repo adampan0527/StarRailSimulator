@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { LightConeFields, lightConeName } from './CharacterLightCone';
+import { LightConeFields } from './CharacterLightCone';
+import { CombatTraitIcon } from './CombatTrait';
 import { catalogError, characters } from './client';
 import type { Catalog, InventoryLightCone, LightCone } from './client';
 
@@ -77,14 +78,18 @@ export function LightConePage({ catalog }: { catalog: Catalog }) {
       {items && items.length > 0 && (
         <ul className="inventory-list">
           {items.map((item) => {
+            const data = catalog.light_cones.find(
+              (cone) => cone.default.data_id === item.cone.data_id,
+            );
             const owner = catalog.characters.find(
               ({ id }) => id === item.owner_id,
             )?.name;
             return (
               <li key={item.id}>
                 <div>
-                  <h3>
-                    {lightConeName(catalog, item.cone)}{' '}
+                  <h3 className="combat-trait-inline">
+                    {data && <CombatTraitIcon kind="path" id={data.path} />}
+                    <span>{data?.name ?? item.cone.data_id}</span>
                     <span className="muted">#{item.id}</span>
                   </h3>
                   <p className="muted">

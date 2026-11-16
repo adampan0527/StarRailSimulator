@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { CharacterCardBody } from '../characters/CharacterCard';
 import {
-  CharacterCardBody,
-  elementName,
-  pathName,
-} from '../characters/CharacterCard';
+  CharacterFilters,
+  matchesCharacterTraits,
+} from '../characters/CharacterFilters';
+import { combatTraitName } from '../characters/CombatTrait';
 import type { CharacterSummary, TeamSlots } from '../training/client';
 
 export function CharacterPicker({
@@ -21,16 +22,8 @@ export function CharacterPicker({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useId();
-  const [element, setElement] = useState('');
-  const [path, setPath] = useState('');
-  const visible = roster.filter(
-    (item) =>
-      (!element || item.element === element) && (!path || item.path === path),
-  );
-  const elementOptions = [
-    ...new Set(roster.map((item) => item.element)),
-  ].sort();
-  const pathOptions = [...new Set(roster.map((item) => item.path))].sort();
+  const [traits, setTraits] = useState({ element: '', path: '' });
+  const visible = roster.filter((item) => matchesCharacterTraits(item, traits));
 
   useEffect(() => {
     dialog.current?.showModal();
@@ -58,36 +51,7 @@ export function CharacterPicker({
           关闭
         </button>
       </div>
-      <div className="picker-filters">
-        <label>
-          属性
-          <select
-            value={element}
-            onChange={(event) => setElement(event.target.value)}
-          >
-            <option value="">全部属性</option>
-            {elementOptions.map((id) => (
-              <option key={id} value={id}>
-                {elementName(id)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          命途
-          <select
-            value={path}
-            onChange={(event) => setPath(event.target.value)}
-          >
-            <option value="">全部命途</option>
-            {pathOptions.map((id) => (
-              <option key={id} value={id}>
-                {pathName(id)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <CharacterFilters roster={roster} value={traits} onChange={setTraits} />
       <button type="button" className="secondary" onClick={() => choose(null)}>
         设为空位
       </button>
@@ -105,7 +69,7 @@ export function CharacterPicker({
                 className="choice picker-card"
                 type="button"
                 disabled={occupied}
-                aria-label={`${item.name} · ${elementName(item.element)} · ${pathName(item.path)}${occupied ? ' · 已在队伍中' : ''}`}
+                aria-label={`${item.name} · ${combatTraitName('element', item.element)} · ${combatTraitName('path', item.path)}${occupied ? ' · 已在队伍中' : ''}`}
                 aria-pressed={slots[index] === item.id}
                 onClick={() => choose(item.id)}
               >
