@@ -1,0 +1,50 @@
+[
+  {
+    "decision_index": 0,
+    "actor_id": "ally.3",
+    "action": "basic",
+    "target_id": "enemy.1.1"
+  },
+  {
+    "decision_index": 1,
+    "actor_id": "ally.2",
+    "action": "skill",
+    "target_id": "ally.3"
+  },
+  {
+    "decision_index": 2,
+    "actor_id": "ally.1",
+    "action": "basic",
+    "target_id": "enemy.1.2"
+  },
+  {
+    "decision_index": 3,
+    "actor_id": "ally.4",
+    "action": "basic",
+    "target_id": "enemy.1.2"
+  },
+  {
+    "decision_index": 4,
+    "actor_id": "ally.3",
+    "action": "skill",
+    "target_id": "enemy.1.1"
+  },
+  {
+    "decision_index": 5,
+    "actor_id": "ally.3",
+    "action": "ultimate",
+    "target_id": "enemy.1.1"
+  },
+  {
+    "decision_index": 6,
+    "actor_id": "ally.2",
+    "action": "basic",
+    "target_id": "enemy.1.2"
+  },
+  {
+    "decision_index": 7,
+    "actor_id": "ally.1",
+    "action": "skill",
+    "target_id": "enemy.1.2"
+  }
+]

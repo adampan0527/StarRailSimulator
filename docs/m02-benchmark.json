@@ -1,0 +1,68 @@
+[
+  {
+    "average_us": 0.9757404,
+    "battles_per_second": 1024862.7606277243,
+    "elapsed_ns": 243935100,
+    "iterations": 250000,
+    "log_mode": "off",
+    "warmup": 1000,
+    "workers": 1,
+    "run": 1,
+    "peak_working_set_bytes": 5500928
+  },
+  {
+    "average_us": 0.9770256,
+    "battles_per_second": 1023514.6346216516,
+    "elapsed_ns": 244256400,
+    "iterations": 250000,
+    "log_mode": "off",
+    "warmup": 1000,
+    "workers": 1,
+    "run": 2,
+    "peak_working_set_bytes": 5500928
+  },
+  {
+    "average_us": 0.9935336,
+    "battles_per_second": 1006508.4864769545,
+    "elapsed_ns": 248383400,
+    "iterations": 250000,
+    "log_mode": "off",
+    "warmup": 1000,
+    "workers": 1,
+    "run": 3,
+    "peak_working_set_bytes": 5496832
+  },
+  {
+    "average_us": 5.18402,
+    "battles_per_second": 192900.49035304648,
+    "elapsed_ns": 1296005000,
+    "iterations": 250000,
+    "log_mode": "detailed",
+    "warmup": 1000,
+    "workers": 1,
+    "run": 1,
+    "peak_working_set_bytes": 5615616
+  },
+  {
+    "average_us": 5.2079128,
+    "battles_per_second": 192015.50379261342,
+    "elapsed_ns": 1301978200,
+    "iterations": 250000,
+    "log_mode": "detailed",
+    "warmup": 1000,
+    "workers": 1,
+    "run": 2,
+    "peak_working_set_bytes": 5611520
+  },
+  {
+    "average_us": 5.1724308,
+    "battles_per_second": 193332.69765542346,
+    "elapsed_ns": 1293107700,
+    "iterations": 250000,
+    "log_mode": "detailed",
+    "warmup": 1000,
+    "workers": 1,
+    "run": 3,
+    "peak_working_set_bytes": 5615616
+  }
+]

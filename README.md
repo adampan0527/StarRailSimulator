@@ -38,3 +38,12 @@ npm.cmd run desktop:build
 Release 构建产出 `.exe`，安装包留待 M08。打开窗口，用鼠标或 Tab、Enter 激活「检测连接」，应显示「连接成功 · 应用版本 0.1.0」。保存构建与启动记录、文件 SHA-256 和成功截图，说明 Windows 版本以及是否为干净检出。若报 `link.exe` 找不到，核对 C++ 工作负载和 Windows SDK，再打开新的终端重试。
 
 Windows CI 配置使用相同检查命令。工程设计边界见 [战斗输入契约](docs/battle-contract.md) 和 [M01 基线](docs/m01-baseline.md)。
+
+## 运行离线战斗核心
+
+```powershell
+cargo run --locked -p star-rail-battle-core --example m02 -- replay
+cargo test --locked -p star-rail-battle-core
+```
+
+回放输出合成战斗的状态和事件 JSON。规则、完整夹具和测量方法见 [M02 验收记录](docs/m02-core.md)，公式来源见 [战斗机制调研](docs/m02-combat-mechanics.md)。

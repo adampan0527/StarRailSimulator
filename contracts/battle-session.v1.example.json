@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "input": {
-    "game_version": "4.7",
+    "game_version": "0.0",
     "rules_version": "fixture.rules.v1",
-    "data_version": "fixture.hsr.4.7.v1",
+    "data_version": "fixture.data.v1",
     "rng_version": "fixture.rng.v1",
     "seed": 42,
     "stage_id": "fixture.two_targets",

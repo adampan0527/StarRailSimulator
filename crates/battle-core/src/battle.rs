@@ -1,0 +1,390 @@
+mod resolve;
+mod setup;
+
+use std::ops::Range;
+
+use crate::{
+    Action, BattleError, Command, Event, EventKind, LogMode, Outcome, Snapshot, StatusKind,
+    UnitSnapshot,
+    fixture::{Ability, GAUGE_FULL, SKILL_POINT_CAP, TURN_LIMIT, Target},
+    rng::Rng,
+};
+use setup::Kit;
+pub use setup::PreparedBattle;
+
+#[derive(Clone, Copy)]
+struct Status {
+    source: usize,
+    magnitude: u32,
+    expires_after_turn: u32,
+}
+
+struct UnitState {
+    hp: u32,
+    energy_milli: u32,
+    toughness: u16,
+    gauge_quanta: u64,
+    normal_turns: u32,
+    advanced_to_front: bool,
+    statuses: [Option<Status>; 3],
+}
+
+impl UnitState {
+    fn magnitude(&self, status: StatusKind) -> u32 {
+        self.statuses[status.index()].map_or(0, |status| status.magnitude)
+    }
+}
+
+/// A deterministic state machine advanced only by accepted commands and automatic actions.
+pub struct Battle<'a> {
+    plan: &'a PreparedBattle,
+    units: Vec<UnitState>,
+    outcome: Outcome,
+    av_micros: u64,
+    wave_index: usize,
+    ordinary_actor: Option<usize>,
+    normal_turns: u32,
+    decision_index: u32,
+    skill_points: u8,
+    enemy_hp_lost: u32,
+    rng: Rng,
+    log: Option<Vec<Event>>,
+}
+
+impl<'a> Battle<'a> {
+    /// Advance automatic play to the first player decision or a terminal outcome.
+    pub fn start(plan: &'a PreparedBattle, mode: LogMode) -> Self {
+        let mut battle = Self {
+            plan,
+            units: plan
+                .units
+                .iter()
+                .map(|unit| UnitState {
+                    hp: unit.stats.hp,
+                    energy_milli: unit.starting_energy_milli,
+                    toughness: unit.kit.max_toughness(),
+                    gauge_quanta: GAUGE_FULL,
+                    normal_turns: 0,
+                    advanced_to_front: false,
+                    statuses: [None; 3],
+                })
+                .collect(),
+            outcome: Outcome::Ongoing,
+            av_micros: 0,
+            wave_index: 0,
+            ordinary_actor: None,
+            normal_turns: 0,
+            decision_index: 0,
+            skill_points: plan.starting_skill_points,
+            enemy_hp_lost: 0,
+            rng: Rng::new(plan.seed),
+            log: match mode {
+                LogMode::Detailed => Some(Vec::new()),
+                LogMode::Off => None,
+            },
+        };
+        battle.emit(EventKind::WaveStarted, None, None);
+        battle.advance_to_decision();
+        battle
+    }
+
+    /// A valid prefix can stop at an ongoing decision. Only a completed run is terminal.
+    pub fn replay(
+        plan: &'a PreparedBattle,
+        commands: &[Command],
+        mode: LogMode,
+    ) -> Result<Self, BattleError> {
+        let mut battle = Self::start(plan, mode);
+        for command in commands {
+            battle.apply(command)?;
+        }
+        Ok(battle)
+    }
+
+    pub fn outcome(&self) -> Outcome {
+        self.outcome
+    }
+
+    pub fn events(&self) -> &[Event] {
+        self.log.as_deref().unwrap_or_default()
+    }
+
+    pub fn ordinary_actor(&self) -> Option<&str> {
+        self.ordinary_actor
+            .map(|unit| self.plan.units[unit].id.as_str())
+    }
+
+    /// Stable order: ordinary basic and skill, then ultimates in team order.
+    pub fn legal_actions(&self) -> Vec<Command> {
+        let mut actions = Vec::new();
+        let Some(actor) = self.ordinary_actor else {
+            return actions;
+        };
+        for action in [Action::Basic, Action::Skill] {
+            self.list_actions(actor, action, &mut actions);
+        }
+        for actor in self.allies() {
+            self.list_actions(actor, Action::Ultimate, &mut actions);
+        }
+        actions
+    }
+
+    /// Validate the whole command before consuming resources, rolling randomness or advancing time.
+    pub fn apply(&mut self, command: &Command) -> Result<(), BattleError> {
+        if self.outcome != Outcome::Ongoing {
+            return Err(BattleError::BattleEnded);
+        }
+        if command.decision_index != self.decision_index {
+            return Err(BattleError::StaleDecision);
+        }
+        let actor = self
+            .allies()
+            .find(|&unit| self.plan.units[unit].id == command.actor_id)
+            .ok_or(BattleError::InvalidActor)?;
+        let ability = self.check_action(actor, command.action)?;
+        let target = match (ability.target, command.target_id.as_deref()) {
+            (Target::Ally, Some(id)) => self.find_target(self.allies(), id)?,
+            (Target::Enemy, Some(id)) => self.find_target(self.enemies(), id)?,
+            (Target::AllAllies | Target::AllEnemies, None) => None,
+            _ => return Err(BattleError::InvalidTarget),
+        };
+
+        self.decision_index += 1;
+        self.emit(EventKind::Action(command.action), Some(actor), target);
+        match command.action {
+            Action::Basic => {
+                self.set_skill_points(actor, (self.skill_points + 1).min(SKILL_POINT_CAP))
+            }
+            Action::Skill => self.set_skill_points(actor, self.skill_points - 1),
+            Action::Ultimate => self.set_energy(actor, actor, 0),
+        }
+        let ordinary = command.action != Action::Ultimate;
+        if ordinary {
+            self.reset_gauge(actor);
+        }
+        self.resolve_ability(actor, target, ability);
+        self.gain_energy(actor, actor, ability.energy_milli);
+        if ordinary {
+            self.finish_turn(actor);
+            self.ordinary_actor = None;
+        }
+        self.resolve_wave_or_end();
+        if self.ordinary_actor.is_none() {
+            self.advance_to_decision();
+        }
+        Ok(())
+    }
+
+    pub fn snapshot(&self) -> Snapshot {
+        Snapshot {
+            outcome: self.outcome,
+            av_micros: self.av_micros,
+            wave_index: self.wave_index,
+            decision_index: self.decision_index,
+            ordinary_actor_id: self.ordinary_actor().map(str::to_owned),
+            skill_points: self.skill_points,
+            random_draws: self.rng.draws,
+            enemy_hp_lost: self.enemy_hp_lost,
+            units: (0..self.enemies().end)
+                .map(|unit| {
+                    let state = &self.units[unit];
+                    UnitSnapshot {
+                        unit_id: self.plan.units[unit].id.clone(),
+                        is_ally: unit < self.plan.ally_count,
+                        hp: state.hp,
+                        max_hp: self.plan.units[unit].stats.hp,
+                        energy_milli: state.energy_milli,
+                        max_energy_milli: self.plan.units[unit].kit.max_energy_milli(),
+                        toughness: state.toughness,
+                        max_toughness: self.plan.units[unit].kit.max_toughness(),
+                        shield: state.magnitude(StatusKind::Shield),
+                        vulnerability_bp: state.magnitude(StatusKind::Vulnerability),
+                        speed_micros: self.speed_micros(unit),
+                        gauge_quanta: state.gauge_quanta,
+                        normal_turns: state.normal_turns,
+                    }
+                })
+                .collect(),
+        }
+    }
+
+    fn check_action(&self, actor: usize, action: Action) -> Result<Ability, BattleError> {
+        let Kit::Ally(kit) = self.plan.units[actor].kit else {
+            return Err(BattleError::InvalidActor);
+        };
+        if self.units[actor].hp == 0 {
+            return Err(BattleError::InvalidActor);
+        }
+        if action == Action::Ultimate {
+            if self.units[actor].energy_milli < kit.max_energy_milli {
+                return Err(BattleError::InsufficientEnergy);
+            }
+        } else {
+            if self.ordinary_actor != Some(actor) {
+                return Err(BattleError::IllegalTiming);
+            }
+            if action == Action::Skill && self.skill_points == 0 {
+                return Err(BattleError::InsufficientSkillPoints);
+            }
+        }
+        Ok(kit.ability(action))
+    }
+
+    fn list_actions(&self, actor: usize, action: Action, actions: &mut Vec<Command>) {
+        let Ok(ability) = self.check_action(actor, action) else {
+            return;
+        };
+        let mut add = |target: Option<usize>| {
+            actions.push(Command {
+                decision_index: self.decision_index,
+                actor_id: self.plan.units[actor].id.clone(),
+                action,
+                target_id: target.map(|unit| self.plan.units[unit].id.clone()),
+            })
+        };
+        match ability.target {
+            Target::AllAllies | Target::AllEnemies => add(None),
+            Target::Ally | Target::Enemy => {
+                let range = match ability.target {
+                    Target::Ally => self.allies(),
+                    _ => self.enemies(),
+                };
+                for unit in range.filter(|&unit| self.units[unit].hp > 0) {
+                    add(Some(unit));
+                }
+            }
+        }
+    }
+
+    fn find_target(&self, mut units: Range<usize>, id: &str) -> Result<Option<usize>, BattleError> {
+        units
+            .find(|&unit| self.units[unit].hp > 0 && self.plan.units[unit].id == id)
+            .map(Some)
+            .ok_or(BattleError::InvalidTarget)
+    }
+
+    fn allies(&self) -> Range<usize> {
+        0..self.plan.ally_count
+    }
+
+    fn enemies(&self) -> Range<usize> {
+        let start = if self.wave_index == 0 {
+            self.plan.ally_count
+        } else {
+            self.plan.wave_ends[self.wave_index - 1]
+        };
+        start..self.plan.wave_ends[self.wave_index]
+    }
+
+    fn speed_micros(&self, unit: usize) -> u64 {
+        let stats = self.plan.units[unit].stats;
+        let bonus_bp = u64::from(self.units[unit].magnitude(StatusKind::SpeedUp));
+        stats.base_speed_micros
+            + stats.flat_speed_micros
+            + stats.base_speed_micros * bonus_bp / 10_000
+    }
+
+    fn turn_candidates(&self) -> impl Iterator<Item = usize> {
+        self.allies()
+            .chain(self.enemies())
+            .filter(|&unit| self.units[unit].hp > 0)
+    }
+
+    fn turn_priority(&self, unit: usize) -> (u64, bool, usize) {
+        let state = &self.units[unit];
+        (
+            state.gauge_quanta.div_ceil(self.speed_micros(unit)),
+            !state.advanced_to_front,
+            unit,
+        )
+    }
+
+    fn advance_to_decision(&mut self) {
+        while self.outcome == Outcome::Ongoing {
+            if self.normal_turns == TURN_LIMIT {
+                self.end(Outcome::TurnLimit);
+                return;
+            }
+            let Some((delta, _, actor)) = self
+                .turn_candidates()
+                .map(|unit| self.turn_priority(unit))
+                .min()
+            else {
+                self.end(Outcome::Defeat);
+                return;
+            };
+
+            self.av_micros += delta;
+            for unit in self.allies().chain(self.enemies()) {
+                if self.units[unit].hp > 0 {
+                    let consumed = delta * self.speed_micros(unit);
+                    self.units[unit].gauge_quanta =
+                        self.units[unit].gauge_quanta.saturating_sub(consumed);
+                }
+            }
+            self.normal_turns += 1;
+            self.units[actor].normal_turns += 1;
+            self.units[actor].advanced_to_front = false;
+            self.emit(EventKind::TurnStarted, Some(actor), None);
+
+            match self.plan.units[actor].kit {
+                Kit::Ally(_) => {
+                    self.ordinary_actor = Some(actor);
+                    return;
+                }
+                Kit::Enemy(kit) => {
+                    if self.units[actor].toughness == 0 {
+                        self.set_toughness(actor, actor, kit.max_toughness);
+                    }
+                    self.reset_gauge(actor);
+                    self.resolve_enemy(actor, kit);
+                    self.finish_turn(actor);
+                    self.resolve_wave_or_end();
+                }
+            }
+        }
+    }
+
+    fn resolve_wave_or_end(&mut self) {
+        if !self.allies().any(|unit| self.units[unit].hp > 0) {
+            self.end(Outcome::Defeat);
+        } else if !self.enemies().any(|unit| self.units[unit].hp > 0) {
+            if self.wave_index + 1 == self.plan.wave_ends.len() {
+                self.end(Outcome::Victory);
+            } else {
+                self.wave_index += 1;
+                self.emit(EventKind::WaveStarted, None, None);
+            }
+        }
+    }
+
+    fn end(&mut self, outcome: Outcome) {
+        self.outcome = outcome;
+        self.ordinary_actor = None;
+        self.emit(EventKind::BattleEnded(outcome), None, None);
+    }
+
+    fn reset_gauge(&mut self, actor: usize) {
+        self.units[actor].gauge_quanta = GAUGE_FULL;
+        self.units[actor].advanced_to_front = false;
+    }
+
+    fn set_skill_points(&mut self, actor: usize, after: u8) {
+        let before = std::mem::replace(&mut self.skill_points, after);
+        if before != after {
+            self.emit(EventKind::SkillPoints { before, after }, Some(actor), None);
+        }
+    }
+
+    fn emit(&mut self, kind: EventKind, source: Option<usize>, target: Option<usize>) {
+        if let Some(events) = &mut self.log {
+            events.push(Event {
+                av_micros: self.av_micros,
+                wave_index: self.wave_index,
+                source_id: source.map(|unit| self.plan.units[unit].id.clone()),
+                target_id: target.map(|unit| self.plan.units[unit].id.clone()),
+                kind,
+            });
+        }
+    }
+}
