@@ -41,25 +41,19 @@ export function Diagnostics() {
   }
 
   return (
-    <main className="shell">
-      <header>
-        <p className="eyebrow">桌面应用 · 开发预览</p>
-        <h1>星穹铁道战斗模拟器</h1>
-      </header>
-      <section className="panel" aria-labelledby="connection-title">
-        <h2 id="connection-title">桌面连接</h2>
-        <p>检测应用是否能够读取本机后端返回的版本。</p>
+    <details className="diagnostics">
+      <summary>桌面连接诊断</summary>
+      <div className="form-actions">
         <button
           type="button"
+          className="secondary"
           onClick={runCheck}
           disabled={state.kind === 'pending'}
         >
           检测连接
         </button>
-        <p role="status" className="result">
-          {describeCheck(state)}
-        </p>
-      </section>
-    </main>
+        <span role="status">{describeCheck(state)}</span>
+      </div>
+    </details>
   );
 }

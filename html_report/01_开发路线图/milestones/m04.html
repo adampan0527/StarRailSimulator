@@ -33,9 +33,9 @@
         <p class="eyebrow"><span class="mono">M04</span> <span aria-hidden="true">/</span> 里程碑</p>
         <h1>从配装到战斗回放的桌面原型</h1>
         <dl class="detail-meta">
-          <div><dt>当前状态</dt><dd><span class="status status--not-started">未开始</span></dd></div>
+          <div><dt>当前状态</dt><dd><span class="status status--ready">待验收</span></dd></div>
           <div><dt>验收依赖</dt><dd><a href="./m02.html">M02</a>、<a href="./m03.html">M03</a></dd></div>
-          <div><dt>验收记录</dt><dd>暂无</dd></div>
+          <div><dt>验收记录</dt><dd><a href="../../../docs/m04-desktop.md">2026-11-16 · 桌面实现与验证</a></dd></div>
         </dl>
       </header>
       <section class="prose detail-body" aria-labelledby="criteria">
@@ -43,11 +43,15 @@
         <p>把档案与核心接入桌面应用。用户可以编辑配置、组队、选敌、逐回合操作、查看结果和回放。</p>
 <h3>验收清单</h3>
 <ul class="checklist">
-<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>新用户无需修改文件，即可保存配装、选择目标、使用普攻和战技、插入终结技并完成 M02 的合成战斗。界面显示行动顺序、生命、韧性、能量和战技点。</span></li>
-<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>重启应用后能打开旧回放并定位关键事件；切换星魂或速度遗器后，以新会话展示可预期的差异，旧回放结果不变。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>新用户无需修改文件，即可保存配装、选择目标、使用普攻和战技、插入终结技并完成 M02 的合成战斗。界面显示行动顺序、生命、韧性、能量和战技点。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>重启应用后能打开旧回放并定位关键事件；切换星魂或速度遗器后，以新会话展示可预期的差异，旧回放结果不变。</span></li>
 <li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>按 <code>design.md</code> 审查配装页与战斗页；在 100% 和 150% Windows 显示缩放下检查布局、字体和关键路径，键盘可操作，加载、空白和失败状态可理解。</span></li>
 </ul>
-<p><strong>验收证据：</strong> 完整操作录屏、界面截图、桌面端到端检查记录。</p>
+<p><strong>验收证据：</strong> <a href="../../../docs/m04-desktop.md#桌面端到端证据">桌面端到端记录与截图</a>、<a href="../../../docs/m04-evidence/desktop-workflow.mp4">操作录屏</a>、<a href="../../../src-tauri/src/workbench_tests.rs">应用层集成测试</a>。100% 原生 WebView 检查通过，150% 已完成 WebView 等效视口检查，Windows 原生 150% 验收待补。</p>
+<h3>进展记录</h3>
+<ul>
+<li>2026-11-16 接入训练配装、队伍站位、选敌、逐步战斗和 SQLite 回放。应用层覆盖新旧会话隔离、跨重开复现和写入失败重试。原生 WebView 跑通完整合成战斗，在新进程定位旧回放并核对 64 条事件。状态为「待验收」。<a href="../../../docs/m04-desktop.md">验证记录</a></li>
+</ul>
       </section>
     </article>
     <nav class="detail-pagination" aria-label="相邻里程碑">

@@ -1,6 +1,6 @@
 # StarRailSimulator
 
-用 Rust 和 Tauri 开发的 Windows《崩坏：星穹铁道》离线战斗模拟器。M01 提供桌面连接诊断窗口、项目检查入口和战斗输入契约。开发进度见 [路线图](html_report/01_开发路线图/index.html)。
+用 Rust 和 Tauri 开发的 Windows《崩坏：星穹铁道》离线战斗模拟器。桌面训练支持本地配装、组队、逐回合操作和历史回放，当前战斗范围为 M02 合成规则。开发进度见 [路线图](html_report/01_开发路线图/index.html)。
 
 ## Windows x64 开发
 
@@ -35,9 +35,13 @@ npm.cmd run desktop:build
 & .\target\x86_64-pc-windows-msvc\release\star-rail-simulator.exe
 ```
 
-Release 构建产出 `.exe`，安装包留待 M08。打开窗口，用鼠标或 Tab、Enter 激活「检测连接」，应显示「连接成功 · 应用版本 0.1.0」。保存构建与启动记录、文件 SHA-256 和成功截图，说明 Windows 版本以及是否为干净检出。若报 `link.exe` 找不到，核对 C++ 工作负载和 Windows SDK，再打开新的终端重试。
+Release 构建产出 `.exe`，安装包留待 M08。需要检查前后端连接时，展开窗口底部的「桌面连接诊断」，用鼠标或 Tab、Enter 激活「检测连接」，应显示「连接成功 · 应用版本 0.1.0」。若报 `link.exe` 找不到，核对 C++ 工作负载和 Windows SDK，再打开新的终端重试。
 
 Windows CI 配置使用相同检查命令。工程设计边界见 [战斗输入契约](docs/battle-contract.md) 和 [M01 基线](docs/m01-baseline.md)。
+
+## 桌面训练
+
+启动桌面应用后，编辑并保存训练配装，从四个角色中组队并选择靶机。战斗中的每条已接受指令自动保存，重启后可在「历史回放」查看或继续未结束的战斗。具体流程、存档路径和验证记录见 [M04 桌面训练与回放](docs/m04-desktop.md)。
 
 ## 运行离线战斗核心
 

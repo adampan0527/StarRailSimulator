@@ -109,16 +109,28 @@ impl Archive {
 
     pub fn ensure_profile(&mut self, character_id: &str) -> Result<Profile, Error> {
         let default = self.catalog.default_loadout(character_id)?;
+        self.ensure_profile_with_loadout(character_id, INITIAL_PRESET, &default)
+    }
+
+    /// Creates a missing profile with the caller's initial preset, leaving existing profiles intact.
+    pub fn ensure_profile_with_loadout(
+        &mut self,
+        character_id: &str,
+        preset: &str,
+        loadout: &Loadout,
+    ) -> Result<Profile, Error> {
+        validate_name("preset.name", preset)?;
+        self.catalog.validate_loadout(character_id, loadout)?;
         let transaction = self
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         if transaction.execute(
             "INSERT INTO profiles (character_id, current_preset) VALUES (?1, ?2)
              ON CONFLICT(character_id) DO NOTHING",
-            params![character_id, INITIAL_PRESET],
+            params![character_id, preset],
         )? == 1
         {
-            put_preset(&transaction, character_id, INITIAL_PRESET, &default)?;
+            put_preset(&transaction, character_id, preset, loadout)?;
         }
         let profile = read_profile(&transaction, character_id)?;
         transaction.commit()?;
@@ -242,6 +254,15 @@ impl Archive {
     }
 
     pub fn save_team(&mut self, team: &Team) -> Result<(), Error> {
+        self.write_team(team, false)
+    }
+
+    /// Seeds a named team if it is missing, even if two processes initialize at once.
+    pub fn ensure_team(&mut self, team: &Team) -> Result<(), Error> {
+        self.write_team(team, true)
+    }
+
+    fn write_team(&mut self, team: &Team, preserve_existing: bool) -> Result<(), Error> {
         validate_name("team.name", &team.name)?;
         let member_ids = &team.character_form_ids;
         let distinct: BTreeSet<_> = member_ids.iter().collect();
@@ -257,6 +278,16 @@ impl Archive {
         let transaction = self
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if preserve_existing
+            && transaction
+                .query_row("SELECT 1 FROM teams WHERE id = ?1", [&team.id], |row| {
+                    row.get::<_, u8>(0)
+                })
+                .optional()?
+                .is_some()
+        {
+            return Ok(());
+        }
         for id in member_ids {
             current_preset(&transaction, id)?;
         }

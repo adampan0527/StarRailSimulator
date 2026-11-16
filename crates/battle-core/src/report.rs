@@ -113,6 +113,12 @@ pub struct UnitSnapshot {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ActionOrderEntry {
+    pub unit_id: String,
+    pub remaining_av_micros: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Snapshot {
     pub outcome: Outcome,
     /// Elapsed action value in millionths; this is not wall clock time.

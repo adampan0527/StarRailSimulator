@@ -4,8 +4,8 @@ mod setup;
 use std::ops::Range;
 
 use crate::{
-    Action, BattleError, Command, Event, EventKind, LogMode, Outcome, Snapshot, StatusKind,
-    UnitSnapshot,
+    Action, ActionOrderEntry, BattleError, Command, Event, EventKind, LogMode, Outcome, Snapshot,
+    StatusKind, UnitSnapshot,
     fixture::{Ability, GAUGE_FULL, SKILL_POINT_CAP, TURN_LIMIT, Target},
     rng::Rng,
 };
@@ -206,6 +206,28 @@ impl<'a> Battle<'a> {
                 })
                 .collect(),
         }
+    }
+
+    /// Shows the current actor, then pending turns ordered by the current action gauges.
+    pub fn action_order(&self) -> Vec<ActionOrderEntry> {
+        if self.outcome != Outcome::Ongoing {
+            return Vec::new();
+        }
+        let mut pending: Vec<_> = self
+            .turn_candidates()
+            .filter(|&unit| Some(unit) != self.ordinary_actor)
+            .map(|unit| self.turn_priority(unit))
+            .collect();
+        pending.sort_unstable();
+        self.ordinary_actor
+            .iter()
+            .map(|&unit| (0, false, unit))
+            .chain(pending)
+            .map(|(remaining_av_micros, _, unit)| ActionOrderEntry {
+                unit_id: self.plan.units[unit].id.clone(),
+                remaining_av_micros,
+            })
+            .collect()
     }
 
     fn check_action(&self, actor: usize, action: Action) -> Result<Ability, BattleError> {

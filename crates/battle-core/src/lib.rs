@@ -14,5 +14,6 @@ pub use contract::{
     Relics, Session,
 };
 pub use report::{
-    DamageKind, Event, EventKind, LogMode, Outcome, Snapshot, StatusKind, UnitSnapshot,
+    ActionOrderEntry, DamageKind, Event, EventKind, LogMode, Outcome, Snapshot, StatusKind,
+    UnitSnapshot,
 };
