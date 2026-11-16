@@ -1,0 +1,100 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, 'Microsoft YaHei UI', sans-serif;
+  line-height: 1.6;
+  --text: light-dark(#1a2235, #f2f4fc);
+  --muted: light-dark(#46516b, #bcc6e1);
+  --base: light-dark(#eef2fc, #171d2e);
+  --glass: light-dark(rgb(255 255 255 / 78%), rgb(31 38 60 / 84%));
+  --border: light-dark(#a9b9d9, #566586);
+  --accent: light-dark(#2752b7, #b1c6ff);
+  --on-accent: light-dark(#ffffff, #192946);
+  --ember: light-dark(#dddcfb, #352951);
+  background: var(--base);
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 10% 0%, var(--ember), transparent 65%);
+}
+
+.shell {
+  box-sizing: border-box;
+  max-width: 58rem;
+  margin-inline: auto;
+  padding: clamp(2rem, 8vw, 6rem) clamp(1rem, 5vw, 2.5rem);
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.875rem, 5vw, 2.25rem);
+  line-height: 1.25;
+  margin: 0.5rem 0 2rem;
+}
+
+.panel {
+  max-width: 32rem;
+  padding: clamp(1rem, 4vw, 2rem);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 2px 12px rgb(22 34 56 / 12%);
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.panel p {
+  color: var(--muted);
+}
+
+button {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button {
+    transition: transform 200ms ease-out;
+  }
+
+  button:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+
+  button:not(:disabled):active {
+    transform: translateY(1px);
+  }
+}
+
+.result {
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}

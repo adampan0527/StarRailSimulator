@@ -1,0 +1,70 @@
+<!doctype html>
+<!-- 由 build.mjs 生成。内容维护请参阅 docs/roadmap.md。 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>M06 · 有库存约束的全队配装优化 · StarRailSimulator</title>
+  <link rel="icon" href="../assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles/base.css">
+  <link rel="stylesheet" href="../styles/roadmap.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <header class="site-header" id="top">
+    <div class="shell header-inner">
+      <a class="brand" href="../index.html">
+        <img src="../assets/mark.svg" width="36" height="36" alt="">
+        <span>StarRailSimulator</span>
+      </a>
+      <nav aria-label="汇报导航">
+        <a href="../index.html">路线图</a>
+        <a href="../index.html#board">里程碑</a>
+      </nav>
+    </div>
+  </header>
+  <main class="shell" id="main" tabindex="-1">
+    <nav class="breadcrumbs" aria-label="当前位置">
+      <a href="../index.html#board"><span aria-hidden="true">←</span> 返回里程碑看板</a>
+    </nav>
+    <article class="detail glass">
+      <header class="detail-header">
+        <p class="eyebrow"><span class="mono">M06</span> <span aria-hidden="true">/</span> 里程碑</p>
+        <h1>有库存约束的全队配装优化</h1>
+        <dl class="detail-meta">
+          <div><dt>当前状态</dt><dd><span class="status status--not-started">未开始</span></dd></div>
+          <div><dt>验收依赖</dt><dd><a href="./m05.html">M05</a></dd></div>
+          <div><dt>验收记录</dt><dd>暂无</dd></div>
+        </dl>
+      </header>
+      <section class="prose detail-body" aria-labelledby="criteria">
+        <h2 id="criteria">交付范围与验收</h2>
+        <p>用户可以在界面录入和管理本地库存，为实际装备分配稳定实例 ID，并锁定需要保留的分配。给定队伍、真实库存和锁定项，联合分配配装并对入围组合重新搜索打法。比较全队 DPR 与原方案，附上装备变化和关键行动差异。</p>
+<h3>验收清单</h3>
+<ul class="checklist">
+<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>从界面录入一件未装备遗器并保存，重启后库存和锁定状态仍在；通过界面完成库存录入、搜索、预览和应用，候选可以使用未装备物品。</span></li>
+<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>在小库存夹具中，和独立穷举的配装与打法组合比较，精确模式得到相同的最优分数；所有候选都符合槽位、锁定和物品独占约束。至少一个夹具体现速度配装改变行动顺序或增益覆盖，从而改变全队结果。</span></li>
+<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>原方案和候选按同一关卡轮次窗口、伤害口径、随机样本和可比打法预算评估；显示 DPR、差值及需要的通关指标。</span></li>
+<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>搜索、预览和取消均不改全局档案；用户应用时整套方案一次保存。搜索期间全局档案或库存已变更时重新校验，冲突有明确提示。</span></li>
+</ul>
+<p><strong>验收证据：</strong> 库存到应用的操作录屏、小库存穷举对照、速度变动回放、装备约束与应用事务测试。</p>
+      </section>
+    </article>
+    <nav class="detail-pagination" aria-label="相邻里程碑">
+      <a class="page-link page-link--previous" href="./m05.html">
+    <span>上一里程碑 · M05</span>
+    <strong>可复现的打法搜索</strong>
+  </a>
+      <a class="page-link page-link--next" href="./m07.html">
+    <span>下一里程碑 · M07</span>
+    <strong>首发内容覆盖与性能验收</strong>
+  </a>
+    </nav>
+  </main>
+  <footer class="shell site-footer">
+    <span>StarRailSimulator <span aria-hidden="true">/</span> 开发汇报 01</span>
+    <a href="#top">回到顶部 <span aria-hidden="true">↑</span></a>
+  </footer>
+</body>
+</html>

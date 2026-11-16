@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Battle Session V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "input", "commands"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "input": { "$ref": "#/$defs/initialInput" },
+    "commands": { "type": "array", "items": { "$ref": "#/$defs/command" } }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+    },
+    "uint32": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "level": { "type": "integer", "minimum": 1 },
+    "levelMap": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/id" },
+      "additionalProperties": { "$ref": "#/$defs/level" }
+    },
+    "lightCone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data_id", "level", "ascension", "superimposition"],
+      "properties": {
+        "data_id": { "$ref": "#/$defs/id" },
+        "level": { "$ref": "#/$defs/level" },
+        "ascension": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "superimposition": { "type": "integer", "minimum": 1, "maximum": 5 }
+      }
+    },
+    "relic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data_id", "level", "main_stat", "substats"],
+      "properties": {
+        "data_id": { "$ref": "#/$defs/id" },
+        "level": { "type": "integer", "minimum": 0 },
+        "main_stat": { "$ref": "#/$defs/id" },
+        "substats": {
+          "type": "object",
+          "maxProperties": 4,
+          "propertyNames": { "$ref": "#/$defs/id" },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "relicOrEmpty": {
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/relic" }]
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "ascension",
+        "eidolon",
+        "skill_levels",
+        "unlocked_trace_ids",
+        "light_cone",
+        "relics"
+      ],
+      "properties": {
+        "level": { "$ref": "#/$defs/level" },
+        "ascension": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "eidolon": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "skill_levels": { "$ref": "#/$defs/levelMap" },
+        "unlocked_trace_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "light_cone": {
+          "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/lightCone" }]
+        },
+        "relics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "head",
+            "hands",
+            "body",
+            "feet",
+            "planar_sphere",
+            "link_rope"
+          ],
+          "properties": {
+            "head": { "$ref": "#/$defs/relicOrEmpty" },
+            "hands": { "$ref": "#/$defs/relicOrEmpty" },
+            "body": { "$ref": "#/$defs/relicOrEmpty" },
+            "feet": { "$ref": "#/$defs/relicOrEmpty" },
+            "planar_sphere": { "$ref": "#/$defs/relicOrEmpty" },
+            "link_rope": { "$ref": "#/$defs/relicOrEmpty" }
+          }
+        }
+      }
+    },
+    "ally": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_id",
+        "character_form_id",
+        "config",
+        "starting_energy_milli"
+      ],
+      "properties": {
+        "unit_id": { "$ref": "#/$defs/id" },
+        "character_form_id": { "$ref": "#/$defs/id" },
+        "config": { "$ref": "#/$defs/config" },
+        "starting_energy_milli": { "$ref": "#/$defs/uint32" }
+      }
+    },
+    "enemy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_id", "enemy_id", "level"],
+      "properties": {
+        "unit_id": { "$ref": "#/$defs/id" },
+        "enemy_id": { "$ref": "#/$defs/id" },
+        "level": { "$ref": "#/$defs/level" }
+      }
+    },
+    "initialInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "game_version",
+        "rules_version",
+        "data_version",
+        "rng_version",
+        "seed",
+        "stage_id",
+        "starting_skill_points",
+        "team",
+        "waves"
+      ],
+      "properties": {
+        "game_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
+        },
+        "rules_version": { "$ref": "#/$defs/id" },
+        "data_version": { "$ref": "#/$defs/id" },
+        "rng_version": { "$ref": "#/$defs/id" },
+        "seed": { "$ref": "#/$defs/uint32" },
+        "stage_id": { "$ref": "#/$defs/id" },
+        "starting_skill_points": { "$ref": "#/$defs/uint32" },
+        "team": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/ally" }
+        },
+        "waves": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "items": { "$ref": "#/$defs/enemy" }
+          }
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_index", "actor_id", "action", "target_id"],
+      "properties": {
+        "decision_index": { "$ref": "#/$defs/uint32" },
+        "actor_id": { "$ref": "#/$defs/id" },
+        "action": { "enum": ["basic", "skill", "ultimate"] },
+        "target_id": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }] }
+      }
+    }
+  }
+}

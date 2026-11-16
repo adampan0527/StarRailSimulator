@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "input": {
+    "game_version": "4.7",
+    "rules_version": "fixture.rules.v1",
+    "data_version": "fixture.hsr.4.7.v1",
+    "rng_version": "fixture.rng.v1",
+    "seed": 42,
+    "stage_id": "fixture.two_targets",
+    "starting_skill_points": 3,
+    "team": [
+      {
+        "unit_id": "ally.1",
+        "character_form_id": "trailblazer.destruction",
+        "starting_energy_milli": 60000,
+        "config": {
+          "level": 30,
+          "ascension": 1,
+          "eidolon": 0,
+          "skill_levels": {
+            "basic": 1,
+            "skill": 1,
+            "ultimate": 1,
+            "talent": 1
+          },
+          "unlocked_trace_ids": [],
+          "light_cone": {
+            "data_id": "fixture.destruction_cone",
+            "level": 20,
+            "ascension": 0,
+            "superimposition": 1
+          },
+          "relics": {
+            "head": null,
+            "hands": null,
+            "body": null,
+            "feet": {
+              "data_id": "fixture.training_boots",
+              "level": 3,
+              "main_stat": "attack_ratio",
+              "substats": { "speed": 2300000 }
+            },
+            "planar_sphere": null,
+            "link_rope": null
+          }
+        }
+      },
+      {
+        "unit_id": "ally.2",
+        "character_form_id": "march_7th.preservation",
+        "starting_energy_milli": 60000,
+        "config": {
+          "level": 30,
+          "ascension": 1,
+          "eidolon": 0,
+          "skill_levels": {
+            "basic": 1,
+            "skill": 1,
+            "ultimate": 1,
+            "talent": 1
+          },
+          "unlocked_trace_ids": [],
+          "light_cone": null,
+          "relics": {
+            "head": null,
+            "hands": null,
+            "body": null,
+            "feet": null,
+            "planar_sphere": null,
+            "link_rope": null
+          }
+        }
+      },
+      {
+        "unit_id": "ally.3",
+        "character_form_id": "dan_heng.hunt",
+        "starting_energy_milli": 50000,
+        "config": {
+          "level": 30,
+          "ascension": 1,
+          "eidolon": 0,
+          "skill_levels": {
+            "basic": 1,
+            "skill": 1,
+            "ultimate": 1,
+            "talent": 1
+          },
+          "unlocked_trace_ids": [],
+          "light_cone": null,
+          "relics": {
+            "head": null,
+            "hands": null,
+            "body": null,
+            "feet": null,
+            "planar_sphere": null,
+            "link_rope": null
+          }
+        }
+      },
+      {
+        "unit_id": "ally.4",
+        "character_form_id": "natasha.abundance",
+        "starting_energy_milli": 45000,
+        "config": {
+          "level": 30,
+          "ascension": 1,
+          "eidolon": 0,
+          "skill_levels": {
+            "basic": 1,
+            "skill": 1,
+            "ultimate": 1,
+            "talent": 1
+          },
+          "unlocked_trace_ids": [],
+          "light_cone": null,
+          "relics": {
+            "head": null,
+            "hands": null,
+            "body": null,
+            "feet": null,
+            "planar_sphere": null,
+            "link_rope": null
+          }
+        }
+      }
+    ],
+    "waves": [
+      [
+        {
+          "unit_id": "enemy.1.1",
+          "enemy_id": "fixture.target_left",
+          "level": 32
+        },
+        {
+          "unit_id": "enemy.1.2",
+          "enemy_id": "fixture.target_right",
+          "level": 32
+        }
+      ]
+    ]
+  },
+  "commands": [
+    {
+      "decision_index": 0,
+      "actor_id": "ally.3",
+      "action": "basic",
+      "target_id": "enemy.1.1"
+    },
+    {
+      "decision_index": 1,
+      "actor_id": "ally.2",
+      "action": "skill",
+      "target_id": "ally.3"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+/target/
+/src-tauri/gen/
+/.local-toolchain/
+/dist/
+/html_report/
+*.md
+/package-lock.json
