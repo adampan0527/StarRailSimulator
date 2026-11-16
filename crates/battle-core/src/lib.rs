@@ -13,6 +13,7 @@ pub use contract::{
     Action, AllyInput, BattleError, Command, Config, EnemyInput, InitialInput, LightCone, Relic,
     Relics, Session,
 };
+pub use fixture::{TrainingAttributes, training_attributes};
 pub use report::{
     ActionOrderEntry, DamageKind, Event, EventKind, LogMode, Outcome, Snapshot, StatusKind,
     UnitSnapshot,

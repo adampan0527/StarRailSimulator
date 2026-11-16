@@ -5,9 +5,11 @@ use std::{collections::BTreeSet, fs, path::Path};
 use serde::{Deserialize, Serialize};
 use star_rail_battle_core::{
     ActionOrderEntry, Battle, BattleError, Command, Event, LogMode, PreparedBattle, Session,
-    Snapshot,
+    Snapshot, training_attributes,
 };
-use star_rail_profiles::{Archive, Catalog, Loadout, Profile, Relic, Team, training_catalog};
+use star_rail_profiles::{
+    Archive, Catalog, CharacterStats, Loadout, Profile, Relic, Team, TeamSlots, training_catalog,
+};
 
 use replays::ReplayStore;
 pub use replays::ReplaySummary;
@@ -58,6 +60,10 @@ pub struct PresetView {
 pub struct ProfileView {
     pub id: String,
     pub name: String,
+    pub path: String,
+    pub element: String,
+    pub source_ids: Vec<String>,
+    pub stats: CharacterStats,
     pub level: u16,
     pub can_equip_light_cone: bool,
     pub current_preset: String,
@@ -73,7 +79,7 @@ pub struct Name {
 #[derive(Serialize)]
 pub struct Setup {
     pub profiles: Vec<ProfileView>,
-    pub team: Team,
+    pub team_slots: TeamSlots,
     pub enemies: Vec<Name>,
     pub boots_speed_tiers_micros: [u32; 3],
 }
@@ -141,7 +147,7 @@ impl Workbench {
             .collect::<Result<_, _>>()?;
         Ok(Setup {
             profiles,
-            team: self.archive.team(TRAINING_TEAM)?,
+            team_slots: self.archive.team_slots(TRAINING_TEAM)?,
             enemies: self.template.input.waves[0]
                 .iter()
                 .map(|enemy| Name {
@@ -213,6 +219,7 @@ impl Workbench {
             presets,
             ..
         } = self.archive.profile(id)?;
+        let stats = training_attributes(id, &presets[&current_preset].config)?;
         let presets = presets
             .into_iter()
             .map(|(name, preset)| PresetView {
@@ -228,9 +235,14 @@ impl Workbench {
                 },
             })
             .collect();
+        let character = self.archive.catalog().character(id)?;
         Ok(ProfileView {
             id: id.into(),
-            name: self.archive.catalog().character(id)?.name.clone(),
+            name: character.name.clone(),
+            path: character.path.clone(),
+            element: character.element.clone(),
+            source_ids: character.source_ids.clone(),
+            stats: stats.into(),
             level: ally.config.level,
             can_equip_light_cone: ally.config.light_cone.is_some(),
             current_preset,
@@ -238,8 +250,8 @@ impl Workbench {
         })
     }
 
-    pub fn save_team(&mut self, character_form_ids: Vec<String>) -> Result<Team, Error> {
-        if character_form_ids.iter().any(|id| {
+    pub fn save_team(&mut self, slots: TeamSlots) -> Result<TeamSlots, Error> {
+        if slots.iter().flatten().any(|id| {
             !self
                 .template
                 .input
@@ -249,12 +261,9 @@ impl Workbench {
         }) {
             return Err(Error::Team);
         }
-        let team = Team {
-            character_form_ids,
-            ..self.archive.team(TRAINING_TEAM)?
-        };
-        self.archive.save_team(&team)?;
-        Ok(team)
+        self.archive
+            .save_team_slots(TRAINING_TEAM, "训练队伍", &slots)?;
+        Ok(slots)
     }
 
     pub fn start(&mut self, enemy_ids: &[String]) -> Result<BattleView, Error> {

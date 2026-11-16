@@ -11,10 +11,10 @@ use star_rail_battle_core::{Command, Outcome};
 const SCRIPT: &str = include_str!("../../crates/battle-core/fixtures/full-replay.commands.json");
 static NEXT_TEMP: AtomicU32 = AtomicU32::new(0);
 
-struct TestData(PathBuf);
+pub(crate) struct TestData(PathBuf);
 
 impl TestData {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let sequence = NEXT_TEMP.fetch_add(1, Ordering::Relaxed);
         let dir = std::env::temp_dir().join(format!(
@@ -26,7 +26,7 @@ impl TestData {
         Self(dir)
     }
 
-    fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.0
     }
 }
@@ -50,16 +50,18 @@ fn a_completed_session_keeps_frozen_equipment_and_is_available_after_reopen() {
     let original = app.start(&enemy_ids).unwrap();
     let commands: Vec<Command> = serde_json::from_str(SCRIPT).unwrap();
 
-    let trailblazer = &setup.team.character_form_ids[0];
-    app.save_loadout(
-        trailblazer,
-        "速度训练",
-        LoadoutEdit {
-            light_cone_equipped: true,
-            boots_speed_micros: Some(2_600_000),
-        },
-    )
-    .unwrap();
+    let trailblazer = &setup.profiles[0].id;
+    let new_profile = app
+        .save_loadout(
+            trailblazer,
+            "速度训练",
+            LoadoutEdit {
+                light_cone_equipped: true,
+                boots_speed_micros: Some(2_600_000),
+            },
+        )
+        .unwrap();
+    assert_eq!(new_profile.stats.speed.map(|speed| speed.total), Some(92.6));
     let edited = app.start(&enemy_ids).unwrap();
     let mut original_step = original;
     let mut edited_step = edited;
@@ -93,7 +95,7 @@ fn invalid_drafts_and_stale_commands_leave_the_persisted_state_intact() {
     let dir = TestData::new();
     let mut app = Workbench::open(dir.path()).unwrap();
     let setup = app.setup().unwrap();
-    let trailblazer = &setup.team.character_form_ids[0];
+    let trailblazer = &setup.profiles[0].id;
     assert!(
         app.save_loadout(
             trailblazer,
@@ -144,8 +146,9 @@ fn the_saved_lineup_controls_equal_av_priority_and_target_selection() {
     let dir = TestData::new();
     let mut app = Workbench::open(dir.path()).unwrap();
     let setup = app.setup().unwrap();
-    let ids = &setup.team.character_form_ids;
-    app.save_team(vec![ids[1].clone(), ids[2].clone()]).unwrap();
+    let ids = &setup.team_slots;
+    let slots = [None, ids[1].clone(), None, ids[2].clone()];
+    app.save_team(slots.clone()).unwrap();
     let enemy = setup.enemies[1].id.clone();
     let battle = app.start(std::slice::from_ref(&enemy)).unwrap();
     assert_eq!(battle.snapshot.units.len(), 3);
@@ -155,9 +158,13 @@ fn the_saved_lineup_controls_equal_av_priority_and_target_selection() {
         battle.legal_actions[0].target_id.as_deref(),
         Some(enemy.as_str())
     );
-    assert!(app.save_team(vec![ids[0].clone(), ids[0].clone()]).is_err());
-    assert_eq!(
-        app.setup().unwrap().team.character_form_ids,
-        vec![ids[1].clone(), ids[2].clone()]
+    assert!(
+        app.save_team([ids[0].clone(), ids[0].clone(), None, None])
+            .is_err()
     );
+    drop(app);
+    let mut app = Workbench::open(dir.path()).unwrap();
+    assert_eq!(app.setup().unwrap().team_slots, slots);
+    app.save_team(Default::default()).unwrap();
+    assert!(app.start(&[enemy]).is_err());
 }

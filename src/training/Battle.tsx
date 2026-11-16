@@ -72,13 +72,13 @@ export function BattlePanel({ battle, playing, busy, issue, onAct }: Props) {
       <div className="battle-grid">
         <section className="panel" aria-label="战场单位">
           <Roster
-            title="我方"
-            units={snapshot.units.filter((unit) => unit.is_ally)}
+            title="敌方"
+            units={snapshot.units.filter((unit) => !unit.is_ally)}
             unitName={unitName}
           />
           <Roster
-            title="敌方"
-            units={snapshot.units.filter((unit) => !unit.is_ally)}
+            title="己方"
+            units={snapshot.units.filter((unit) => unit.is_ally)}
             unitName={unitName}
           />
         </section>

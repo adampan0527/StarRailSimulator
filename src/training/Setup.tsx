@@ -1,204 +1,90 @@
 import { useState } from 'react';
+import { TeamBoard } from '../team/TeamBoard';
 import { describeError, training } from './client';
-import type { Equipment, Profile, Setup, Team } from './client';
-
-type Props = {
-  setup: Setup;
-  starting: boolean;
-  issue: string;
-  onProfile: (profile: Profile) => void;
-  onTeam: (team: Team) => void;
-  onStart: (enemies: string[]) => void;
-};
+import type { Equipment, Profile, Setup, TeamSlots } from './client';
 
 export function TrainingSetup({
   setup,
   starting,
   issue,
-  onProfile,
   onTeam,
   onStart,
-}: Props) {
-  const [profileId, setProfileId] = useState(setup.profiles[0].id);
-  const [members, setMembers] = useState(setup.team.character_form_ids);
+  onLoadout,
+}: {
+  setup: Setup;
+  starting: boolean;
+  issue: string;
+  onTeam: (slots: TeamSlots) => void;
+  onStart: (enemies: string[]) => void;
+  onLoadout: () => void;
+}) {
   const [enemies, setEnemies] = useState(() =>
-    setup.enemies.map((enemy) => enemy.id),
+    setup.enemies.map(({ id }) => id),
   );
-  const [teamMessage, setTeamMessage] = useState('');
-  const [teamError, setTeamError] = useState('');
-  const [saving, setSaving] = useState(false);
+  return (
+    <TeamBoard
+      roster={setup.profiles}
+      savedSlots={setup.team_slots}
+      save={training.saveTeam}
+      onSaved={onTeam}
+      busy={starting}
+      issue={issue}
+      training={{
+        targets: setup.enemies,
+        selected: enemies,
+        toggle: (id) =>
+          setEnemies((current) =>
+            current.includes(id)
+              ? current.filter((enemy) => enemy !== id)
+              : [...current, id],
+          ),
+        start: () => onStart(enemies),
+        onLoadout,
+      }}
+    />
+  );
+}
+
+export function TrainingLoadouts({
+  setup,
+  onProfile,
+}: {
+  setup: Setup;
+  onProfile: (profile: Profile) => void;
+}) {
+  const [profileId, setProfileId] = useState(setup.profiles[0]?.id);
   const profile = setup.profiles.find((entry) => entry.id === profileId);
   const savedPreset = profile?.presets.find(
     (preset) => preset.name === profile.current_preset,
   );
-  const savedMembers = setup.team.character_form_ids;
-  const teamDirty =
-    members.length !== savedMembers.length ||
-    members.some((id, index) => id !== savedMembers[index]);
-
-  function move(index: number, offset: number) {
-    const next = [...members];
-    [next[index], next[index + offset]] = [next[index + offset], next[index]];
-    setMembers(next);
-    setTeamMessage('');
-  }
-
-  function updateMember(id: string, checked: boolean) {
-    setMembers(
-      checked ? [...members, id] : members.filter((member) => member !== id),
-    );
-    setTeamMessage('');
-  }
-
-  async function saveTeam() {
-    setSaving(true);
-    setTeamError('');
-    try {
-      onTeam(await training.saveTeam(members));
-      setTeamMessage('队伍已保存。');
-    } catch (error) {
-      setTeamError(describeError(error));
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
-    <div className="setup-grid">
-      <section className="panel" aria-labelledby="loadout-title">
-        <div className="section-heading">
-          <h2 id="loadout-title">角色配装</h2>
-        </div>
-        <div
-          className="profile-picker"
-          role="group"
-          aria-label="选择要配装的角色"
-        >
-          {setup.profiles.map((entry) => (
-            <button
-              className="choice"
-              key={entry.id}
-              type="button"
-              aria-pressed={entry.id === profileId}
-              onClick={() => setProfileId(entry.id)}
-            >
-              {entry.name}
-            </button>
-          ))}
-        </div>
-        {profile && savedPreset ? (
-          <LoadoutForm
-            key={profile.id}
-            profile={profile}
-            equipment={savedPreset.equipment}
-            speedTiers={setup.boots_speed_tiers_micros}
-            onProfile={onProfile}
-          />
-        ) : (
-          <p role="alert">找不到当前配装。</p>
-        )}
-      </section>
-
-      <section className="panel" aria-labelledby="team-title">
-        <div className="section-heading">
-          <h2 id="team-title">训练队伍</h2>
-          <span className="tag">{members.length} / 4</span>
-        </div>
-        <fieldset className="check-grid" disabled={saving || starting}>
-          <legend>上阵角色</legend>
-          {setup.profiles.map(({ id, name }) => (
-            <label key={id}>
-              <input
-                type="checkbox"
-                checked={members.includes(id)}
-                onChange={(event) => updateMember(id, event.target.checked)}
-              />
-              {name}
-            </label>
-          ))}
-        </fieldset>
-        <h3>站位顺序</h3>
-        <ol className="lineup">
-          {members.map((id, index) => {
-            const name = setup.profiles.find((entry) => entry.id === id)?.name;
-            return (
-              <li key={id}>
-                <span>{name}</span>
-                <div className="move-buttons">
-                  <button
-                    type="button"
-                    className="secondary"
-                    aria-label={`前移${name}`}
-                    disabled={index === 0 || saving || starting}
-                    onClick={() => move(index, -1)}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary"
-                    aria-label={`后移${name}`}
-                    disabled={
-                      index === members.length - 1 || saving || starting
-                    }
-                    onClick={() => move(index, 1)}
-                  >
-                    ↓
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-        {members.length === 0 && (
-          <p className="muted">请选择至少一名上阵角色。</p>
-        )}
-        <div className="form-actions">
+    <section className="panel" aria-labelledby="loadout-title">
+      <h2 id="loadout-title">训练配装</h2>
+      <div className="profile-picker" role="group" aria-label="选择训练角色">
+        {setup.profiles.map((entry) => (
           <button
+            className="choice"
+            key={entry.id}
             type="button"
-            className="secondary"
-            disabled={!teamDirty || members.length === 0 || saving || starting}
-            onClick={saveTeam}
+            aria-pressed={entry.id === profileId}
+            onClick={() => setProfileId(entry.id)}
           >
-            {saving ? '正在保存…' : '保存队伍'}
+            {entry.name}
           </button>
-          <span role="status">{teamMessage}</span>
-        </div>
-        {teamError && <p role="alert">{teamError}</p>}
-        <fieldset className="check-grid separated" disabled={starting}>
-          <legend>训练目标</legend>
-          {setup.enemies.map(({ id, name }) => (
-            <label key={id}>
-              <input
-                type="checkbox"
-                checked={enemies.includes(id)}
-                onChange={(event) =>
-                  setEnemies(
-                    event.target.checked
-                      ? [...enemies, id]
-                      : enemies.filter((entry) => entry !== id),
-                  )
-                }
-              />
-              {name}
-            </label>
-          ))}
-        </fieldset>
-        <div className="form-actions">
-          <button
-            type="button"
-            disabled={starting || saving || teamDirty || enemies.length === 0}
-            onClick={() => onStart(enemies)}
-          >
-            {starting ? '正在开战…' : '开始战斗'}
-          </button>
-          <span className="muted">
-            {teamDirty ? '请先保存队伍。' : '使用当前已保存配装'}
-          </span>
-        </div>
-        {issue && <p role="alert">{issue}</p>}
-      </section>
-    </div>
+        ))}
+      </div>
+      {profile && savedPreset ? (
+        <LoadoutForm
+          key={profile.id}
+          profile={profile}
+          equipment={savedPreset.equipment}
+          speedTiers={setup.boots_speed_tiers_micros}
+          onProfile={onProfile}
+        />
+      ) : (
+        <p role="alert">找不到当前配装。</p>
+      )}
+    </section>
   );
 }
 

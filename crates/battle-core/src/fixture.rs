@@ -52,6 +52,24 @@ pub(crate) struct Stats {
     pub crit_rate_bp: u16,
 }
 
+/// Initial training attributes before any effects are applied in combat.
+pub struct TrainingAttributes {
+    pub hp: u32,
+    pub attack: u32,
+    pub defense: u32,
+    pub speed_micros: u64,
+}
+
+pub fn training_attributes(id: &str, config: &Config) -> Result<TrainingAttributes, BattleError> {
+    let (_, stats) = ally(id, config)?;
+    Ok(TrainingAttributes {
+        hp: stats.hp,
+        attack: stats.attack,
+        defense: stats.defense,
+        speed_micros: stats.base_speed_micros + stats.flat_speed_micros,
+    })
+}
+
 #[derive(Clone, Copy)]
 pub(crate) enum Target {
     Enemy,

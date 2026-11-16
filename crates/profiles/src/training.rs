@@ -83,6 +83,13 @@ pub fn training_catalog(session: &Session) -> Catalog {
         .iter()
         .map(|ally| {
             let id = &ally.character_form_id;
+            let (path, element, source_ids): (_, _, &[_]) = match id.as_str() {
+                "trailblazer.destruction" => ("destruction", "physical", &["8001", "8002"]),
+                "march_7th.preservation" => ("preservation", "ice", &["1001"]),
+                "dan_heng.hunt" => ("hunt", "wind", &["1002"]),
+                "natasha.abundance" => ("abundance", "physical", &["1105"]),
+                _ => ("destruction", "physical", &[id.as_str()]),
+            };
             let mut ranks = std::array::from_fn(|_| rank.clone());
             ranks[2].skill_bonuses.insert("basic".into(), 1);
             let variant = CharacterVariant {
@@ -109,10 +116,10 @@ pub fn training_catalog(session: &Session) -> Catalog {
                 id.clone(),
                 Character {
                     name: training_name(id).into(),
-                    source_ids: vec![id.clone()],
+                    source_ids: source_ids.iter().map(|id| (*id).into()).collect(),
                     rarity: 5,
-                    path: "destruction".into(),
-                    element: "physical".into(),
+                    path: path.into(),
+                    element: element.into(),
                     promotions: promotions.clone(),
                     resource: Resource {
                         kind: "energy".into(),

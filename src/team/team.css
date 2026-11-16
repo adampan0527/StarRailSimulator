@@ -1,0 +1,165 @@
+.team-mode:not(:empty) {
+  margin-bottom: 0.75rem;
+}
+
+.team-mode > div {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.team-mode .choice {
+  width: auto;
+}
+
+.team-board > .field-zone {
+  margin-top: 0.85rem;
+}
+
+.field-zone {
+  display: grid;
+  gap: 0.65rem;
+  padding: clamp(0.55rem, 2vw, 1rem);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--field);
+}
+
+.enemy-zone {
+  border-color: color-mix(in srgb, var(--warm) 27%, var(--line));
+}
+
+.enemy-zone h3 {
+  color: var(--warm);
+}
+
+.enemy-slots,
+.ally-slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.3rem, 1.4vw, 0.85rem);
+}
+
+.enemy-slots button {
+  text-align: center;
+}
+
+.enemy-slots button[aria-pressed='true'] {
+  color: var(--warm);
+  background: var(--warm-surface);
+}
+
+.ally-slots {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ally-slots > li,
+.picker-results > li {
+  min-width: 0;
+}
+
+.team-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ally-slot {
+  position: relative;
+  display: grid;
+  align-content: start;
+  height: 100%;
+  min-height: clamp(11rem, 24vw, 17rem);
+  padding: clamp(1.25rem, 2.65vw, 1.9rem) clamp(0.2rem, 1vw, 0.8rem) 0.65rem;
+  border-style: dashed;
+}
+
+.ally-slot[data-filled] {
+  border-style: solid;
+  background: var(--selected);
+}
+
+.slot-number {
+  position: absolute;
+  inset: 0.45rem auto auto 0.5rem;
+  min-width: 1.7rem;
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  color: var(--accent);
+  background: var(--field);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.picker-dialog {
+  width: min(47rem, calc(100% - 1.5rem));
+  max-height: calc(100dvh - 1.5rem);
+  padding: clamp(0.8rem, 3vw, 1.4rem);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--field);
+  color: var(--text);
+}
+
+.picker-dialog::backdrop {
+  background: rgb(13 22 43 / 58%);
+}
+
+.picker-dialog > * + * {
+  margin-top: 0.65rem;
+}
+
+.picker-filters,
+.picker-results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.picker-results {
+  margin-bottom: 0;
+  padding: 0.25rem 0.2rem;
+  list-style: none;
+}
+
+.picker-results .picker-card {
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  height: 100%;
+  padding: 0.65rem;
+}
+
+.picker-card .character-portrait {
+  width: min(100%, clamp(4rem, 12vw, 6.75rem));
+}
+
+.picker-occupied {
+  text-align: center;
+}
+
+@media (min-width: 38rem) {
+  .picker-results {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .ally-slot {
+    font-size: 0.78rem;
+  }
+
+  .ally-slot .slot-number {
+    inset: 0.25rem auto auto 0.25rem;
+    min-width: 1.15rem;
+    padding-inline: 0.15rem;
+    font-size: 0.66rem;
+  }
+
+  .team-detail {
+    gap: 0.35rem;
+  }
+}

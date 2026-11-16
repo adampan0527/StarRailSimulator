@@ -1,11 +1,20 @@
-use std::{collections::BTreeSet, path::Path, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+    time::Duration,
+};
 
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde::{Deserialize, Serialize};
 
 use crate::{Catalog, Error, FrozenCharacter, FrozenTeam, Loadout, valid_id};
 
-const SCHEMA_VERSION: u32 = 1;
+mod inventory;
+mod light_cones;
+pub use inventory::InventoryRelic;
+pub use light_cones::{InventoryLightCone, LightConeEquipment};
+
+const SCHEMA_VERSION: u32 = 3;
 const INITIAL_PRESET: &str = "默认配装";
 
 const SCHEMA: &str = "
@@ -76,9 +85,8 @@ impl Archive {
                     "INSERT INTO archive_metadata VALUES (1, ?1, ?2)",
                     params![catalog.game_version, catalog.data_version],
                 )?;
-                transaction.pragma_update(None, "user_version", SCHEMA_VERSION)?;
             }
-            SCHEMA_VERSION => {
+            1..=SCHEMA_VERSION => {
                 let (game, data): (String, String) = transaction.query_row(
                     "SELECT game_version, data_version FROM archive_metadata WHERE singleton = 1",
                     [],
@@ -98,6 +106,15 @@ impl Archive {
                     version: version.to_string(),
                 });
             }
+        }
+        if version < 2 {
+            transaction.execute_batch(inventory::SCHEMA)?;
+        }
+        if version < 3 {
+            transaction.execute_batch(light_cones::SCHEMA)?;
+        }
+        if version < SCHEMA_VERSION {
+            transaction.pragma_update(None, "user_version", SCHEMA_VERSION)?;
         }
         transaction.commit()?;
         Ok(Self { db, catalog })
@@ -151,6 +168,29 @@ impl Archive {
         Ok(query
             .query_map([], |row| row.get(0))?
             .collect::<Result<_, _>>()?)
+    }
+
+    /// Resolves the current presets of saved characters and their equipped inventory values.
+    pub fn active_loadouts(&self) -> Result<BTreeMap<String, Loadout>, Error> {
+        let transaction = self.db.unchecked_transaction()?;
+        let loadouts = {
+            let mut query = transaction.prepare(
+                "SELECT p.character_id, b.loadout FROM profiles p
+                 JOIN presets b ON b.character_id = p.character_id AND b.name = p.current_preset",
+            )?;
+            let rows = query.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?;
+            rows.map(|row| {
+                let (id, json) = row?;
+                let mut loadout = serde_json::from_str(&json)?;
+                inventory::apply_equipment(&transaction, &id, &mut loadout)?;
+                Ok((id, loadout))
+            })
+            .collect::<Result<_, Error>>()?
+        };
+        transaction.commit()?;
+        Ok(loadouts)
     }
 
     /// Atomically saves the draft and optionally selects it as the current preset.
@@ -254,33 +294,55 @@ impl Archive {
     }
 
     pub fn save_team(&mut self, team: &Team) -> Result<(), Error> {
-        self.write_team(team, false)
+        self.write_dense_team(team, false)
     }
 
     /// Seeds a named team if it is missing, even if two processes initialize at once.
     pub fn ensure_team(&mut self, team: &Team) -> Result<(), Error> {
-        self.write_team(team, true)
+        self.write_dense_team(team, true)
     }
 
-    fn write_team(&mut self, team: &Team, preserve_existing: bool) -> Result<(), Error> {
-        validate_name("team.name", &team.name)?;
-        let member_ids = &team.character_form_ids;
-        let distinct: BTreeSet<_> = member_ids.iter().collect();
-        if !valid_id(&team.id) {
-            return Err(Error::invalid("team.id", &team.id));
-        }
-        if !(1..=4).contains(&member_ids.len()) || distinct.len() != member_ids.len() {
+    fn write_dense_team(&mut self, team: &Team, preserve_existing: bool) -> Result<(), Error> {
+        if !(1..=4).contains(&team.character_form_ids.len()) {
             return Err(Error::invalid(
                 "team.members",
                 "expected one to four distinct characters",
             ));
+        }
+        let slots = std::array::from_fn(|i| team.character_form_ids.get(i).cloned());
+        self.write_slots(&team.id, &team.name, &slots, preserve_existing)
+    }
+
+    pub fn save_team_slots(
+        &mut self,
+        id: &str,
+        name: &str,
+        slots: &TeamSlots,
+    ) -> Result<(), Error> {
+        self.write_slots(id, name, slots, false)
+    }
+
+    fn write_slots(
+        &mut self,
+        id: &str,
+        name: &str,
+        slots: &TeamSlots,
+        preserve_existing: bool,
+    ) -> Result<(), Error> {
+        validate_name("team.name", name)?;
+        if !valid_id(id) {
+            return Err(Error::invalid("team.id", id));
+        }
+        let mut distinct = BTreeSet::new();
+        if !slots.iter().flatten().all(|member| distinct.insert(member)) {
+            return Err(Error::invalid("team.members", "duplicate character"));
         }
         let transaction = self
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         if preserve_existing
             && transaction
-                .query_row("SELECT 1 FROM teams WHERE id = ?1", [&team.id], |row| {
+                .query_row("SELECT 1 FROM teams WHERE id = ?1", [id], |row| {
                     row.get::<_, u8>(0)
                 })
                 .optional()?
@@ -288,22 +350,41 @@ impl Archive {
         {
             return Ok(());
         }
-        for id in member_ids {
-            current_preset(&transaction, id)?;
+        for member in slots.iter().flatten() {
+            current_preset(&transaction, member)?;
         }
         transaction.execute(
             "INSERT INTO teams (id, name) VALUES (?1, ?2) ON CONFLICT(id) DO UPDATE SET name = excluded.name",
-            params![team.id, team.name],
+            params![id, name],
         )?;
-        transaction.execute("DELETE FROM team_members WHERE team_id = ?1", [&team.id])?;
-        for (position, id) in (0_u16..).zip(member_ids) {
-            transaction.execute(
-                "INSERT INTO team_members (team_id, position, character_id) VALUES (?1, ?2, ?3)",
-                params![team.id, position, id],
-            )?;
+        transaction.execute("DELETE FROM team_members WHERE team_id = ?1", [id])?;
+        for (position, member) in slots.iter().enumerate() {
+            if let Some(member) = member {
+                transaction.execute(
+                    "INSERT INTO team_members (team_id, position, character_id) VALUES (?1, ?2, ?3)",
+                    params![id, position as u8, member],
+                )?;
+            }
         }
         transaction.commit()?;
         Ok(())
+    }
+
+    pub fn team_slots(&self, id: &str) -> Result<TeamSlots, Error> {
+        let transaction = self.db.unchecked_transaction()?;
+        team_name(&transaction, id)?;
+        let mut slots = TeamSlots::default();
+        {
+            let mut query = transaction
+                .prepare("SELECT position, character_id FROM team_members WHERE team_id = ?1")?;
+            let mut rows = query.query([id])?;
+            while let Some(row) = rows.next()? {
+                let position: u8 = row.get(0)?;
+                slots[usize::from(position)] = row.get(1)?;
+            }
+        }
+        transaction.commit()?;
+        Ok(slots)
     }
 
     pub fn team(&self, id: &str) -> Result<Team, Error> {
@@ -354,7 +435,8 @@ impl Archive {
             })?;
             rows.map(|row| {
                 let (character_form_id, json) = row?;
-                let loadout = serde_json::from_str(&json)?;
+                let mut loadout: Loadout = serde_json::from_str(&json)?;
+                inventory::apply_equipment(&transaction, &character_form_id, &mut loadout)?;
                 self.catalog
                     .validate_loadout(&character_form_id, &loadout)?;
                 Ok(FrozenCharacter {
@@ -371,6 +453,8 @@ impl Archive {
         Ok(FrozenTeam::new(&self.catalog, members))
     }
 }
+
+pub type TeamSlots = [Option<String>; 4];
 
 fn validate_name(field: &'static str, name: &str) -> Result<(), Error> {
     if name.trim().is_empty() || name.trim() != name || name.chars().any(char::is_control) {
@@ -412,12 +496,15 @@ fn read_profile(db: &Connection, id: &str) -> Result<Profile, Error> {
     let rows = query.query_map([id], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
     })?;
-    let presets = rows
+    let mut presets: BTreeMap<String, Loadout> = rows
         .map(|row| {
             let (name, json) = row?;
             Ok((name, serde_json::from_str(&json)?))
         })
         .collect::<Result<_, Error>>()?;
+    if let Some(active) = presets.get_mut(&current_preset) {
+        inventory::apply_equipment(db, id, active)?;
+    }
     Ok(Profile {
         character_form_id: id.into(),
         current_preset,

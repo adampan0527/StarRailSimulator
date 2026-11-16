@@ -4,6 +4,7 @@
     "lib": ["ES2022", "ESNext.Disposable", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "types": ["vite/client"],
     "jsx": "react-jsx",
     "strict": true,
     "noEmit": true

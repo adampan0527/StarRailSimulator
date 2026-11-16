@@ -7,7 +7,10 @@ use std::{
 
 use rusqlite::Connection;
 use star_rail_battle_core::{Battle, LogMode, PreparedBattle, Session};
-use star_rail_profiles::{Archive, Catalog, Error, FrozenTeam, Loadout, Team, training_catalog};
+use star_rail_profiles::{
+    Archive, Catalog, Error, FrozenTeam, LightConeEquipment, Loadout, PropertyBonus, RelicSlot,
+    Team, training_catalog,
+};
 
 const EXAMPLE: &str = include_str!("../../../contracts/battle-session.v1.example.json");
 static NEXT_DIR: AtomicU32 = AtomicU32::new(0);
@@ -71,6 +74,215 @@ fn seed(path: &Path, session: &Session) -> Archive {
             .unwrap();
     }
     archive
+}
+
+#[test]
+fn migrated_archive_tracks_owned_light_cones_and_freezes_their_values() {
+    let session = Session::from_json(EXAMPLE).unwrap();
+    let db = TempDb::new();
+    let mut prior = seed(&db.path(), &session);
+    let team = team(&session, "alpha");
+    prior.save_team(&team).unwrap();
+    let old = prior.freeze_team("alpha").unwrap();
+    drop(prior);
+
+    let v2 = Connection::open(db.path()).unwrap();
+    v2.execute_batch("DROP TABLE equipped_light_cones; DROP TABLE light_cone_inventory; PRAGMA user_version = 2;").unwrap();
+    drop(v2);
+
+    let first = &team.character_form_ids[0];
+    let second = &team.character_form_ids[1];
+    let mut archive = Archive::open(db.path(), training_catalog(&session)).unwrap();
+    assert_eq!(archive.freeze_team("alpha").unwrap(), old);
+    assert!(archive.light_cone_inventory().unwrap().is_empty());
+    let mut cone = archive
+        .catalog()
+        .default_light_cone("fixture.destruction_cone")
+        .unwrap();
+    cone.superimposition = 5;
+    archive.save_inventory_light_cone(None, &cone).unwrap();
+    archive.save_inventory_light_cone(None, &cone).unwrap();
+    let inventory = archive.light_cone_inventory().unwrap();
+    let (id, spare) = (inventory[0].id, inventory[1].id);
+    assert_ne!(id, spare);
+    let owned = Some(LightConeEquipment::Inventory(id));
+    archive
+        .save_character_equipment(first, 0, false, owned.clone(), &Default::default())
+        .unwrap();
+    assert!(matches!(
+        archive.save_character_equipment(second, 4, false, owned, &Default::default()),
+        Err(Error::Invalid {
+            field: "light_cone.occupied",
+            ..
+        })
+    ));
+    assert_eq!(archive.equipped_light_cone_id(second).unwrap(), None);
+    assert!(archive.delete_inventory_light_cone(id).is_err());
+    let configured = archive.freeze_team("alpha").unwrap();
+    assert_eq!(
+        configured.members[0].loadout.config.light_cone.as_ref(),
+        Some(&cone)
+    );
+    drop(archive);
+
+    let mut reopened = Archive::open(db.path(), training_catalog(&session)).unwrap();
+    assert_eq!(reopened.equipped_light_cone_id(first).unwrap(), Some(id));
+    cone.superimposition = 2;
+    reopened.save_inventory_light_cone(Some(id), &cone).unwrap();
+    assert_eq!(
+        reopened.active_loadouts().unwrap()[first]
+            .config
+            .light_cone
+            .as_ref(),
+        Some(&cone)
+    );
+    assert_eq!(
+        configured.members[0]
+            .loadout
+            .config
+            .light_cone
+            .as_ref()
+            .unwrap()
+            .superimposition,
+        5
+    );
+    reopened
+        .save_character_equipment(first, 0, false, None, &Default::default())
+        .unwrap();
+    reopened.delete_inventory_light_cone(id).unwrap();
+    assert_eq!(reopened.light_cone_inventory().unwrap()[0].id, spare);
+}
+
+#[test]
+fn sheet_combines_static_bonuses_for_only_the_characters_element() {
+    let template = Session::from_json(EXAMPLE).unwrap();
+    let id = &template.input.team[0].character_form_id;
+    let mut catalog = training_catalog(&template);
+    let character = catalog.characters.get_mut(id).unwrap();
+    character.element = "quantum".into();
+    character
+        .variants
+        .get_mut("base")
+        .unwrap()
+        .traces
+        .get_mut("trace.first")
+        .unwrap()
+        .properties = vec![
+        PropertyBonus {
+            property: "quantumaddedratio".into(),
+            value: 0.1,
+        },
+        PropertyBonus {
+            property: "thunderaddedratio".into(),
+            value: 0.5,
+        },
+        PropertyBonus {
+            property: "attack_ratio".into(),
+            value: 0.12,
+        },
+    ];
+    let boots = template.input.team[0].config.relics.feet.clone().unwrap();
+    let mut hands_data = catalog.relics[&boots.data_id].clone();
+    hands_data.slot = RelicSlot::Hands;
+    catalog.relics.insert("fixture.hands".into(), hands_data);
+    catalog
+        .relic_sets
+        .get_mut("fixture.training")
+        .unwrap()
+        .properties
+        .insert(
+            2,
+            vec![PropertyBonus {
+                property: "spratiobase".into(),
+                value: 0.05,
+            }],
+        );
+    let mut loadout = catalog.default_loadout(id).unwrap();
+    loadout.config.light_cone = Some(
+        catalog
+            .default_light_cone("fixture.destruction_cone")
+            .unwrap(),
+    );
+    loadout.config.relics.feet = Some(boots.clone());
+
+    let single = catalog.character_stats(id, &loadout).unwrap();
+    assert_eq!(single.element_damage, Some(0.1));
+    assert_eq!(single.energy_regeneration, Some(1.0));
+    assert_eq!(single.attack.unwrap().base, 200.0);
+
+    loadout.config.relics.hands = Some(star_rail_profiles::Relic {
+        data_id: "fixture.hands".into(),
+        ..boots
+    });
+    let equipped = catalog.character_stats(id, &loadout).unwrap();
+    assert!((equipped.attack.unwrap().total - 264.0).abs() < 1e-9);
+    assert_eq!(equipped.energy_regeneration, Some(1.05));
+
+    catalog.characters.get_mut(id).unwrap().element = "thunder".into();
+    let thunder = catalog.character_stats(id, &loadout).unwrap();
+    assert_eq!(thunder.element_damage, Some(0.5));
+}
+
+#[test]
+fn migrated_teams_freeze_current_inventory_values_without_changing_old_snapshots() {
+    let template = Session::from_json(EXAMPLE).unwrap();
+    let db = TempDb::new();
+    let mut archive = seed(&db.path(), &template);
+    let team = team(&template, "alpha");
+    archive.save_team(&team).unwrap();
+    let old_snapshot = archive.freeze_team("alpha").unwrap();
+    drop(archive);
+
+    let old_schema = Connection::open(db.path()).unwrap();
+    old_schema
+        .execute_batch(
+            "DROP TABLE equipped_relics;
+         DROP TABLE relic_inventory;
+         DROP TABLE equipped_light_cones;
+         DROP TABLE light_cone_inventory;
+         PRAGMA user_version = 1;",
+        )
+        .unwrap();
+    drop(old_schema);
+
+    let mut archive = Archive::open(db.path(), training_catalog(&template)).unwrap();
+    assert_eq!(archive.team("alpha").unwrap(), team);
+    assert_eq!(archive.freeze_team("alpha").unwrap(), old_snapshot);
+    let old_loadout = &old_snapshot.members[0].loadout;
+    let mut boots = old_loadout.config.relics.feet.clone().unwrap();
+    archive.save_inventory_relic(None, &boots).unwrap();
+    let id = archive.inventory().unwrap()[0].id;
+    archive
+        .save_character_equipment(
+            &team.character_form_ids[0],
+            3,
+            false,
+            old_loadout
+                .config
+                .light_cone
+                .clone()
+                .map(LightConeEquipment::Custom),
+            &[(RelicSlot::Feet, id)].into(),
+        )
+        .unwrap();
+    let snapshot = archive.freeze_team("alpha").unwrap();
+    assert_eq!(snapshot.members[0].loadout.config.eidolon, 3);
+    assert_eq!(
+        snapshot.members[0].loadout.config.relics.feet.as_ref(),
+        Some(&boots)
+    );
+
+    boots.substats.insert("speed".into(), 2_600_000);
+    archive.save_inventory_relic(Some(id), &boots).unwrap();
+    let refreshed = archive.freeze_team("alpha").unwrap();
+    assert_eq!(
+        refreshed.members[0].loadout.config.relics.feet.as_ref(),
+        Some(&boots)
+    );
+    assert_ne!(
+        snapshot.members[0].loadout.config.relics.feet.as_ref(),
+        Some(&boots)
+    );
 }
 
 #[test]

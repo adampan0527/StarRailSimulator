@@ -49,6 +49,11 @@
 <li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>搜索、预览和取消均不改全局档案；用户应用时整套方案一次保存。搜索期间全局档案或库存已变更时重新校验，冲突有明确提示。</span></li>
 </ul>
 <p><strong>验收证据：</strong> 库存到应用的操作录屏、小库存穷举对照、速度变动回放、装备约束与应用事务测试。</p>
+<h3>进展记录</h3>
+<ul>
+<li>2026-11-16 随 M04 接入遗器库存录入、编辑、稳定实例 ID 与穿戴独占。M06 的锁定、搜索、预览和应用待实现。<a href="../../../src-tauri/src/character_archive_tests.rs">穿戴回归测试</a></li>
+<li>2026-11-16 随 M04 接入持有光锥的独立库存 ID 与装备独占，并验证更新库存后新快照使用新数值。<a href="../../../crates/profiles/tests/archive.rs">存档测试</a></li>
+</ul>
       </section>
     </article>
     <nav class="detail-pagination" aria-label="相邻里程碑">

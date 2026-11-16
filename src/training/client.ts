@@ -7,16 +7,43 @@ export type Equipment = {
 
 export type Preset = { name: string; equipment: Equipment };
 export type Name = { id: string; name: string };
-export type Profile = Name & {
+export type ScaledStat = { base: number; total: number };
+export type CharacterStats = {
+  hp: ScaledStat | null;
+  attack: ScaledStat | null;
+  defense: ScaledStat | null;
+  speed: ScaledStat | null;
+  crit_rate: number | null;
+  crit_damage: number | null;
+  element_damage: number | null;
+  break_effect: number | null;
+  elation: number | null;
+  healing_boost: number | null;
+  energy_regeneration: number | null;
+  effect_hit_rate: number | null;
+  effect_resistance: number | null;
+};
+export type CharacterSummary = Name & {
+  element: string;
+  path: string;
+  source_ids: string[];
+  stats: CharacterStats;
+};
+export type Profile = CharacterSummary & {
   level: number;
   can_equip_light_cone: boolean;
   current_preset: string;
   presets: Preset[];
 };
-export type Team = Name & { character_form_ids: string[] };
+export type TeamSlots = [
+  string | null,
+  string | null,
+  string | null,
+  string | null,
+];
 export type Setup = {
   profiles: Profile[];
-  team: Team;
+  team_slots: TeamSlots;
   enemies: Name[];
   boots_speed_tiers_micros: number[];
 };
@@ -122,8 +149,8 @@ export const training = {
     }),
   selectLoadout: (characterId: string, presetName: string) =>
     invoke<Profile>('training_select_loadout', { characterId, presetName }),
-  saveTeam: (characterIds: string[]) =>
-    invoke<Team>('training_save_team', { characterIds }),
+  saveTeam: (slots: TeamSlots) =>
+    invoke<TeamSlots>('training_save_team', { slots }),
   start: (enemyIds: string[]) =>
     invoke<BattleView>('training_start', { enemyIds }),
   act: (sessionId: number, command: Command) =>
@@ -144,7 +171,7 @@ export function describeError(error: unknown) {
     case 'invalid_loadout':
       return '配装未保存。请检查方案名称和训练装备。';
     case 'invalid_team':
-      return '队伍需要 1 到 4 名不同角色。';
+      return '请检查队伍站位。角色不能重复上阵，开战至少需要一名角色。';
     case 'invalid_enemies':
       return '请选择至少一台训练靶机。';
     case 'replay_not_found':

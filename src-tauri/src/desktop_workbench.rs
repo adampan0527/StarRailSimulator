@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 use star_rail_battle_core::{BattleError, Command};
-use star_rail_profiles::Team;
+use star_rail_profiles::TeamSlots;
 use tauri::{AppHandle, Manager};
 
 use crate::workbench::{
@@ -112,9 +112,9 @@ pub async fn training_select_loadout(
 #[tauri::command]
 pub async fn training_save_team(
     app: AppHandle,
-    character_ids: Vec<String>,
-) -> Result<Team, CommandError> {
-    with_workbench(app, move |workbench| workbench.save_team(character_ids)).await
+    slots: TeamSlots,
+) -> Result<TeamSlots, CommandError> {
+    with_workbench(app, move |workbench| workbench.save_team(slots)).await
 }
 
 #[tauri::command]

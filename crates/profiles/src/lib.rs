@@ -2,6 +2,7 @@
 
 mod catalog;
 mod loadout;
+mod panel;
 mod store;
 mod training;
 
@@ -10,9 +11,12 @@ pub use catalog::{
     RelicData, RelicSet, RelicSlot, Requirement, Resource, Servant, ServantStat, Skill,
     SkillActivation, Superimposition, Trace,
 };
-pub use loadout::{FrozenCharacter, FrozenTeam, Loadout};
+pub use loadout::{FrozenCharacter, FrozenTeam, Loadout, RelicSubstatValues};
+pub use panel::{CharacterStats, ScaledStat};
 pub use star_rail_battle_core::{Config, LightCone, Relic, Relics};
-pub use store::{Archive, Profile, Team};
+pub use store::{
+    Archive, InventoryLightCone, InventoryRelic, LightConeEquipment, Profile, Team, TeamSlots,
+};
 pub use training::training_catalog;
 
 #[derive(Debug, thiserror::Error)]

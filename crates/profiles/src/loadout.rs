@@ -7,6 +7,9 @@ use crate::{
     catalog::check_level,
 };
 
+const DEFAULT_CHARACTER_LEVEL: u16 = 80;
+const DEFAULT_CHARACTER_ASCENSION: u8 = 6;
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Loadout {
@@ -18,7 +21,12 @@ pub struct Loadout {
 impl Catalog {
     pub fn default_loadout(&self, character_id: &str) -> Result<Loadout, Error> {
         let character = self.character(character_id)?;
-        self.default_loadout_at(character_id, &character.default_variant, 80, 6)
+        self.default_loadout_at(
+            character_id,
+            &character.default_variant,
+            DEFAULT_CHARACTER_LEVEL,
+            DEFAULT_CHARACTER_ASCENSION,
+        )
     }
 
     pub fn default_loadout_at(
@@ -88,6 +96,13 @@ impl Catalog {
         })
     }
 
+    pub(crate) fn validate_light_cone(&self, cone: &LightCone) -> Result<(), Error> {
+        check_level(cone.level, cone.ascension)
+            .map_err(|error| Error::invalid("light_cone.level", error.to_string()))?;
+        self.light_cone(&cone.data_id)?.rank(cone.superimposition)?;
+        Ok(())
+    }
+
     pub fn validate_loadout(&self, character_id: &str, loadout: &Loadout) -> Result<(), Error> {
         let character = self.character(character_id)?;
         let config = &loadout.config;
@@ -104,8 +119,7 @@ impl Catalog {
         }
         validate_progression(config, variant)?;
         if let Some(cone) = &config.light_cone {
-            check_level(cone.level, cone.ascension)?;
-            self.light_cone(&cone.data_id)?.rank(cone.superimposition)?;
+            self.validate_light_cone(cone)?;
         }
         let relics = &config.relics;
         for (slot, relic) in [
@@ -181,7 +195,7 @@ impl Catalog {
             .min(skill.parameters.len() as u16))
     }
 
-    fn validate_relic(&self, slot: RelicSlot, item: &Relic) -> Result<(), Error> {
+    pub(crate) fn validate_relic(&self, slot: RelicSlot, item: &Relic) -> Result<(), Error> {
         let data = self
             .relics
             .get(&item.data_id)
@@ -194,9 +208,7 @@ impl Catalog {
         }
         self.relic_main_value(&item.data_id, &item.main_stat, item.level)?;
         let group = &self.sub_affixes[&data.sub_group];
-        let upgrades = item.level / data.upgrade_interval;
-        let min_total = u16::from(data.initial_substats[0]) + upgrades;
-        let max_total = u16::from(data.initial_substats[1]) + upgrades;
+        let [min_total, max_total] = relic_roll_bounds(data, item.level);
         let mut possible_totals = BTreeSet::from([0]);
         for (property, &value) in &item.substats {
             let affix = group
@@ -229,13 +241,61 @@ impl Catalog {
         }
         Ok(())
     }
+
+    /// Lists individually attainable values in millionths. Saving still checks
+    /// whether all selected substats are attainable together.
+    pub fn relic_substat_values(&self, id: &str, level: u16) -> Result<RelicSubstatValues, Error> {
+        let relic = self
+            .relics
+            .get(id)
+            .ok_or_else(|| Error::missing("relic", id))?;
+        if level > relic.max_level {
+            return Err(Error::invalid("relic.level", level.to_string()));
+        }
+        let [min_total, max_total] = relic_roll_bounds(relic, level);
+        let max_lines = max_total.min(4);
+        let max_rolls = max_total - max_lines.saturating_sub(1);
+        let values = self.sub_affixes[&relic.sub_group]
+            .iter()
+            .map(|(property, &affix)| {
+                let tiers = (1..=max_rolls)
+                    .flat_map(|count| {
+                        (0..=u16::from(affix.step_count) * count)
+                            .map(move |tier| affix_micros(affix, count, tier))
+                    })
+                    .filter(|value| *value > 0.0 && *value <= f64::from(u32::MAX))
+                    .map(|value| value as u32)
+                    .collect::<BTreeSet<_>>();
+                (property.clone(), tiers.into_iter().collect())
+            })
+            .collect();
+        Ok(RelicSubstatValues {
+            min_lines: min_total.min(4),
+            max_lines,
+            values,
+        })
+    }
+}
+
+pub struct RelicSubstatValues {
+    pub min_lines: u16,
+    pub max_lines: u16,
+    pub values: BTreeMap<String, Vec<u32>>,
+}
+
+fn relic_roll_bounds(data: &crate::RelicData, level: u16) -> [u16; 2] {
+    data.initial_substats
+        .map(|lines| u16::from(lines) + level / data.upgrade_interval)
 }
 
 fn attainable(affix: Affix, count: u16, value: u32) -> bool {
-    (0..=u16::from(affix.step_count) * count).any(|tier| {
-        let roll = affix.base * f64::from(count) + affix.step * f64::from(tier);
-        (roll * 1_000_000.0).round() == f64::from(value)
-    })
+    (0..=u16::from(affix.step_count) * count)
+        .any(|tier| affix_micros(affix, count, tier) == f64::from(value))
+}
+
+fn affix_micros(affix: Affix, count: u16, tier: u16) -> f64 {
+    let roll = affix.base * f64::from(count) + affix.step * f64::from(tier);
+    (roll * 1_000_000.0).round()
 }
 
 fn validate_progression(config: &Config, variant: &CharacterVariant) -> Result<(), Error> {
