@@ -1,0 +1,5288 @@
+{
+  "game_version": "4.7.0",
+  "data_version": "sr.4.7.0.m03.dce40f8d031ea2b3272537b2dd4041510e65e163db773a9d1a7cda7a509b1ff9",
+  "sources": [
+    {
+      "repository": "Mar-7th/StarRailRes",
+      "revision": "03907e798b46f9eb109a1f882055cdf49ce3d374"
+    },
+    {
+      "repository": "DimbreathBot/TurnBasedGameData",
+      "revision": "dad9155eb00fdeda31fb8456507c53590d49071f"
+    }
+  ],
+  "character_source_count": 99,
+  "character_form_count": 94,
+  "variants": 104,
+  "characters": [
+    {
+      "id": "march_7th.preservation",
+      "source_ids": ["1001"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.100101",
+            "skill.100102",
+            "skill.100103",
+            "skill.100104",
+            "skill.100106",
+            "skill.100107"
+          ],
+          "traces": [
+            "trace.1001101",
+            "trace.1001102",
+            "trace.1001103",
+            "trace.1001201",
+            "trace.1001202",
+            "trace.1001203",
+            "trace.1001204",
+            "trace.1001205",
+            "trace.1001206",
+            "trace.1001207",
+            "trace.1001208",
+            "trace.1001209",
+            "trace.1001210"
+          ],
+          "eidolons": [
+            "eidolon.100101",
+            "eidolon.100102",
+            "eidolon.100103",
+            "eidolon.100104",
+            "eidolon.100105",
+            "eidolon.100106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "dan_heng.hunt",
+      "source_ids": ["1002"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.100201",
+            "skill.100202",
+            "skill.100203",
+            "skill.100204",
+            "skill.100206",
+            "skill.100207"
+          ],
+          "traces": [
+            "trace.1002101",
+            "trace.1002102",
+            "trace.1002103",
+            "trace.1002201",
+            "trace.1002202",
+            "trace.1002203",
+            "trace.1002204",
+            "trace.1002205",
+            "trace.1002206",
+            "trace.1002207",
+            "trace.1002208",
+            "trace.1002209",
+            "trace.1002210"
+          ],
+          "eidolons": [
+            "eidolon.100201",
+            "eidolon.100202",
+            "eidolon.100203",
+            "eidolon.100204",
+            "eidolon.100205",
+            "eidolon.100206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1003",
+      "source_ids": ["1003"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.100301",
+            "skill.100302",
+            "skill.100303",
+            "skill.100304",
+            "skill.100306",
+            "skill.100307"
+          ],
+          "traces": [
+            "trace.1003101",
+            "trace.1003102",
+            "trace.1003103",
+            "trace.1003201",
+            "trace.1003202",
+            "trace.1003203",
+            "trace.1003204",
+            "trace.1003205",
+            "trace.1003206",
+            "trace.1003207",
+            "trace.1003208",
+            "trace.1003209",
+            "trace.1003210"
+          ],
+          "eidolons": [
+            "eidolon.100301",
+            "eidolon.100302",
+            "eidolon.100303",
+            "eidolon.100304",
+            "eidolon.100305",
+            "eidolon.100306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1004",
+      "source_ids": ["1004"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.100401",
+            "skill.100402",
+            "skill.100403",
+            "skill.100404",
+            "skill.100406",
+            "skill.100407"
+          ],
+          "traces": [
+            "trace.1004101",
+            "trace.1004102",
+            "trace.1004103",
+            "trace.1004201",
+            "trace.1004202",
+            "trace.1004203",
+            "trace.1004204",
+            "trace.1004205",
+            "trace.1004206",
+            "trace.1004207",
+            "trace.1004208",
+            "trace.1004209",
+            "trace.1004210"
+          ],
+          "eidolons": [
+            "eidolon.100401",
+            "eidolon.100402",
+            "eidolon.100403",
+            "eidolon.100404",
+            "eidolon.100405",
+            "eidolon.100406"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1100401",
+            "skill.1100402",
+            "skill.1100403",
+            "skill.1100404",
+            "skill.1100406",
+            "skill.1100407"
+          ],
+          "traces": [
+            "trace.11004101",
+            "trace.11004102",
+            "trace.11004103",
+            "trace.11004201",
+            "trace.11004202",
+            "trace.11004203",
+            "trace.11004204",
+            "trace.11004205",
+            "trace.11004206",
+            "trace.11004207",
+            "trace.11004208",
+            "trace.11004209",
+            "trace.11004210"
+          ],
+          "eidolons": [
+            "eidolon.1100401",
+            "eidolon.1100402",
+            "eidolon.1100403",
+            "eidolon.1100404",
+            "eidolon.1100405",
+            "eidolon.1100406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1005",
+      "source_ids": ["1005"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.100501",
+            "skill.100502",
+            "skill.100503",
+            "skill.100504",
+            "skill.100506",
+            "skill.100507"
+          ],
+          "traces": [
+            "trace.1005101",
+            "trace.1005102",
+            "trace.1005103",
+            "trace.1005201",
+            "trace.1005202",
+            "trace.1005203",
+            "trace.1005204",
+            "trace.1005205",
+            "trace.1005206",
+            "trace.1005207",
+            "trace.1005208",
+            "trace.1005209",
+            "trace.1005210"
+          ],
+          "eidolons": [
+            "eidolon.100501",
+            "eidolon.100502",
+            "eidolon.100503",
+            "eidolon.100504",
+            "eidolon.100505",
+            "eidolon.100506"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1100501",
+            "skill.1100502",
+            "skill.1100503",
+            "skill.1100504",
+            "skill.1100506",
+            "skill.1100507"
+          ],
+          "traces": [
+            "trace.11005101",
+            "trace.11005102",
+            "trace.11005103",
+            "trace.11005201",
+            "trace.11005202",
+            "trace.11005203",
+            "trace.11005204",
+            "trace.11005205",
+            "trace.11005206",
+            "trace.11005207",
+            "trace.11005208",
+            "trace.11005209",
+            "trace.11005210"
+          ],
+          "eidolons": [
+            "eidolon.1100501",
+            "eidolon.1100502",
+            "eidolon.1100503",
+            "eidolon.1100504",
+            "eidolon.1100505",
+            "eidolon.1100506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1006",
+      "source_ids": ["1006"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.100601",
+            "skill.100602",
+            "skill.100603",
+            "skill.100604",
+            "skill.100606",
+            "skill.100607"
+          ],
+          "traces": [
+            "trace.1006101",
+            "trace.1006102",
+            "trace.1006103",
+            "trace.1006201",
+            "trace.1006202",
+            "trace.1006203",
+            "trace.1006204",
+            "trace.1006205",
+            "trace.1006206",
+            "trace.1006207",
+            "trace.1006208",
+            "trace.1006209",
+            "trace.1006210"
+          ],
+          "eidolons": [
+            "eidolon.100601",
+            "eidolon.100602",
+            "eidolon.100603",
+            "eidolon.100604",
+            "eidolon.100605",
+            "eidolon.100606"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1100601",
+            "skill.1100602",
+            "skill.1100603",
+            "skill.1100604",
+            "skill.1100606",
+            "skill.1100607"
+          ],
+          "traces": [
+            "trace.11006101",
+            "trace.11006102",
+            "trace.11006103",
+            "trace.11006201",
+            "trace.11006202",
+            "trace.11006203",
+            "trace.11006204",
+            "trace.11006205",
+            "trace.11006206",
+            "trace.11006207",
+            "trace.11006208",
+            "trace.11006209",
+            "trace.11006210"
+          ],
+          "eidolons": [
+            "eidolon.1100601",
+            "eidolon.1100602",
+            "eidolon.1100603",
+            "eidolon.1100604",
+            "eidolon.1100605",
+            "eidolon.1100606"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1008",
+      "source_ids": ["1008"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.100801",
+            "skill.100802",
+            "skill.100803",
+            "skill.100804",
+            "skill.100806",
+            "skill.100807"
+          ],
+          "traces": [
+            "trace.1008101",
+            "trace.1008102",
+            "trace.1008103",
+            "trace.1008201",
+            "trace.1008202",
+            "trace.1008203",
+            "trace.1008204",
+            "trace.1008205",
+            "trace.1008206",
+            "trace.1008207",
+            "trace.1008208",
+            "trace.1008209",
+            "trace.1008210"
+          ],
+          "eidolons": [
+            "eidolon.100801",
+            "eidolon.100802",
+            "eidolon.100803",
+            "eidolon.100804",
+            "eidolon.100805",
+            "eidolon.100806"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1009",
+      "source_ids": ["1009"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.100901",
+            "skill.100902",
+            "skill.100903",
+            "skill.100904",
+            "skill.100906",
+            "skill.100907"
+          ],
+          "traces": [
+            "trace.1009101",
+            "trace.1009102",
+            "trace.1009103",
+            "trace.1009201",
+            "trace.1009202",
+            "trace.1009203",
+            "trace.1009204",
+            "trace.1009205",
+            "trace.1009206",
+            "trace.1009207",
+            "trace.1009208",
+            "trace.1009209",
+            "trace.1009210"
+          ],
+          "eidolons": [
+            "eidolon.100901",
+            "eidolon.100902",
+            "eidolon.100903",
+            "eidolon.100904",
+            "eidolon.100905",
+            "eidolon.100906"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1013",
+      "source_ids": ["1013"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.101301",
+            "skill.101302",
+            "skill.101303",
+            "skill.101304",
+            "skill.101306",
+            "skill.101307"
+          ],
+          "traces": [
+            "trace.1013101",
+            "trace.1013102",
+            "trace.1013103",
+            "trace.1013201",
+            "trace.1013202",
+            "trace.1013203",
+            "trace.1013204",
+            "trace.1013205",
+            "trace.1013206",
+            "trace.1013207",
+            "trace.1013208",
+            "trace.1013209",
+            "trace.1013210"
+          ],
+          "eidolons": [
+            "eidolon.101301",
+            "eidolon.101302",
+            "eidolon.101303",
+            "eidolon.101304",
+            "eidolon.101305",
+            "eidolon.101306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1101",
+      "source_ids": ["1101"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.110101",
+            "skill.110102",
+            "skill.110103",
+            "skill.110104",
+            "skill.110106",
+            "skill.110107"
+          ],
+          "traces": [
+            "trace.1101101",
+            "trace.1101102",
+            "trace.1101103",
+            "trace.1101201",
+            "trace.1101202",
+            "trace.1101203",
+            "trace.1101204",
+            "trace.1101205",
+            "trace.1101206",
+            "trace.1101207",
+            "trace.1101208",
+            "trace.1101209",
+            "trace.1101210"
+          ],
+          "eidolons": [
+            "eidolon.110101",
+            "eidolon.110102",
+            "eidolon.110103",
+            "eidolon.110104",
+            "eidolon.110105",
+            "eidolon.110106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1102",
+      "source_ids": ["1102"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.110201",
+            "skill.110202",
+            "skill.110203",
+            "skill.110204",
+            "skill.110206",
+            "skill.110207"
+          ],
+          "traces": [
+            "trace.1102101",
+            "trace.1102102",
+            "trace.1102103",
+            "trace.1102201",
+            "trace.1102202",
+            "trace.1102203",
+            "trace.1102204",
+            "trace.1102205",
+            "trace.1102206",
+            "trace.1102207",
+            "trace.1102208",
+            "trace.1102209",
+            "trace.1102210"
+          ],
+          "eidolons": [
+            "eidolon.110201",
+            "eidolon.110202",
+            "eidolon.110203",
+            "eidolon.110204",
+            "eidolon.110205",
+            "eidolon.110206"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1110201",
+            "skill.1110202",
+            "skill.1110203",
+            "skill.1110204",
+            "skill.1110206",
+            "skill.1110207"
+          ],
+          "traces": [
+            "trace.11102101",
+            "trace.11102102",
+            "trace.11102103",
+            "trace.11102201",
+            "trace.11102202",
+            "trace.11102203",
+            "trace.11102204",
+            "trace.11102205",
+            "trace.11102206",
+            "trace.11102207",
+            "trace.11102208",
+            "trace.11102209",
+            "trace.11102210"
+          ],
+          "eidolons": [
+            "eidolon.1110201",
+            "eidolon.1110202",
+            "eidolon.1110203",
+            "eidolon.1110204",
+            "eidolon.1110205",
+            "eidolon.1110206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1103",
+      "source_ids": ["1103"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.110301",
+            "skill.110302",
+            "skill.110303",
+            "skill.110304",
+            "skill.110306",
+            "skill.110307"
+          ],
+          "traces": [
+            "trace.1103101",
+            "trace.1103102",
+            "trace.1103103",
+            "trace.1103201",
+            "trace.1103202",
+            "trace.1103203",
+            "trace.1103204",
+            "trace.1103205",
+            "trace.1103206",
+            "trace.1103207",
+            "trace.1103208",
+            "trace.1103209",
+            "trace.1103210"
+          ],
+          "eidolons": [
+            "eidolon.110301",
+            "eidolon.110302",
+            "eidolon.110303",
+            "eidolon.110304",
+            "eidolon.110305",
+            "eidolon.110306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1104",
+      "source_ids": ["1104"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.110401",
+            "skill.110402",
+            "skill.110403",
+            "skill.110404",
+            "skill.110406",
+            "skill.110407"
+          ],
+          "traces": [
+            "trace.1104101",
+            "trace.1104102",
+            "trace.1104103",
+            "trace.1104201",
+            "trace.1104202",
+            "trace.1104203",
+            "trace.1104204",
+            "trace.1104205",
+            "trace.1104206",
+            "trace.1104207",
+            "trace.1104208",
+            "trace.1104209",
+            "trace.1104210"
+          ],
+          "eidolons": [
+            "eidolon.110401",
+            "eidolon.110402",
+            "eidolon.110403",
+            "eidolon.110404",
+            "eidolon.110405",
+            "eidolon.110406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "natasha.abundance",
+      "source_ids": ["1105"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.110501",
+            "skill.110502",
+            "skill.110503",
+            "skill.110504",
+            "skill.110506",
+            "skill.110507"
+          ],
+          "traces": [
+            "trace.1105101",
+            "trace.1105102",
+            "trace.1105103",
+            "trace.1105201",
+            "trace.1105202",
+            "trace.1105203",
+            "trace.1105204",
+            "trace.1105205",
+            "trace.1105206",
+            "trace.1105207",
+            "trace.1105208",
+            "trace.1105209",
+            "trace.1105210"
+          ],
+          "eidolons": [
+            "eidolon.110501",
+            "eidolon.110502",
+            "eidolon.110503",
+            "eidolon.110504",
+            "eidolon.110505",
+            "eidolon.110506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1106",
+      "source_ids": ["1106"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.110601",
+            "skill.110602",
+            "skill.110603",
+            "skill.110604",
+            "skill.110606",
+            "skill.110607"
+          ],
+          "traces": [
+            "trace.1106101",
+            "trace.1106102",
+            "trace.1106103",
+            "trace.1106201",
+            "trace.1106202",
+            "trace.1106203",
+            "trace.1106204",
+            "trace.1106205",
+            "trace.1106206",
+            "trace.1106207",
+            "trace.1106208",
+            "trace.1106209",
+            "trace.1106210"
+          ],
+          "eidolons": [
+            "eidolon.110601",
+            "eidolon.110602",
+            "eidolon.110603",
+            "eidolon.110604",
+            "eidolon.110605",
+            "eidolon.110606"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1107",
+      "source_ids": ["1107"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.110701",
+            "skill.110702",
+            "skill.110703",
+            "skill.110704",
+            "skill.110706",
+            "skill.110707"
+          ],
+          "traces": [
+            "trace.1107101",
+            "trace.1107102",
+            "trace.1107103",
+            "trace.1107201",
+            "trace.1107202",
+            "trace.1107203",
+            "trace.1107204",
+            "trace.1107205",
+            "trace.1107206",
+            "trace.1107207",
+            "trace.1107208",
+            "trace.1107209",
+            "trace.1107210"
+          ],
+          "eidolons": [
+            "eidolon.110701",
+            "eidolon.110702",
+            "eidolon.110703",
+            "eidolon.110704",
+            "eidolon.110705",
+            "eidolon.110706"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1108",
+      "source_ids": ["1108"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.110801",
+            "skill.110802",
+            "skill.110803",
+            "skill.110804",
+            "skill.110806",
+            "skill.110807"
+          ],
+          "traces": [
+            "trace.1108101",
+            "trace.1108102",
+            "trace.1108103",
+            "trace.1108201",
+            "trace.1108202",
+            "trace.1108203",
+            "trace.1108204",
+            "trace.1108205",
+            "trace.1108206",
+            "trace.1108207",
+            "trace.1108208",
+            "trace.1108209",
+            "trace.1108210"
+          ],
+          "eidolons": [
+            "eidolon.110801",
+            "eidolon.110802",
+            "eidolon.110803",
+            "eidolon.110804",
+            "eidolon.110805",
+            "eidolon.110806"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1109",
+      "source_ids": ["1109"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.110901",
+            "skill.110902",
+            "skill.110903",
+            "skill.110904",
+            "skill.110906",
+            "skill.110907",
+            "skill.110909"
+          ],
+          "traces": [
+            "trace.1109101",
+            "trace.1109102",
+            "trace.1109103",
+            "trace.1109201",
+            "trace.1109202",
+            "trace.1109203",
+            "trace.1109204",
+            "trace.1109205",
+            "trace.1109206",
+            "trace.1109207",
+            "trace.1109208",
+            "trace.1109209",
+            "trace.1109210"
+          ],
+          "eidolons": [
+            "eidolon.110901",
+            "eidolon.110902",
+            "eidolon.110903",
+            "eidolon.110904",
+            "eidolon.110905",
+            "eidolon.110906"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1110",
+      "source_ids": ["1110"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.111001",
+            "skill.111002",
+            "skill.111003",
+            "skill.111004",
+            "skill.111006",
+            "skill.111007"
+          ],
+          "traces": [
+            "trace.1110101",
+            "trace.1110102",
+            "trace.1110103",
+            "trace.1110201",
+            "trace.1110202",
+            "trace.1110203",
+            "trace.1110204",
+            "trace.1110205",
+            "trace.1110206",
+            "trace.1110207",
+            "trace.1110208",
+            "trace.1110209",
+            "trace.1110210"
+          ],
+          "eidolons": [
+            "eidolon.111001",
+            "eidolon.111002",
+            "eidolon.111003",
+            "eidolon.111004",
+            "eidolon.111005",
+            "eidolon.111006"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1111",
+      "source_ids": ["1111"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.111101",
+            "skill.111102",
+            "skill.111103",
+            "skill.111104",
+            "skill.111106",
+            "skill.111107",
+            "skill.111108"
+          ],
+          "traces": [
+            "trace.1111101",
+            "trace.1111102",
+            "trace.1111103",
+            "trace.1111201",
+            "trace.1111202",
+            "trace.1111203",
+            "trace.1111204",
+            "trace.1111205",
+            "trace.1111206",
+            "trace.1111207",
+            "trace.1111208",
+            "trace.1111209",
+            "trace.1111210"
+          ],
+          "eidolons": [
+            "eidolon.111101",
+            "eidolon.111102",
+            "eidolon.111103",
+            "eidolon.111104",
+            "eidolon.111105",
+            "eidolon.111106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1112",
+      "source_ids": ["1112"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.111201",
+            "skill.111202",
+            "skill.111203",
+            "skill.111204",
+            "skill.111206",
+            "skill.111207"
+          ],
+          "traces": [
+            "trace.1112101",
+            "trace.1112102",
+            "trace.1112103",
+            "trace.1112201",
+            "trace.1112202",
+            "trace.1112203",
+            "trace.1112204",
+            "trace.1112205",
+            "trace.1112206",
+            "trace.1112207",
+            "trace.1112208",
+            "trace.1112209",
+            "trace.1112210"
+          ],
+          "eidolons": [
+            "eidolon.111201",
+            "eidolon.111202",
+            "eidolon.111203",
+            "eidolon.111204",
+            "eidolon.111205",
+            "eidolon.111206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1201",
+      "source_ids": ["1201"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.120101",
+            "skill.120102",
+            "skill.120103",
+            "skill.120104",
+            "skill.120106",
+            "skill.120107",
+            "skill.120108"
+          ],
+          "traces": [
+            "trace.1201101",
+            "trace.1201102",
+            "trace.1201103",
+            "trace.1201201",
+            "trace.1201202",
+            "trace.1201203",
+            "trace.1201204",
+            "trace.1201205",
+            "trace.1201206",
+            "trace.1201207",
+            "trace.1201208",
+            "trace.1201209",
+            "trace.1201210"
+          ],
+          "eidolons": [
+            "eidolon.120101",
+            "eidolon.120102",
+            "eidolon.120103",
+            "eidolon.120104",
+            "eidolon.120105",
+            "eidolon.120106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1202",
+      "source_ids": ["1202"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.120201",
+            "skill.120202",
+            "skill.120203",
+            "skill.120204",
+            "skill.120206",
+            "skill.120207"
+          ],
+          "traces": [
+            "trace.1202101",
+            "trace.1202102",
+            "trace.1202103",
+            "trace.1202201",
+            "trace.1202202",
+            "trace.1202203",
+            "trace.1202204",
+            "trace.1202205",
+            "trace.1202206",
+            "trace.1202207",
+            "trace.1202208",
+            "trace.1202209",
+            "trace.1202210"
+          ],
+          "eidolons": [
+            "eidolon.120201",
+            "eidolon.120202",
+            "eidolon.120203",
+            "eidolon.120204",
+            "eidolon.120205",
+            "eidolon.120206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1203",
+      "source_ids": ["1203"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.120301",
+            "skill.120302",
+            "skill.120303",
+            "skill.120304",
+            "skill.120306",
+            "skill.120307"
+          ],
+          "traces": [
+            "trace.1203101",
+            "trace.1203102",
+            "trace.1203103",
+            "trace.1203201",
+            "trace.1203202",
+            "trace.1203203",
+            "trace.1203204",
+            "trace.1203205",
+            "trace.1203206",
+            "trace.1203207",
+            "trace.1203208",
+            "trace.1203209",
+            "trace.1203210"
+          ],
+          "eidolons": [
+            "eidolon.120301",
+            "eidolon.120302",
+            "eidolon.120303",
+            "eidolon.120304",
+            "eidolon.120305",
+            "eidolon.120306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1204",
+      "source_ids": ["1204"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.120401",
+            "skill.120402",
+            "skill.120403",
+            "skill.120404",
+            "skill.120406",
+            "skill.120407"
+          ],
+          "traces": [
+            "trace.1204101",
+            "trace.1204102",
+            "trace.1204103",
+            "trace.1204201",
+            "trace.1204202",
+            "trace.1204203",
+            "trace.1204204",
+            "trace.1204205",
+            "trace.1204206",
+            "trace.1204207",
+            "trace.1204208",
+            "trace.1204209",
+            "trace.1204210"
+          ],
+          "eidolons": [
+            "eidolon.120401",
+            "eidolon.120402",
+            "eidolon.120403",
+            "eidolon.120404",
+            "eidolon.120405",
+            "eidolon.120406"
+          ]
+        }
+      },
+      "affinitive_eidolon": "affinitive.120401"
+    },
+    {
+      "id": "character.1205",
+      "source_ids": ["1205"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.120501",
+            "skill.120502",
+            "skill.120503",
+            "skill.120504",
+            "skill.120506",
+            "skill.120507",
+            "skill.120508"
+          ],
+          "traces": [
+            "trace.1205101",
+            "trace.1205102",
+            "trace.1205103",
+            "trace.1205201",
+            "trace.1205202",
+            "trace.1205203",
+            "trace.1205204",
+            "trace.1205205",
+            "trace.1205206",
+            "trace.1205207",
+            "trace.1205208",
+            "trace.1205209",
+            "trace.1205210"
+          ],
+          "eidolons": [
+            "eidolon.120501",
+            "eidolon.120502",
+            "eidolon.120503",
+            "eidolon.120504",
+            "eidolon.120505",
+            "eidolon.120506"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1120501",
+            "skill.1120502",
+            "skill.1120503",
+            "skill.1120504",
+            "skill.1120506",
+            "skill.1120507",
+            "skill.1120508"
+          ],
+          "traces": [
+            "trace.11205101",
+            "trace.11205102",
+            "trace.11205103",
+            "trace.11205201",
+            "trace.11205202",
+            "trace.11205203",
+            "trace.11205204",
+            "trace.11205205",
+            "trace.11205206",
+            "trace.11205207",
+            "trace.11205208",
+            "trace.11205209",
+            "trace.11205210"
+          ],
+          "eidolons": [
+            "eidolon.1120501",
+            "eidolon.1120502",
+            "eidolon.1120503",
+            "eidolon.1120504",
+            "eidolon.1120505",
+            "eidolon.1120506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1206",
+      "source_ids": ["1206"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.120601",
+            "skill.120602",
+            "skill.120603",
+            "skill.120604",
+            "skill.120606",
+            "skill.120607"
+          ],
+          "traces": [
+            "trace.1206101",
+            "trace.1206102",
+            "trace.1206103",
+            "trace.1206201",
+            "trace.1206202",
+            "trace.1206203",
+            "trace.1206204",
+            "trace.1206205",
+            "trace.1206206",
+            "trace.1206207",
+            "trace.1206208",
+            "trace.1206209",
+            "trace.1206210"
+          ],
+          "eidolons": [
+            "eidolon.120601",
+            "eidolon.120602",
+            "eidolon.120603",
+            "eidolon.120604",
+            "eidolon.120605",
+            "eidolon.120606"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1207",
+      "source_ids": ["1207"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.120701",
+            "skill.120702",
+            "skill.120703",
+            "skill.120704",
+            "skill.120706",
+            "skill.120707"
+          ],
+          "traces": [
+            "trace.1207101",
+            "trace.1207102",
+            "trace.1207103",
+            "trace.1207201",
+            "trace.1207202",
+            "trace.1207203",
+            "trace.1207204",
+            "trace.1207205",
+            "trace.1207206",
+            "trace.1207207",
+            "trace.1207208",
+            "trace.1207209",
+            "trace.1207210"
+          ],
+          "eidolons": [
+            "eidolon.120701",
+            "eidolon.120702",
+            "eidolon.120703",
+            "eidolon.120704",
+            "eidolon.120705",
+            "eidolon.120706"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1208",
+      "source_ids": ["1208"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.120801",
+            "skill.120802",
+            "skill.120803",
+            "skill.120804",
+            "skill.120806",
+            "skill.120807"
+          ],
+          "traces": [
+            "trace.1208101",
+            "trace.1208102",
+            "trace.1208103",
+            "trace.1208201",
+            "trace.1208202",
+            "trace.1208203",
+            "trace.1208204",
+            "trace.1208205",
+            "trace.1208206",
+            "trace.1208207",
+            "trace.1208208",
+            "trace.1208209",
+            "trace.1208210"
+          ],
+          "eidolons": [
+            "eidolon.120801",
+            "eidolon.120802",
+            "eidolon.120803",
+            "eidolon.120804",
+            "eidolon.120805",
+            "eidolon.120806"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1209",
+      "source_ids": ["1209"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.120901",
+            "skill.120902",
+            "skill.120903",
+            "skill.120904",
+            "skill.120906",
+            "skill.120907"
+          ],
+          "traces": [
+            "trace.1209101",
+            "trace.1209102",
+            "trace.1209103",
+            "trace.1209201",
+            "trace.1209202",
+            "trace.1209203",
+            "trace.1209204",
+            "trace.1209205",
+            "trace.1209206",
+            "trace.1209207",
+            "trace.1209208",
+            "trace.1209209",
+            "trace.1209210"
+          ],
+          "eidolons": [
+            "eidolon.120901",
+            "eidolon.120902",
+            "eidolon.120903",
+            "eidolon.120904",
+            "eidolon.120905",
+            "eidolon.120906"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1210",
+      "source_ids": ["1210"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.121001",
+            "skill.121002",
+            "skill.121003",
+            "skill.121004",
+            "skill.121006",
+            "skill.121007"
+          ],
+          "traces": [
+            "trace.1210101",
+            "trace.1210102",
+            "trace.1210103",
+            "trace.1210201",
+            "trace.1210202",
+            "trace.1210203",
+            "trace.1210204",
+            "trace.1210205",
+            "trace.1210206",
+            "trace.1210207",
+            "trace.1210208",
+            "trace.1210209",
+            "trace.1210210"
+          ],
+          "eidolons": [
+            "eidolon.121001",
+            "eidolon.121002",
+            "eidolon.121003",
+            "eidolon.121004",
+            "eidolon.121005",
+            "eidolon.121006"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1211",
+      "source_ids": ["1211"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.121101",
+            "skill.121102",
+            "skill.121103",
+            "skill.121104",
+            "skill.121106",
+            "skill.121107"
+          ],
+          "traces": [
+            "trace.1211101",
+            "trace.1211102",
+            "trace.1211103",
+            "trace.1211201",
+            "trace.1211202",
+            "trace.1211203",
+            "trace.1211204",
+            "trace.1211205",
+            "trace.1211206",
+            "trace.1211207",
+            "trace.1211208",
+            "trace.1211209",
+            "trace.1211210"
+          ],
+          "eidolons": [
+            "eidolon.121101",
+            "eidolon.121102",
+            "eidolon.121103",
+            "eidolon.121104",
+            "eidolon.121105",
+            "eidolon.121106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1212",
+      "source_ids": ["1212"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.121201",
+            "skill.121202",
+            "skill.121203",
+            "skill.121204",
+            "skill.121206",
+            "skill.121207",
+            "skill.121209"
+          ],
+          "traces": [
+            "trace.1212101",
+            "trace.1212102",
+            "trace.1212103",
+            "trace.1212201",
+            "trace.1212202",
+            "trace.1212203",
+            "trace.1212204",
+            "trace.1212205",
+            "trace.1212206",
+            "trace.1212207",
+            "trace.1212208",
+            "trace.1212209",
+            "trace.1212210"
+          ],
+          "eidolons": [
+            "eidolon.121201",
+            "eidolon.121202",
+            "eidolon.121203",
+            "eidolon.121204",
+            "eidolon.121205",
+            "eidolon.121206"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1121201",
+            "skill.1121202",
+            "skill.1121203",
+            "skill.1121204",
+            "skill.1121206",
+            "skill.1121207",
+            "skill.1121209"
+          ],
+          "traces": [
+            "trace.11212101",
+            "trace.11212102",
+            "trace.11212103",
+            "trace.11212201",
+            "trace.11212202",
+            "trace.11212203",
+            "trace.11212204",
+            "trace.11212205",
+            "trace.11212206",
+            "trace.11212207",
+            "trace.11212208",
+            "trace.11212209",
+            "trace.11212210"
+          ],
+          "eidolons": [
+            "eidolon.1121201",
+            "eidolon.1121202",
+            "eidolon.1121203",
+            "eidolon.1121204",
+            "eidolon.1121205",
+            "eidolon.1121206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1213",
+      "source_ids": ["1213"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.121301",
+            "skill.121302",
+            "skill.121303",
+            "skill.121304",
+            "skill.121306",
+            "skill.121307",
+            "skill.121308",
+            "skill.121309",
+            "skill.121310",
+            "skill.121312"
+          ],
+          "traces": [
+            "trace.1213101",
+            "trace.1213102",
+            "trace.1213103",
+            "trace.1213201",
+            "trace.1213202",
+            "trace.1213203",
+            "trace.1213204",
+            "trace.1213205",
+            "trace.1213206",
+            "trace.1213207",
+            "trace.1213208",
+            "trace.1213209",
+            "trace.1213210"
+          ],
+          "eidolons": [
+            "eidolon.121301",
+            "eidolon.121302",
+            "eidolon.121303",
+            "eidolon.121304",
+            "eidolon.121305",
+            "eidolon.121306"
+          ]
+        }
+      },
+      "affinitive_eidolon": "affinitive.121301"
+    },
+    {
+      "id": "character.1214",
+      "source_ids": ["1214"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.121401",
+            "skill.121402",
+            "skill.121403",
+            "skill.121404",
+            "skill.121406",
+            "skill.121407"
+          ],
+          "traces": [
+            "trace.1214101",
+            "trace.1214102",
+            "trace.1214103",
+            "trace.1214201",
+            "trace.1214202",
+            "trace.1214203",
+            "trace.1214204",
+            "trace.1214205",
+            "trace.1214206",
+            "trace.1214207",
+            "trace.1214208",
+            "trace.1214209",
+            "trace.1214210"
+          ],
+          "eidolons": [
+            "eidolon.121401",
+            "eidolon.121402",
+            "eidolon.121403",
+            "eidolon.121404",
+            "eidolon.121405",
+            "eidolon.121406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1215",
+      "source_ids": ["1215"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.121501",
+            "skill.121502",
+            "skill.121503",
+            "skill.121504",
+            "skill.121506",
+            "skill.121507"
+          ],
+          "traces": [
+            "trace.1215101",
+            "trace.1215102",
+            "trace.1215103",
+            "trace.1215201",
+            "trace.1215202",
+            "trace.1215203",
+            "trace.1215204",
+            "trace.1215205",
+            "trace.1215206",
+            "trace.1215207",
+            "trace.1215208",
+            "trace.1215209",
+            "trace.1215210"
+          ],
+          "eidolons": [
+            "eidolon.121501",
+            "eidolon.121502",
+            "eidolon.121503",
+            "eidolon.121504",
+            "eidolon.121505",
+            "eidolon.121506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1217",
+      "source_ids": ["1217"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.121701",
+            "skill.121702",
+            "skill.121703",
+            "skill.121704",
+            "skill.121706",
+            "skill.121707"
+          ],
+          "traces": [
+            "trace.1217101",
+            "trace.1217102",
+            "trace.1217103",
+            "trace.1217201",
+            "trace.1217202",
+            "trace.1217203",
+            "trace.1217204",
+            "trace.1217205",
+            "trace.1217206",
+            "trace.1217207",
+            "trace.1217208",
+            "trace.1217209",
+            "trace.1217210"
+          ],
+          "eidolons": [
+            "eidolon.121701",
+            "eidolon.121702",
+            "eidolon.121703",
+            "eidolon.121704",
+            "eidolon.121705",
+            "eidolon.121706"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1121701",
+            "skill.1121702",
+            "skill.1121703",
+            "skill.1121704",
+            "skill.1121706",
+            "skill.1121707"
+          ],
+          "traces": [
+            "trace.11217101",
+            "trace.11217102",
+            "trace.11217103",
+            "trace.11217201",
+            "trace.11217202",
+            "trace.11217203",
+            "trace.11217204",
+            "trace.11217205",
+            "trace.11217206",
+            "trace.11217207",
+            "trace.11217208",
+            "trace.11217209",
+            "trace.11217210"
+          ],
+          "eidolons": [
+            "eidolon.1121701",
+            "eidolon.1121702",
+            "eidolon.1121703",
+            "eidolon.1121704",
+            "eidolon.1121705",
+            "eidolon.1121706"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1218",
+      "source_ids": ["1218"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.121801",
+            "skill.121802",
+            "skill.121803",
+            "skill.121804",
+            "skill.121806",
+            "skill.121807"
+          ],
+          "traces": [
+            "trace.1218101",
+            "trace.1218102",
+            "trace.1218103",
+            "trace.1218201",
+            "trace.1218202",
+            "trace.1218203",
+            "trace.1218204",
+            "trace.1218205",
+            "trace.1218206",
+            "trace.1218207",
+            "trace.1218208",
+            "trace.1218209",
+            "trace.1218210"
+          ],
+          "eidolons": [
+            "eidolon.121801",
+            "eidolon.121802",
+            "eidolon.121803",
+            "eidolon.121804",
+            "eidolon.121805",
+            "eidolon.121806"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1220",
+      "source_ids": ["1220"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.122001",
+            "skill.122002",
+            "skill.122003",
+            "skill.122004",
+            "skill.122006",
+            "skill.122007",
+            "skill.122008",
+            "skill.122009",
+            "skill.122014"
+          ],
+          "traces": [
+            "trace.1220101",
+            "trace.1220102",
+            "trace.1220103",
+            "trace.1220201",
+            "trace.1220202",
+            "trace.1220203",
+            "trace.1220204",
+            "trace.1220205",
+            "trace.1220206",
+            "trace.1220207",
+            "trace.1220208",
+            "trace.1220209",
+            "trace.1220210"
+          ],
+          "eidolons": [
+            "eidolon.122001",
+            "eidolon.122002",
+            "eidolon.122003",
+            "eidolon.122004",
+            "eidolon.122005",
+            "eidolon.122006"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1221",
+      "source_ids": ["1221"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.122101",
+            "skill.122102",
+            "skill.122103",
+            "skill.122104",
+            "skill.122106",
+            "skill.122107"
+          ],
+          "traces": [
+            "trace.1221101",
+            "trace.1221102",
+            "trace.1221103",
+            "trace.1221201",
+            "trace.1221202",
+            "trace.1221203",
+            "trace.1221204",
+            "trace.1221205",
+            "trace.1221206",
+            "trace.1221207",
+            "trace.1221208",
+            "trace.1221209",
+            "trace.1221210"
+          ],
+          "eidolons": [
+            "eidolon.122101",
+            "eidolon.122102",
+            "eidolon.122103",
+            "eidolon.122104",
+            "eidolon.122105",
+            "eidolon.122106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1222",
+      "source_ids": ["1222"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.122201",
+            "skill.122202",
+            "skill.122203",
+            "skill.122204",
+            "skill.122206",
+            "skill.122207"
+          ],
+          "traces": [
+            "trace.1222101",
+            "trace.1222102",
+            "trace.1222103",
+            "trace.1222201",
+            "trace.1222202",
+            "trace.1222203",
+            "trace.1222204",
+            "trace.1222205",
+            "trace.1222206",
+            "trace.1222207",
+            "trace.1222208",
+            "trace.1222209",
+            "trace.1222210"
+          ],
+          "eidolons": [
+            "eidolon.122201",
+            "eidolon.122202",
+            "eidolon.122203",
+            "eidolon.122204",
+            "eidolon.122205",
+            "eidolon.122206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1223",
+      "source_ids": ["1223"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.122301",
+            "skill.122302",
+            "skill.122303",
+            "skill.122304",
+            "skill.122306",
+            "skill.122307"
+          ],
+          "traces": [
+            "trace.1223101",
+            "trace.1223102",
+            "trace.1223103",
+            "trace.1223201",
+            "trace.1223202",
+            "trace.1223203",
+            "trace.1223204",
+            "trace.1223205",
+            "trace.1223206",
+            "trace.1223207",
+            "trace.1223208",
+            "trace.1223209",
+            "trace.1223210"
+          ],
+          "eidolons": [
+            "eidolon.122301",
+            "eidolon.122302",
+            "eidolon.122303",
+            "eidolon.122304",
+            "eidolon.122305",
+            "eidolon.122306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "march_7th.hunt",
+      "source_ids": ["1224"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.122401",
+            "skill.122402",
+            "skill.122403",
+            "skill.122404",
+            "skill.122406",
+            "skill.122407",
+            "skill.122408"
+          ],
+          "traces": [
+            "trace.1224101",
+            "trace.1224102",
+            "trace.1224103",
+            "trace.1224201",
+            "trace.1224202",
+            "trace.1224203",
+            "trace.1224204",
+            "trace.1224205",
+            "trace.1224206",
+            "trace.1224207",
+            "trace.1224208",
+            "trace.1224209",
+            "trace.1224210"
+          ],
+          "eidolons": [
+            "eidolon.122401",
+            "eidolon.122402",
+            "eidolon.122403",
+            "eidolon.122404",
+            "eidolon.122405",
+            "eidolon.122406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1225",
+      "source_ids": ["1225"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.122501",
+            "skill.122502",
+            "skill.122503",
+            "skill.122504",
+            "skill.122506",
+            "skill.122507",
+            "skill.122508"
+          ],
+          "traces": [
+            "trace.1225101",
+            "trace.1225102",
+            "trace.1225103",
+            "trace.1225201",
+            "trace.1225202",
+            "trace.1225203",
+            "trace.1225204",
+            "trace.1225205",
+            "trace.1225206",
+            "trace.1225207",
+            "trace.1225208",
+            "trace.1225209",
+            "trace.1225210"
+          ],
+          "eidolons": [
+            "eidolon.122501",
+            "eidolon.122502",
+            "eidolon.122503",
+            "eidolon.122504",
+            "eidolon.122505",
+            "eidolon.122506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1301",
+      "source_ids": ["1301"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.130101",
+            "skill.130102",
+            "skill.130103",
+            "skill.130104",
+            "skill.130106",
+            "skill.130107",
+            "skill.130108"
+          ],
+          "traces": [
+            "trace.1301101",
+            "trace.1301102",
+            "trace.1301103",
+            "trace.1301201",
+            "trace.1301202",
+            "trace.1301203",
+            "trace.1301204",
+            "trace.1301205",
+            "trace.1301206",
+            "trace.1301207",
+            "trace.1301208",
+            "trace.1301209",
+            "trace.1301210"
+          ],
+          "eidolons": [
+            "eidolon.130101",
+            "eidolon.130102",
+            "eidolon.130103",
+            "eidolon.130104",
+            "eidolon.130105",
+            "eidolon.130106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1302",
+      "source_ids": ["1302"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.130201",
+            "skill.130202",
+            "skill.130203",
+            "skill.130204",
+            "skill.130206",
+            "skill.130207",
+            "skill.130214"
+          ],
+          "traces": [
+            "trace.1302101",
+            "trace.1302102",
+            "trace.1302103",
+            "trace.1302201",
+            "trace.1302202",
+            "trace.1302203",
+            "trace.1302204",
+            "trace.1302205",
+            "trace.1302206",
+            "trace.1302207",
+            "trace.1302208",
+            "trace.1302209",
+            "trace.1302210"
+          ],
+          "eidolons": [
+            "eidolon.130201",
+            "eidolon.130202",
+            "eidolon.130203",
+            "eidolon.130204",
+            "eidolon.130205",
+            "eidolon.130206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1303",
+      "source_ids": ["1303"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.130301",
+            "skill.130302",
+            "skill.130303",
+            "skill.130304",
+            "skill.130306",
+            "skill.130307"
+          ],
+          "traces": [
+            "trace.1303101",
+            "trace.1303102",
+            "trace.1303103",
+            "trace.1303201",
+            "trace.1303202",
+            "trace.1303203",
+            "trace.1303204",
+            "trace.1303205",
+            "trace.1303206",
+            "trace.1303207",
+            "trace.1303208",
+            "trace.1303209",
+            "trace.1303210"
+          ],
+          "eidolons": [
+            "eidolon.130301",
+            "eidolon.130302",
+            "eidolon.130303",
+            "eidolon.130304",
+            "eidolon.130305",
+            "eidolon.130306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1304",
+      "source_ids": ["1304"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.130401",
+            "skill.130402",
+            "skill.130403",
+            "skill.130404",
+            "skill.130406",
+            "skill.130407"
+          ],
+          "traces": [
+            "trace.1304101",
+            "trace.1304102",
+            "trace.1304103",
+            "trace.1304201",
+            "trace.1304202",
+            "trace.1304203",
+            "trace.1304204",
+            "trace.1304205",
+            "trace.1304206",
+            "trace.1304207",
+            "trace.1304208",
+            "trace.1304209",
+            "trace.1304210"
+          ],
+          "eidolons": [
+            "eidolon.130401",
+            "eidolon.130402",
+            "eidolon.130403",
+            "eidolon.130404",
+            "eidolon.130405",
+            "eidolon.130406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1305",
+      "source_ids": ["1305"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.130501",
+            "skill.130502",
+            "skill.130503",
+            "skill.130504",
+            "skill.130506",
+            "skill.130507"
+          ],
+          "traces": [
+            "trace.1305101",
+            "trace.1305102",
+            "trace.1305103",
+            "trace.1305201",
+            "trace.1305202",
+            "trace.1305203",
+            "trace.1305204",
+            "trace.1305205",
+            "trace.1305206",
+            "trace.1305207",
+            "trace.1305208",
+            "trace.1305209",
+            "trace.1305210"
+          ],
+          "eidolons": [
+            "eidolon.130501",
+            "eidolon.130502",
+            "eidolon.130503",
+            "eidolon.130504",
+            "eidolon.130505",
+            "eidolon.130506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1306",
+      "source_ids": ["1306"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.130601",
+            "skill.130602",
+            "skill.130603",
+            "skill.130604",
+            "skill.130606",
+            "skill.130607"
+          ],
+          "traces": [
+            "trace.1306101",
+            "trace.1306102",
+            "trace.1306103",
+            "trace.1306201",
+            "trace.1306202",
+            "trace.1306203",
+            "trace.1306204",
+            "trace.1306205",
+            "trace.1306206",
+            "trace.1306207",
+            "trace.1306208",
+            "trace.1306209",
+            "trace.1306210"
+          ],
+          "eidolons": [
+            "eidolon.130601",
+            "eidolon.130602",
+            "eidolon.130603",
+            "eidolon.130604",
+            "eidolon.130605",
+            "eidolon.130606"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1130601",
+            "skill.1130602",
+            "skill.1130603",
+            "skill.1130604",
+            "skill.1130606",
+            "skill.1130607"
+          ],
+          "traces": [
+            "trace.11306101",
+            "trace.11306102",
+            "trace.11306103",
+            "trace.11306201",
+            "trace.11306202",
+            "trace.11306203",
+            "trace.11306204",
+            "trace.11306205",
+            "trace.11306206",
+            "trace.11306207",
+            "trace.11306208",
+            "trace.11306209",
+            "trace.11306210"
+          ],
+          "eidolons": [
+            "eidolon.1130601",
+            "eidolon.1130602",
+            "eidolon.1130603",
+            "eidolon.1130604",
+            "eidolon.1130605",
+            "eidolon.1130606"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1307",
+      "source_ids": ["1307"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.130701",
+            "skill.130702",
+            "skill.130703",
+            "skill.130704",
+            "skill.130706",
+            "skill.130707"
+          ],
+          "traces": [
+            "trace.1307101",
+            "trace.1307102",
+            "trace.1307103",
+            "trace.1307201",
+            "trace.1307202",
+            "trace.1307203",
+            "trace.1307204",
+            "trace.1307205",
+            "trace.1307206",
+            "trace.1307207",
+            "trace.1307208",
+            "trace.1307209",
+            "trace.1307210"
+          ],
+          "eidolons": [
+            "eidolon.130701",
+            "eidolon.130702",
+            "eidolon.130703",
+            "eidolon.130704",
+            "eidolon.130705",
+            "eidolon.130706"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1130701",
+            "skill.1130702",
+            "skill.1130703",
+            "skill.1130704",
+            "skill.1130706",
+            "skill.1130707"
+          ],
+          "traces": [
+            "trace.11307101",
+            "trace.11307102",
+            "trace.11307103",
+            "trace.11307201",
+            "trace.11307202",
+            "trace.11307203",
+            "trace.11307204",
+            "trace.11307205",
+            "trace.11307206",
+            "trace.11307207",
+            "trace.11307208",
+            "trace.11307209",
+            "trace.11307210"
+          ],
+          "eidolons": [
+            "eidolon.1130701",
+            "eidolon.1130702",
+            "eidolon.1130703",
+            "eidolon.1130704",
+            "eidolon.1130705",
+            "eidolon.1130706"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1308",
+      "source_ids": ["1308"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.130801",
+            "skill.130802",
+            "skill.130803",
+            "skill.130804",
+            "skill.130806",
+            "skill.130807",
+            "skill.130814",
+            "skill.130815",
+            "skill.130816",
+            "skill.130817"
+          ],
+          "traces": [
+            "trace.1308101",
+            "trace.1308102",
+            "trace.1308103",
+            "trace.1308201",
+            "trace.1308202",
+            "trace.1308203",
+            "trace.1308204",
+            "trace.1308205",
+            "trace.1308206",
+            "trace.1308207",
+            "trace.1308208",
+            "trace.1308209",
+            "trace.1308210"
+          ],
+          "eidolons": [
+            "eidolon.130801",
+            "eidolon.130802",
+            "eidolon.130803",
+            "eidolon.130804",
+            "eidolon.130805",
+            "eidolon.130806"
+          ]
+        }
+      },
+      "affinitive_eidolon": "affinitive.130801"
+    },
+    {
+      "id": "character.1309",
+      "source_ids": ["1309"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.130901",
+            "skill.130902",
+            "skill.130903",
+            "skill.130904",
+            "skill.130906",
+            "skill.130907"
+          ],
+          "traces": [
+            "trace.1309101",
+            "trace.1309102",
+            "trace.1309103",
+            "trace.1309201",
+            "trace.1309202",
+            "trace.1309203",
+            "trace.1309204",
+            "trace.1309205",
+            "trace.1309206",
+            "trace.1309207",
+            "trace.1309208",
+            "trace.1309209",
+            "trace.1309210"
+          ],
+          "eidolons": [
+            "eidolon.130901",
+            "eidolon.130902",
+            "eidolon.130903",
+            "eidolon.130904",
+            "eidolon.130905",
+            "eidolon.130906"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1310",
+      "source_ids": ["1310"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.131001",
+            "skill.131002",
+            "skill.131003",
+            "skill.131004",
+            "skill.131006",
+            "skill.131007",
+            "skill.131008",
+            "skill.131009"
+          ],
+          "traces": [
+            "trace.1310101",
+            "trace.1310102",
+            "trace.1310103",
+            "trace.1310201",
+            "trace.1310202",
+            "trace.1310203",
+            "trace.1310204",
+            "trace.1310205",
+            "trace.1310206",
+            "trace.1310207",
+            "trace.1310208",
+            "trace.1310209",
+            "trace.1310210"
+          ],
+          "eidolons": [
+            "eidolon.131001",
+            "eidolon.131002",
+            "eidolon.131003",
+            "eidolon.131004",
+            "eidolon.131005",
+            "eidolon.131006"
+          ]
+        },
+        "novaflare": {
+          "skills": [
+            "skill.1131001",
+            "skill.1131002",
+            "skill.1131003",
+            "skill.1131004",
+            "skill.1131006",
+            "skill.1131007",
+            "skill.1131008",
+            "skill.1131009"
+          ],
+          "traces": [
+            "trace.11310101",
+            "trace.11310102",
+            "trace.11310103",
+            "trace.11310201",
+            "trace.11310202",
+            "trace.11310203",
+            "trace.11310204",
+            "trace.11310205",
+            "trace.11310206",
+            "trace.11310207",
+            "trace.11310208",
+            "trace.11310209",
+            "trace.11310210"
+          ],
+          "eidolons": [
+            "eidolon.1131001",
+            "eidolon.1131002",
+            "eidolon.1131003",
+            "eidolon.1131004",
+            "eidolon.1131005",
+            "eidolon.1131006"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1312",
+      "source_ids": ["1312"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.131201",
+            "skill.131202",
+            "skill.131203",
+            "skill.131204",
+            "skill.131206",
+            "skill.131207"
+          ],
+          "traces": [
+            "trace.1312101",
+            "trace.1312102",
+            "trace.1312103",
+            "trace.1312201",
+            "trace.1312202",
+            "trace.1312203",
+            "trace.1312204",
+            "trace.1312205",
+            "trace.1312206",
+            "trace.1312207",
+            "trace.1312208",
+            "trace.1312209",
+            "trace.1312210"
+          ],
+          "eidolons": [
+            "eidolon.131201",
+            "eidolon.131202",
+            "eidolon.131203",
+            "eidolon.131204",
+            "eidolon.131205",
+            "eidolon.131206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1313",
+      "source_ids": ["1313"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.131301",
+            "skill.131302",
+            "skill.131303",
+            "skill.131304",
+            "skill.131306",
+            "skill.131307"
+          ],
+          "traces": [
+            "trace.1313101",
+            "trace.1313102",
+            "trace.1313103",
+            "trace.1313201",
+            "trace.1313202",
+            "trace.1313203",
+            "trace.1313204",
+            "trace.1313205",
+            "trace.1313206",
+            "trace.1313207",
+            "trace.1313208",
+            "trace.1313209",
+            "trace.1313210"
+          ],
+          "eidolons": [
+            "eidolon.131301",
+            "eidolon.131302",
+            "eidolon.131303",
+            "eidolon.131304",
+            "eidolon.131305",
+            "eidolon.131306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1314",
+      "source_ids": ["1314"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.131401",
+            "skill.131402",
+            "skill.131403",
+            "skill.131404",
+            "skill.131406",
+            "skill.131407"
+          ],
+          "traces": [
+            "trace.1314101",
+            "trace.1314102",
+            "trace.1314103",
+            "trace.1314201",
+            "trace.1314202",
+            "trace.1314203",
+            "trace.1314204",
+            "trace.1314205",
+            "trace.1314206",
+            "trace.1314207",
+            "trace.1314208",
+            "trace.1314209",
+            "trace.1314210"
+          ],
+          "eidolons": [
+            "eidolon.131401",
+            "eidolon.131402",
+            "eidolon.131403",
+            "eidolon.131404",
+            "eidolon.131405",
+            "eidolon.131406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1315",
+      "source_ids": ["1315"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.131501",
+            "skill.131502",
+            "skill.131503",
+            "skill.131504",
+            "skill.131506",
+            "skill.131507",
+            "skill.131508"
+          ],
+          "traces": [
+            "trace.1315101",
+            "trace.1315102",
+            "trace.1315103",
+            "trace.1315201",
+            "trace.1315202",
+            "trace.1315203",
+            "trace.1315204",
+            "trace.1315205",
+            "trace.1315206",
+            "trace.1315207",
+            "trace.1315208",
+            "trace.1315209",
+            "trace.1315210"
+          ],
+          "eidolons": [
+            "eidolon.131501",
+            "eidolon.131502",
+            "eidolon.131503",
+            "eidolon.131504",
+            "eidolon.131505",
+            "eidolon.131506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1317",
+      "source_ids": ["1317"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.131701",
+            "skill.131702",
+            "skill.131703",
+            "skill.131704",
+            "skill.131706",
+            "skill.131707",
+            "skill.131708",
+            "skill.131710",
+            "skill.131712",
+            "skill.131714",
+            "skill.131715",
+            "skill.131716",
+            "skill.131717",
+            "skill.131718"
+          ],
+          "traces": [
+            "trace.1317101",
+            "trace.1317102",
+            "trace.1317103",
+            "trace.1317201",
+            "trace.1317202",
+            "trace.1317203",
+            "trace.1317204",
+            "trace.1317205",
+            "trace.1317206",
+            "trace.1317207",
+            "trace.1317208",
+            "trace.1317209",
+            "trace.1317210"
+          ],
+          "eidolons": [
+            "eidolon.131701",
+            "eidolon.131702",
+            "eidolon.131703",
+            "eidolon.131704",
+            "eidolon.131705",
+            "eidolon.131706"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1321",
+      "source_ids": ["1321"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.132101",
+            "skill.132102",
+            "skill.132103",
+            "skill.132104",
+            "skill.132106",
+            "skill.132107"
+          ],
+          "traces": [
+            "trace.1321101",
+            "trace.1321102",
+            "trace.1321103",
+            "trace.1321201",
+            "trace.1321202",
+            "trace.1321203",
+            "trace.1321204",
+            "trace.1321205",
+            "trace.1321206",
+            "trace.1321207",
+            "trace.1321208",
+            "trace.1321209",
+            "trace.1321210"
+          ],
+          "eidolons": [
+            "eidolon.132101",
+            "eidolon.132102",
+            "eidolon.132103",
+            "eidolon.132104",
+            "eidolon.132105",
+            "eidolon.132106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1401",
+      "source_ids": ["1401"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.140101",
+            "skill.140102",
+            "skill.140103",
+            "skill.140104",
+            "skill.140106",
+            "skill.140107",
+            "skill.140109"
+          ],
+          "traces": [
+            "trace.1401101",
+            "trace.1401102",
+            "trace.1401103",
+            "trace.1401201",
+            "trace.1401202",
+            "trace.1401203",
+            "trace.1401204",
+            "trace.1401205",
+            "trace.1401206",
+            "trace.1401207",
+            "trace.1401208",
+            "trace.1401209",
+            "trace.1401210"
+          ],
+          "eidolons": [
+            "eidolon.140101",
+            "eidolon.140102",
+            "eidolon.140103",
+            "eidolon.140104",
+            "eidolon.140105",
+            "eidolon.140106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1402",
+      "source_ids": ["1402"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.1140201",
+            "skill.1140203",
+            "skill.1140205",
+            "skill.1140206",
+            "skill.140201",
+            "skill.140202",
+            "skill.140203",
+            "skill.140204",
+            "skill.140206",
+            "skill.140207",
+            "skill.140208",
+            "skill.140209"
+          ],
+          "traces": [
+            "trace.1402101",
+            "trace.1402102",
+            "trace.1402103",
+            "trace.1402201",
+            "trace.1402202",
+            "trace.1402203",
+            "trace.1402204",
+            "trace.1402205",
+            "trace.1402206",
+            "trace.1402207",
+            "trace.1402208",
+            "trace.1402209",
+            "trace.1402210"
+          ],
+          "eidolons": [
+            "eidolon.140201",
+            "eidolon.140202",
+            "eidolon.140203",
+            "eidolon.140204",
+            "eidolon.140205",
+            "eidolon.140206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1403",
+      "source_ids": ["1403"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.140301",
+            "skill.140302",
+            "skill.140303",
+            "skill.140304",
+            "skill.140306",
+            "skill.140307"
+          ],
+          "traces": [
+            "trace.1403101",
+            "trace.1403102",
+            "trace.1403103",
+            "trace.1403201",
+            "trace.1403202",
+            "trace.1403203",
+            "trace.1403204",
+            "trace.1403205",
+            "trace.1403206",
+            "trace.1403207",
+            "trace.1403208",
+            "trace.1403209",
+            "trace.1403210"
+          ],
+          "eidolons": [
+            "eidolon.140301",
+            "eidolon.140302",
+            "eidolon.140303",
+            "eidolon.140304",
+            "eidolon.140305",
+            "eidolon.140306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1404",
+      "source_ids": ["1404"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.140401",
+            "skill.140402",
+            "skill.140403",
+            "skill.140404",
+            "skill.140406",
+            "skill.140407",
+            "skill.140409",
+            "skill.140411"
+          ],
+          "traces": [
+            "trace.1404101",
+            "trace.1404102",
+            "trace.1404103",
+            "trace.1404201",
+            "trace.1404202",
+            "trace.1404203",
+            "trace.1404204",
+            "trace.1404205",
+            "trace.1404206",
+            "trace.1404207",
+            "trace.1404208",
+            "trace.1404209",
+            "trace.1404210"
+          ],
+          "eidolons": [
+            "eidolon.140401",
+            "eidolon.140402",
+            "eidolon.140403",
+            "eidolon.140404",
+            "eidolon.140405",
+            "eidolon.140406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1405",
+      "source_ids": ["1405"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.140501",
+            "skill.140502",
+            "skill.140503",
+            "skill.140504",
+            "skill.140506",
+            "skill.140507"
+          ],
+          "traces": [
+            "trace.1405101",
+            "trace.1405102",
+            "trace.1405103",
+            "trace.1405201",
+            "trace.1405202",
+            "trace.1405203",
+            "trace.1405204",
+            "trace.1405205",
+            "trace.1405206",
+            "trace.1405207",
+            "trace.1405208",
+            "trace.1405209",
+            "trace.1405210"
+          ],
+          "eidolons": [
+            "eidolon.140501",
+            "eidolon.140502",
+            "eidolon.140503",
+            "eidolon.140504",
+            "eidolon.140505",
+            "eidolon.140506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1406",
+      "source_ids": ["1406"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.140601",
+            "skill.140602",
+            "skill.140603",
+            "skill.140604",
+            "skill.140606",
+            "skill.140607"
+          ],
+          "traces": [
+            "trace.1406101",
+            "trace.1406102",
+            "trace.1406103",
+            "trace.1406201",
+            "trace.1406202",
+            "trace.1406203",
+            "trace.1406204",
+            "trace.1406205",
+            "trace.1406206",
+            "trace.1406207",
+            "trace.1406208",
+            "trace.1406209",
+            "trace.1406210"
+          ],
+          "eidolons": [
+            "eidolon.140601",
+            "eidolon.140602",
+            "eidolon.140603",
+            "eidolon.140604",
+            "eidolon.140605",
+            "eidolon.140606"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1407",
+      "source_ids": ["1407"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.1140701",
+            "skill.1140702",
+            "skill.1140703",
+            "skill.1140705",
+            "skill.1140706",
+            "skill.1140710",
+            "skill.1140711",
+            "skill.1140712",
+            "skill.140701",
+            "skill.140702",
+            "skill.140703",
+            "skill.140704",
+            "skill.140706",
+            "skill.140707",
+            "skill.140709"
+          ],
+          "traces": [
+            "trace.1407101",
+            "trace.1407102",
+            "trace.1407103",
+            "trace.1407201",
+            "trace.1407202",
+            "trace.1407203",
+            "trace.1407204",
+            "trace.1407205",
+            "trace.1407206",
+            "trace.1407207",
+            "trace.1407208",
+            "trace.1407209",
+            "trace.1407210"
+          ],
+          "eidolons": [
+            "eidolon.140701",
+            "eidolon.140702",
+            "eidolon.140703",
+            "eidolon.140704",
+            "eidolon.140705",
+            "eidolon.140706"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1408",
+      "source_ids": ["1408"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.140801",
+            "skill.140802",
+            "skill.140803",
+            "skill.140804",
+            "skill.140805",
+            "skill.140806",
+            "skill.140807",
+            "skill.140808",
+            "skill.140809",
+            "skill.140811"
+          ],
+          "traces": [
+            "trace.1408101",
+            "trace.1408102",
+            "trace.1408103",
+            "trace.1408201",
+            "trace.1408202",
+            "trace.1408203",
+            "trace.1408204",
+            "trace.1408205",
+            "trace.1408206",
+            "trace.1408207",
+            "trace.1408208",
+            "trace.1408209",
+            "trace.1408210"
+          ],
+          "eidolons": [
+            "eidolon.140801",
+            "eidolon.140802",
+            "eidolon.140803",
+            "eidolon.140804",
+            "eidolon.140805",
+            "eidolon.140806"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1409",
+      "source_ids": ["1409"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.1140901",
+            "skill.1140903",
+            "skill.1140905",
+            "skill.1140906",
+            "skill.140901",
+            "skill.140902",
+            "skill.140903",
+            "skill.140904",
+            "skill.140906",
+            "skill.140907"
+          ],
+          "traces": [
+            "trace.1409101",
+            "trace.1409102",
+            "trace.1409103",
+            "trace.1409201",
+            "trace.1409202",
+            "trace.1409203",
+            "trace.1409204",
+            "trace.1409205",
+            "trace.1409206",
+            "trace.1409207",
+            "trace.1409208",
+            "trace.1409209",
+            "trace.1409210"
+          ],
+          "eidolons": [
+            "eidolon.140901",
+            "eidolon.140902",
+            "eidolon.140903",
+            "eidolon.140904",
+            "eidolon.140905",
+            "eidolon.140906"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1410",
+      "source_ids": ["1410"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.141001",
+            "skill.141002",
+            "skill.141003",
+            "skill.141004",
+            "skill.141006",
+            "skill.141007"
+          ],
+          "traces": [
+            "trace.1410101",
+            "trace.1410102",
+            "trace.1410103",
+            "trace.1410201",
+            "trace.1410202",
+            "trace.1410203",
+            "trace.1410204",
+            "trace.1410205",
+            "trace.1410206",
+            "trace.1410207",
+            "trace.1410208",
+            "trace.1410209",
+            "trace.1410210"
+          ],
+          "eidolons": [
+            "eidolon.141001",
+            "eidolon.141002",
+            "eidolon.141003",
+            "eidolon.141004",
+            "eidolon.141005",
+            "eidolon.141006"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1412",
+      "source_ids": ["1412"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.141201",
+            "skill.141202",
+            "skill.141203",
+            "skill.141204",
+            "skill.141206",
+            "skill.141207"
+          ],
+          "traces": [
+            "trace.1412101",
+            "trace.1412102",
+            "trace.1412103",
+            "trace.1412201",
+            "trace.1412202",
+            "trace.1412203",
+            "trace.1412204",
+            "trace.1412205",
+            "trace.1412206",
+            "trace.1412207",
+            "trace.1412208",
+            "trace.1412209",
+            "trace.1412210"
+          ],
+          "eidolons": [
+            "eidolon.141201",
+            "eidolon.141202",
+            "eidolon.141203",
+            "eidolon.141204",
+            "eidolon.141205",
+            "eidolon.141206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1413",
+      "source_ids": ["1413"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.1141301",
+            "skill.1141303",
+            "skill.1141305",
+            "skill.1141306",
+            "skill.1141307",
+            "skill.141301",
+            "skill.141302",
+            "skill.141303",
+            "skill.141304",
+            "skill.141306",
+            "skill.141307",
+            "skill.141309"
+          ],
+          "traces": [
+            "trace.1413101",
+            "trace.1413102",
+            "trace.1413103",
+            "trace.1413201",
+            "trace.1413202",
+            "trace.1413203",
+            "trace.1413204",
+            "trace.1413205",
+            "trace.1413206",
+            "trace.1413207",
+            "trace.1413208",
+            "trace.1413209",
+            "trace.1413210"
+          ],
+          "eidolons": [
+            "eidolon.141301",
+            "eidolon.141302",
+            "eidolon.141303",
+            "eidolon.141304",
+            "eidolon.141305",
+            "eidolon.141306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1414",
+      "source_ids": ["1414"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.141401",
+            "skill.141402",
+            "skill.141403",
+            "skill.141404",
+            "skill.141406",
+            "skill.141407"
+          ],
+          "traces": [
+            "trace.1414101",
+            "trace.1414102",
+            "trace.1414103",
+            "trace.1414201",
+            "trace.1414202",
+            "trace.1414203",
+            "trace.1414204",
+            "trace.1414205",
+            "trace.1414206",
+            "trace.1414207",
+            "trace.1414208",
+            "trace.1414209",
+            "trace.1414210"
+          ],
+          "eidolons": [
+            "eidolon.141401",
+            "eidolon.141402",
+            "eidolon.141403",
+            "eidolon.141404",
+            "eidolon.141405",
+            "eidolon.141406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1415",
+      "source_ids": ["1415"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.1141501",
+            "skill.1141502",
+            "skill.1141503",
+            "skill.1141505",
+            "skill.1141513",
+            "skill.1141514",
+            "skill.1141515",
+            "skill.1141516",
+            "skill.1141517",
+            "skill.1141518",
+            "skill.1141519",
+            "skill.1141520",
+            "skill.1141521",
+            "skill.1141522",
+            "skill.1141523",
+            "skill.1141524",
+            "skill.1141525",
+            "skill.1141526",
+            "skill.141501",
+            "skill.141502",
+            "skill.141503",
+            "skill.141504",
+            "skill.141506",
+            "skill.141507",
+            "skill.141508",
+            "skill.141514",
+            "skill.141519"
+          ],
+          "traces": [
+            "trace.1415101",
+            "trace.1415102",
+            "trace.1415103",
+            "trace.1415201",
+            "trace.1415202",
+            "trace.1415203",
+            "trace.1415204",
+            "trace.1415205",
+            "trace.1415206",
+            "trace.1415207",
+            "trace.1415208",
+            "trace.1415209",
+            "trace.1415210"
+          ],
+          "eidolons": [
+            "eidolon.141501",
+            "eidolon.141502",
+            "eidolon.141503",
+            "eidolon.141504",
+            "eidolon.141505",
+            "eidolon.141506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1501",
+      "source_ids": ["1501"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.150101",
+            "skill.150102",
+            "skill.150103",
+            "skill.150104",
+            "skill.150106",
+            "skill.150107",
+            "skill.150108",
+            "skill.150109",
+            "skill.150110",
+            "skill.150120",
+            "skill.150129"
+          ],
+          "traces": [
+            "trace.1501101",
+            "trace.1501102",
+            "trace.1501103",
+            "trace.1501201",
+            "trace.1501202",
+            "trace.1501203",
+            "trace.1501204",
+            "trace.1501205",
+            "trace.1501206",
+            "trace.1501207",
+            "trace.1501208",
+            "trace.1501209",
+            "trace.1501210"
+          ],
+          "eidolons": [
+            "eidolon.150101",
+            "eidolon.150102",
+            "eidolon.150103",
+            "eidolon.150104",
+            "eidolon.150105",
+            "eidolon.150106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1502",
+      "source_ids": ["1502"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.150201",
+            "skill.150202",
+            "skill.150203",
+            "skill.150204",
+            "skill.150206",
+            "skill.150207",
+            "skill.150220",
+            "skill.150229"
+          ],
+          "traces": [
+            "trace.1502101",
+            "trace.1502102",
+            "trace.1502103",
+            "trace.1502201",
+            "trace.1502202",
+            "trace.1502203",
+            "trace.1502204",
+            "trace.1502205",
+            "trace.1502206",
+            "trace.1502207",
+            "trace.1502208",
+            "trace.1502209",
+            "trace.1502210"
+          ],
+          "eidolons": [
+            "eidolon.150201",
+            "eidolon.150202",
+            "eidolon.150203",
+            "eidolon.150204",
+            "eidolon.150205",
+            "eidolon.150206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1503",
+      "source_ids": ["1503"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.150301",
+            "skill.150302",
+            "skill.150303",
+            "skill.150304",
+            "skill.150306",
+            "skill.150307",
+            "skill.150308",
+            "skill.150310",
+            "skill.150320",
+            "skill.150329"
+          ],
+          "traces": [
+            "trace.1503101",
+            "trace.1503102",
+            "trace.1503103",
+            "trace.1503201",
+            "trace.1503202",
+            "trace.1503203",
+            "trace.1503204",
+            "trace.1503205",
+            "trace.1503206",
+            "trace.1503207",
+            "trace.1503208",
+            "trace.1503209",
+            "trace.1503210"
+          ],
+          "eidolons": [
+            "eidolon.150301",
+            "eidolon.150302",
+            "eidolon.150303",
+            "eidolon.150304",
+            "eidolon.150305",
+            "eidolon.150306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1504",
+      "source_ids": ["1504"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.150401",
+            "skill.150402",
+            "skill.150403",
+            "skill.150404",
+            "skill.150406",
+            "skill.150407"
+          ],
+          "traces": [
+            "trace.1504101",
+            "trace.1504102",
+            "trace.1504103",
+            "trace.1504201",
+            "trace.1504202",
+            "trace.1504203",
+            "trace.1504204",
+            "trace.1504205",
+            "trace.1504206",
+            "trace.1504207",
+            "trace.1504208",
+            "trace.1504209",
+            "trace.1504210"
+          ],
+          "eidolons": [
+            "eidolon.150401",
+            "eidolon.150402",
+            "eidolon.150403",
+            "eidolon.150404",
+            "eidolon.150405",
+            "eidolon.150406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1505",
+      "source_ids": ["1505"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.150501",
+            "skill.150502",
+            "skill.150503",
+            "skill.150504",
+            "skill.150506",
+            "skill.150507",
+            "skill.150520",
+            "skill.150529"
+          ],
+          "traces": [
+            "trace.1505101",
+            "trace.1505102",
+            "trace.1505103",
+            "trace.1505201",
+            "trace.1505202",
+            "trace.1505203",
+            "trace.1505204",
+            "trace.1505205",
+            "trace.1505206",
+            "trace.1505207",
+            "trace.1505208",
+            "trace.1505209",
+            "trace.1505210"
+          ],
+          "eidolons": [
+            "eidolon.150501",
+            "eidolon.150502",
+            "eidolon.150503",
+            "eidolon.150504",
+            "eidolon.150505",
+            "eidolon.150506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1506",
+      "source_ids": ["1506"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.150601",
+            "skill.150602",
+            "skill.150603",
+            "skill.150604",
+            "skill.150606",
+            "skill.150607",
+            "skill.150608",
+            "skill.150610",
+            "skill.150612",
+            "skill.150618",
+            "skill.150620",
+            "skill.150621",
+            "skill.150629"
+          ],
+          "traces": [
+            "trace.1506101",
+            "trace.1506102",
+            "trace.1506103",
+            "trace.1506201",
+            "trace.1506202",
+            "trace.1506203",
+            "trace.1506204",
+            "trace.1506205",
+            "trace.1506206",
+            "trace.1506207",
+            "trace.1506208",
+            "trace.1506209",
+            "trace.1506210"
+          ],
+          "eidolons": [
+            "eidolon.150601",
+            "eidolon.150602",
+            "eidolon.150603",
+            "eidolon.150604",
+            "eidolon.150605",
+            "eidolon.150606"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1507",
+      "source_ids": ["1507"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.150701",
+            "skill.150702",
+            "skill.150703",
+            "skill.150704",
+            "skill.150706",
+            "skill.150707",
+            "skill.150708",
+            "skill.150709",
+            "skill.150714"
+          ],
+          "traces": [
+            "trace.1507101",
+            "trace.1507102",
+            "trace.1507103",
+            "trace.1507201",
+            "trace.1507202",
+            "trace.1507203",
+            "trace.1507204",
+            "trace.1507205",
+            "trace.1507206",
+            "trace.1507207",
+            "trace.1507208",
+            "trace.1507209",
+            "trace.1507210"
+          ],
+          "eidolons": [
+            "eidolon.150701",
+            "eidolon.150702",
+            "eidolon.150703",
+            "eidolon.150704",
+            "eidolon.150705",
+            "eidolon.150706"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1510",
+      "source_ids": ["1510"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.151001",
+            "skill.151002",
+            "skill.151003",
+            "skill.151004",
+            "skill.151006",
+            "skill.151007",
+            "skill.151008",
+            "skill.151009",
+            "skill.151014",
+            "skill.151022",
+            "skill.151025",
+            "skill.151026"
+          ],
+          "traces": [
+            "trace.1510101",
+            "trace.1510102",
+            "trace.1510103",
+            "trace.1510201",
+            "trace.1510202",
+            "trace.1510203",
+            "trace.1510204",
+            "trace.1510205",
+            "trace.1510206",
+            "trace.1510207",
+            "trace.1510208",
+            "trace.1510209",
+            "trace.1510210"
+          ],
+          "eidolons": [
+            "eidolon.151001",
+            "eidolon.151002",
+            "eidolon.151003",
+            "eidolon.151004",
+            "eidolon.151005",
+            "eidolon.151006"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1511",
+      "source_ids": ["1511"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.151101",
+            "skill.151102",
+            "skill.151103",
+            "skill.151104",
+            "skill.151106",
+            "skill.151107",
+            "skill.151120",
+            "skill.151129",
+            "skill.151131"
+          ],
+          "traces": [
+            "trace.1511101",
+            "trace.1511102",
+            "trace.1511103",
+            "trace.1511201",
+            "trace.1511202",
+            "trace.1511203",
+            "trace.1511204",
+            "trace.1511205",
+            "trace.1511206",
+            "trace.1511207",
+            "trace.1511208",
+            "trace.1511209",
+            "trace.1511210",
+            "trace.1511601"
+          ],
+          "eidolons": [
+            "eidolon.151101",
+            "eidolon.151102",
+            "eidolon.151103",
+            "eidolon.151104",
+            "eidolon.151105",
+            "eidolon.151106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1512",
+      "source_ids": ["1512"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.1151201",
+            "skill.1151203",
+            "skill.1151205",
+            "skill.1151206",
+            "skill.151201",
+            "skill.151202",
+            "skill.151203",
+            "skill.151204",
+            "skill.151206",
+            "skill.151207"
+          ],
+          "traces": [
+            "trace.1512101",
+            "trace.1512102",
+            "trace.1512103",
+            "trace.1512201",
+            "trace.1512202",
+            "trace.1512203",
+            "trace.1512204",
+            "trace.1512205",
+            "trace.1512206",
+            "trace.1512207",
+            "trace.1512208",
+            "trace.1512209",
+            "trace.1512210"
+          ],
+          "eidolons": [
+            "eidolon.151201",
+            "eidolon.151202",
+            "eidolon.151203",
+            "eidolon.151204",
+            "eidolon.151205",
+            "eidolon.151206"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1513",
+      "source_ids": ["1513"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.151301",
+            "skill.151302",
+            "skill.151303",
+            "skill.151304",
+            "skill.151306",
+            "skill.151307",
+            "skill.151320",
+            "skill.151321",
+            "skill.151329"
+          ],
+          "traces": [
+            "trace.1513101",
+            "trace.1513102",
+            "trace.1513103",
+            "trace.1513201",
+            "trace.1513202",
+            "trace.1513203",
+            "trace.1513204",
+            "trace.1513205",
+            "trace.1513206",
+            "trace.1513207",
+            "trace.1513208",
+            "trace.1513209",
+            "trace.1513210"
+          ],
+          "eidolons": [
+            "eidolon.151301",
+            "eidolon.151302",
+            "eidolon.151303",
+            "eidolon.151304",
+            "eidolon.151305",
+            "eidolon.151306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "trailblazer.destruction",
+      "source_ids": ["8001", "8002"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.800101",
+            "skill.800102",
+            "skill.800103",
+            "skill.800104",
+            "skill.800106",
+            "skill.800107",
+            "skill.800108",
+            "skill.800109"
+          ],
+          "traces": [
+            "trace.8001101",
+            "trace.8001102",
+            "trace.8001103",
+            "trace.8001201",
+            "trace.8001202",
+            "trace.8001203",
+            "trace.8001204",
+            "trace.8001205",
+            "trace.8001206",
+            "trace.8001207",
+            "trace.8001208",
+            "trace.8001209",
+            "trace.8001210"
+          ],
+          "eidolons": [
+            "eidolon.800101",
+            "eidolon.800102",
+            "eidolon.800103",
+            "eidolon.800104",
+            "eidolon.800105",
+            "eidolon.800106"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "trailblazer.preservation",
+      "source_ids": ["8003", "8004"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.800301",
+            "skill.800302",
+            "skill.800303",
+            "skill.800304",
+            "skill.800306",
+            "skill.800307",
+            "skill.800308"
+          ],
+          "traces": [
+            "trace.8003101",
+            "trace.8003102",
+            "trace.8003103",
+            "trace.8003201",
+            "trace.8003202",
+            "trace.8003203",
+            "trace.8003204",
+            "trace.8003205",
+            "trace.8003206",
+            "trace.8003207",
+            "trace.8003208",
+            "trace.8003209",
+            "trace.8003210"
+          ],
+          "eidolons": [
+            "eidolon.800301",
+            "eidolon.800302",
+            "eidolon.800303",
+            "eidolon.800304",
+            "eidolon.800305",
+            "eidolon.800306"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "trailblazer.harmony",
+      "source_ids": ["8005", "8006"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.800501",
+            "skill.800502",
+            "skill.800503",
+            "skill.800504",
+            "skill.800506",
+            "skill.800507"
+          ],
+          "traces": [
+            "trace.8005101",
+            "trace.8005102",
+            "trace.8005103",
+            "trace.8005201",
+            "trace.8005202",
+            "trace.8005203",
+            "trace.8005204",
+            "trace.8005205",
+            "trace.8005206",
+            "trace.8005207",
+            "trace.8005208",
+            "trace.8005209",
+            "trace.8005210"
+          ],
+          "eidolons": [
+            "eidolon.800501",
+            "eidolon.800502",
+            "eidolon.800503",
+            "eidolon.800504",
+            "eidolon.800505",
+            "eidolon.800506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "trailblazer.remembrance",
+      "source_ids": ["8007", "8008"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.1800701",
+            "skill.1800703",
+            "skill.1800705",
+            "skill.1800706",
+            "skill.1800707",
+            "skill.800701",
+            "skill.800702",
+            "skill.800703",
+            "skill.800704",
+            "skill.800706",
+            "skill.800707",
+            "skill.800708",
+            "skill.800709"
+          ],
+          "traces": [
+            "trace.8007101",
+            "trace.8007102",
+            "trace.8007103",
+            "trace.8007201",
+            "trace.8007202",
+            "trace.8007203",
+            "trace.8007204",
+            "trace.8007205",
+            "trace.8007206",
+            "trace.8007207",
+            "trace.8007208",
+            "trace.8007209",
+            "trace.8007210",
+            "trace.8007501"
+          ],
+          "eidolons": [
+            "eidolon.800701",
+            "eidolon.800702",
+            "eidolon.800703",
+            "eidolon.800704",
+            "eidolon.800705",
+            "eidolon.800706"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "trailblazer.elation",
+      "source_ids": ["8009", "8010"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.800901",
+            "skill.800902",
+            "skill.800903",
+            "skill.800904",
+            "skill.800906",
+            "skill.800907",
+            "skill.800920",
+            "skill.800929"
+          ],
+          "traces": [
+            "trace.8009101",
+            "trace.8009102",
+            "trace.8009103",
+            "trace.8009201",
+            "trace.8009202",
+            "trace.8009203",
+            "trace.8009204",
+            "trace.8009205",
+            "trace.8009206",
+            "trace.8009207",
+            "trace.8009208",
+            "trace.8009209",
+            "trace.8009210"
+          ],
+          "eidolons": [
+            "eidolon.800901",
+            "eidolon.800902",
+            "eidolon.800903",
+            "eidolon.800904",
+            "eidolon.800905",
+            "eidolon.800906"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1014",
+      "source_ids": ["1014"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.101401",
+            "skill.101402",
+            "skill.101403",
+            "skill.101404",
+            "skill.101406",
+            "skill.101407",
+            "skill.101408"
+          ],
+          "traces": [
+            "trace.1014101",
+            "trace.1014102",
+            "trace.1014103",
+            "trace.1014201",
+            "trace.1014202",
+            "trace.1014203",
+            "trace.1014204",
+            "trace.1014205",
+            "trace.1014206",
+            "trace.1014207",
+            "trace.1014208",
+            "trace.1014209",
+            "trace.1014210"
+          ],
+          "eidolons": [
+            "eidolon.101401",
+            "eidolon.101402",
+            "eidolon.101403",
+            "eidolon.101404",
+            "eidolon.101405",
+            "eidolon.101406"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1015",
+      "source_ids": ["1015"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.101501",
+            "skill.101502",
+            "skill.101503",
+            "skill.101504",
+            "skill.101506",
+            "skill.101507",
+            "skill.101509"
+          ],
+          "traces": [
+            "trace.1015101",
+            "trace.1015102",
+            "trace.1015103",
+            "trace.1015201",
+            "trace.1015202",
+            "trace.1015203",
+            "trace.1015204",
+            "trace.1015205",
+            "trace.1015206",
+            "trace.1015207",
+            "trace.1015208",
+            "trace.1015209",
+            "trace.1015210"
+          ],
+          "eidolons": [
+            "eidolon.101501",
+            "eidolon.101502",
+            "eidolon.101503",
+            "eidolon.101504",
+            "eidolon.101505",
+            "eidolon.101506"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1508",
+      "source_ids": ["1508"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.150801",
+            "skill.150802",
+            "skill.150803",
+            "skill.150804",
+            "skill.150805",
+            "skill.150806",
+            "skill.150807",
+            "skill.150809"
+          ],
+          "traces": [
+            "trace.1508101",
+            "trace.1508102",
+            "trace.1508103",
+            "trace.1508201",
+            "trace.1508202",
+            "trace.1508203",
+            "trace.1508204",
+            "trace.1508205",
+            "trace.1508206",
+            "trace.1508207",
+            "trace.1508208",
+            "trace.1508209",
+            "trace.1508210"
+          ],
+          "eidolons": [
+            "eidolon.150801",
+            "eidolon.150802",
+            "eidolon.150803",
+            "eidolon.150804",
+            "eidolon.150805",
+            "eidolon.150806"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    },
+    {
+      "id": "character.1509",
+      "source_ids": ["1509"],
+      "variants": {
+        "base": {
+          "skills": [
+            "skill.150901",
+            "skill.150902",
+            "skill.150903",
+            "skill.150904",
+            "skill.150905",
+            "skill.150906",
+            "skill.150907",
+            "skill.150909"
+          ],
+          "traces": [
+            "trace.1509101",
+            "trace.1509102",
+            "trace.1509103",
+            "trace.1509201",
+            "trace.1509202",
+            "trace.1509203",
+            "trace.1509204",
+            "trace.1509205",
+            "trace.1509206",
+            "trace.1509207",
+            "trace.1509208",
+            "trace.1509209",
+            "trace.1509210"
+          ],
+          "eidolons": [
+            "eidolon.150901",
+            "eidolon.150902",
+            "eidolon.150903",
+            "eidolon.150904",
+            "eidolon.150905",
+            "eidolon.150906"
+          ]
+        }
+      },
+      "affinitive_eidolon": null
+    }
+  ],
+  "light_cones": [
+    { "id": "cone.20000", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20001", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20002", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20003", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20004", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20005", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20006", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20007", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20008", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20009", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20010", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20011", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20012", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20013", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20014", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20015", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20016", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20017", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20018", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20019", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20020", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21000", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21001", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21002", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21003", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21004", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21005", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21006", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21008", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21009", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21010", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21011", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21012", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21013", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21014", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21015", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21016", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21017", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21018", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21019", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21020", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21021", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21022", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21023", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21024", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21026", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21027", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21028", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21029", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21030", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21031", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21032", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21033", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21034", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22000", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23000", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23001", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23002", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23003", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23004", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23005", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23006", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23007", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23008", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23009", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23010", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23011", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23012", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23013", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23014", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23015", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23016", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.24000", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.24001", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.24002", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21025", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23017", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23018", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23019", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23021", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23023", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23020", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.24003", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21035", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21036", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21037", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21038", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21039", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21040", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21041", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23022", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21007", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.24004", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22001", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23024", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23025", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21042", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21043", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23027", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23028", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21044", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21045", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21046", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21047", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21048", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22002", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23026", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23030", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23029", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23031", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23032", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23033", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22003", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23035", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23034", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21050", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23037", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20021", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20022", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21051", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21052", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23036", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23038", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.24005", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23039", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23042", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23041", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23040", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22004", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21053", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21054", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21055", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21056", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21057", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21058", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21060", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21061", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23043", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23044", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23045", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23046", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21062", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23047", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23048", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22005", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22006", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23049", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23050", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23051", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23052", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20023", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.20024", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21064", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21065", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23053", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23054", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23056", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.24006", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23057", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22007", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23059", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23061", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23062", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23060", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23063", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23064", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23058", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.21066", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22008", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23055", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.23065", "superimpositions": [1, 2, 3, 4, 5] },
+    { "id": "cone.22009", "superimpositions": [1, 2, 3, 4, 5] }
+  ],
+  "relic_ids": [
+    "relic.31011",
+    "relic.41011",
+    "relic.51011",
+    "relic.61011",
+    "relic.31012",
+    "relic.41012",
+    "relic.51012",
+    "relic.61012",
+    "relic.31013",
+    "relic.41013",
+    "relic.51013",
+    "relic.61013",
+    "relic.31014",
+    "relic.41014",
+    "relic.51014",
+    "relic.61014",
+    "relic.31021",
+    "relic.41021",
+    "relic.51021",
+    "relic.61021",
+    "relic.31022",
+    "relic.41022",
+    "relic.51022",
+    "relic.61022",
+    "relic.31023",
+    "relic.41023",
+    "relic.51023",
+    "relic.61023",
+    "relic.31024",
+    "relic.41024",
+    "relic.51024",
+    "relic.61024",
+    "relic.31031",
+    "relic.41031",
+    "relic.51031",
+    "relic.61031",
+    "relic.31032",
+    "relic.41032",
+    "relic.51032",
+    "relic.61032",
+    "relic.31033",
+    "relic.41033",
+    "relic.51033",
+    "relic.61033",
+    "relic.31034",
+    "relic.41034",
+    "relic.51034",
+    "relic.61034",
+    "relic.31041",
+    "relic.41041",
+    "relic.51041",
+    "relic.61041",
+    "relic.31042",
+    "relic.41042",
+    "relic.51042",
+    "relic.61042",
+    "relic.31043",
+    "relic.41043",
+    "relic.51043",
+    "relic.61043",
+    "relic.31044",
+    "relic.41044",
+    "relic.51044",
+    "relic.61044",
+    "relic.31051",
+    "relic.41051",
+    "relic.51051",
+    "relic.61051",
+    "relic.31052",
+    "relic.41052",
+    "relic.51052",
+    "relic.61052",
+    "relic.31053",
+    "relic.41053",
+    "relic.51053",
+    "relic.61053",
+    "relic.31054",
+    "relic.41054",
+    "relic.51054",
+    "relic.61054",
+    "relic.31061",
+    "relic.41061",
+    "relic.51061",
+    "relic.61061",
+    "relic.31062",
+    "relic.41062",
+    "relic.51062",
+    "relic.61062",
+    "relic.31063",
+    "relic.41063",
+    "relic.51063",
+    "relic.61063",
+    "relic.31064",
+    "relic.41064",
+    "relic.51064",
+    "relic.61064",
+    "relic.31071",
+    "relic.41071",
+    "relic.51071",
+    "relic.61071",
+    "relic.31072",
+    "relic.41072",
+    "relic.51072",
+    "relic.61072",
+    "relic.31073",
+    "relic.41073",
+    "relic.51073",
+    "relic.61073",
+    "relic.31074",
+    "relic.41074",
+    "relic.51074",
+    "relic.61074",
+    "relic.31081",
+    "relic.41081",
+    "relic.51081",
+    "relic.61081",
+    "relic.31082",
+    "relic.41082",
+    "relic.51082",
+    "relic.61082",
+    "relic.31083",
+    "relic.41083",
+    "relic.51083",
+    "relic.61083",
+    "relic.31084",
+    "relic.41084",
+    "relic.51084",
+    "relic.61084",
+    "relic.31091",
+    "relic.41091",
+    "relic.51091",
+    "relic.61091",
+    "relic.31092",
+    "relic.41092",
+    "relic.51092",
+    "relic.61092",
+    "relic.31093",
+    "relic.41093",
+    "relic.51093",
+    "relic.61093",
+    "relic.31094",
+    "relic.41094",
+    "relic.51094",
+    "relic.61094",
+    "relic.31101",
+    "relic.41101",
+    "relic.51101",
+    "relic.61101",
+    "relic.31102",
+    "relic.41102",
+    "relic.51102",
+    "relic.61102",
+    "relic.31103",
+    "relic.41103",
+    "relic.51103",
+    "relic.61103",
+    "relic.31104",
+    "relic.41104",
+    "relic.51104",
+    "relic.61104",
+    "relic.31111",
+    "relic.41111",
+    "relic.51111",
+    "relic.61111",
+    "relic.31112",
+    "relic.41112",
+    "relic.51112",
+    "relic.61112",
+    "relic.31113",
+    "relic.41113",
+    "relic.51113",
+    "relic.61113",
+    "relic.31114",
+    "relic.41114",
+    "relic.51114",
+    "relic.61114",
+    "relic.31121",
+    "relic.41121",
+    "relic.51121",
+    "relic.61121",
+    "relic.31122",
+    "relic.41122",
+    "relic.51122",
+    "relic.61122",
+    "relic.31123",
+    "relic.41123",
+    "relic.51123",
+    "relic.61123",
+    "relic.31124",
+    "relic.41124",
+    "relic.51124",
+    "relic.61124",
+    "relic.33015",
+    "relic.43015",
+    "relic.53015",
+    "relic.63015",
+    "relic.33016",
+    "relic.43016",
+    "relic.53016",
+    "relic.63016",
+    "relic.33025",
+    "relic.43025",
+    "relic.53025",
+    "relic.63025",
+    "relic.33026",
+    "relic.43026",
+    "relic.53026",
+    "relic.63026",
+    "relic.33035",
+    "relic.43035",
+    "relic.53035",
+    "relic.63035",
+    "relic.33036",
+    "relic.43036",
+    "relic.53036",
+    "relic.63036",
+    "relic.33045",
+    "relic.43045",
+    "relic.53045",
+    "relic.63045",
+    "relic.33046",
+    "relic.43046",
+    "relic.53046",
+    "relic.63046",
+    "relic.33055",
+    "relic.43055",
+    "relic.53055",
+    "relic.63055",
+    "relic.33056",
+    "relic.43056",
+    "relic.53056",
+    "relic.63056",
+    "relic.33065",
+    "relic.43065",
+    "relic.53065",
+    "relic.63065",
+    "relic.33066",
+    "relic.43066",
+    "relic.53066",
+    "relic.63066",
+    "relic.33075",
+    "relic.43075",
+    "relic.53075",
+    "relic.63075",
+    "relic.33076",
+    "relic.43076",
+    "relic.53076",
+    "relic.63076",
+    "relic.33085",
+    "relic.43085",
+    "relic.53085",
+    "relic.63085",
+    "relic.33086",
+    "relic.43086",
+    "relic.53086",
+    "relic.63086",
+    "relic.33095",
+    "relic.43095",
+    "relic.53095",
+    "relic.63095",
+    "relic.33096",
+    "relic.43096",
+    "relic.53096",
+    "relic.63096",
+    "relic.33105",
+    "relic.43105",
+    "relic.53105",
+    "relic.63105",
+    "relic.33106",
+    "relic.43106",
+    "relic.53106",
+    "relic.63106",
+    "relic.55001",
+    "relic.55002",
+    "relic.55003",
+    "relic.55004",
+    "relic.55005",
+    "relic.55006",
+    "relic.31131",
+    "relic.41131",
+    "relic.51131",
+    "relic.61131",
+    "relic.31132",
+    "relic.41132",
+    "relic.51132",
+    "relic.61132",
+    "relic.31133",
+    "relic.41133",
+    "relic.51133",
+    "relic.61133",
+    "relic.31134",
+    "relic.41134",
+    "relic.51134",
+    "relic.61134",
+    "relic.31141",
+    "relic.41141",
+    "relic.51141",
+    "relic.61141",
+    "relic.31142",
+    "relic.41142",
+    "relic.51142",
+    "relic.61142",
+    "relic.31143",
+    "relic.41143",
+    "relic.51143",
+    "relic.61143",
+    "relic.31144",
+    "relic.41144",
+    "relic.51144",
+    "relic.61144",
+    "relic.31151",
+    "relic.41151",
+    "relic.51151",
+    "relic.61151",
+    "relic.31152",
+    "relic.41152",
+    "relic.51152",
+    "relic.61152",
+    "relic.31153",
+    "relic.41153",
+    "relic.51153",
+    "relic.61153",
+    "relic.31154",
+    "relic.41154",
+    "relic.51154",
+    "relic.61154",
+    "relic.31161",
+    "relic.41161",
+    "relic.51161",
+    "relic.61161",
+    "relic.31162",
+    "relic.41162",
+    "relic.51162",
+    "relic.61162",
+    "relic.31163",
+    "relic.41163",
+    "relic.51163",
+    "relic.61163",
+    "relic.31164",
+    "relic.41164",
+    "relic.51164",
+    "relic.61164",
+    "relic.33115",
+    "relic.43115",
+    "relic.53115",
+    "relic.63115",
+    "relic.33116",
+    "relic.43116",
+    "relic.53116",
+    "relic.63116",
+    "relic.33125",
+    "relic.43125",
+    "relic.53125",
+    "relic.63125",
+    "relic.33126",
+    "relic.43126",
+    "relic.53126",
+    "relic.63126",
+    "relic.31171",
+    "relic.41171",
+    "relic.51171",
+    "relic.61171",
+    "relic.31172",
+    "relic.41172",
+    "relic.51172",
+    "relic.61172",
+    "relic.31173",
+    "relic.41173",
+    "relic.51173",
+    "relic.61173",
+    "relic.31174",
+    "relic.41174",
+    "relic.51174",
+    "relic.61174",
+    "relic.31181",
+    "relic.41181",
+    "relic.51181",
+    "relic.61181",
+    "relic.31182",
+    "relic.41182",
+    "relic.51182",
+    "relic.61182",
+    "relic.31183",
+    "relic.41183",
+    "relic.51183",
+    "relic.61183",
+    "relic.31184",
+    "relic.41184",
+    "relic.51184",
+    "relic.61184",
+    "relic.33135",
+    "relic.43135",
+    "relic.53135",
+    "relic.63135",
+    "relic.33136",
+    "relic.43136",
+    "relic.53136",
+    "relic.63136",
+    "relic.33145",
+    "relic.43145",
+    "relic.53145",
+    "relic.63145",
+    "relic.33146",
+    "relic.43146",
+    "relic.53146",
+    "relic.63146",
+    "relic.31191",
+    "relic.41191",
+    "relic.51191",
+    "relic.61191",
+    "relic.31192",
+    "relic.41192",
+    "relic.51192",
+    "relic.61192",
+    "relic.31193",
+    "relic.41193",
+    "relic.51193",
+    "relic.61193",
+    "relic.31194",
+    "relic.41194",
+    "relic.51194",
+    "relic.61194",
+    "relic.31201",
+    "relic.41201",
+    "relic.51201",
+    "relic.61201",
+    "relic.31202",
+    "relic.41202",
+    "relic.51202",
+    "relic.61202",
+    "relic.31203",
+    "relic.41203",
+    "relic.51203",
+    "relic.61203",
+    "relic.31204",
+    "relic.41204",
+    "relic.51204",
+    "relic.61204",
+    "relic.33155",
+    "relic.43155",
+    "relic.53155",
+    "relic.63155",
+    "relic.33156",
+    "relic.43156",
+    "relic.53156",
+    "relic.63156",
+    "relic.33165",
+    "relic.43165",
+    "relic.53165",
+    "relic.63165",
+    "relic.33166",
+    "relic.43166",
+    "relic.53166",
+    "relic.63166",
+    "relic.33175",
+    "relic.43175",
+    "relic.53175",
+    "relic.63175",
+    "relic.33176",
+    "relic.43176",
+    "relic.53176",
+    "relic.63176",
+    "relic.33185",
+    "relic.43185",
+    "relic.53185",
+    "relic.63185",
+    "relic.33186",
+    "relic.43186",
+    "relic.53186",
+    "relic.63186",
+    "relic.31211",
+    "relic.41211",
+    "relic.51211",
+    "relic.61211",
+    "relic.31212",
+    "relic.41212",
+    "relic.51212",
+    "relic.61212",
+    "relic.31213",
+    "relic.41213",
+    "relic.51213",
+    "relic.61213",
+    "relic.31214",
+    "relic.41214",
+    "relic.51214",
+    "relic.61214",
+    "relic.31221",
+    "relic.41221",
+    "relic.51221",
+    "relic.61221",
+    "relic.31222",
+    "relic.41222",
+    "relic.51222",
+    "relic.61222",
+    "relic.31223",
+    "relic.41223",
+    "relic.51223",
+    "relic.61223",
+    "relic.31224",
+    "relic.41224",
+    "relic.51224",
+    "relic.61224",
+    "relic.31231",
+    "relic.41231",
+    "relic.51231",
+    "relic.61231",
+    "relic.31232",
+    "relic.41232",
+    "relic.51232",
+    "relic.61232",
+    "relic.31233",
+    "relic.41233",
+    "relic.51233",
+    "relic.61233",
+    "relic.31234",
+    "relic.41234",
+    "relic.51234",
+    "relic.61234",
+    "relic.31241",
+    "relic.41241",
+    "relic.51241",
+    "relic.61241",
+    "relic.31242",
+    "relic.41242",
+    "relic.51242",
+    "relic.61242",
+    "relic.31243",
+    "relic.41243",
+    "relic.51243",
+    "relic.61243",
+    "relic.31244",
+    "relic.41244",
+    "relic.51244",
+    "relic.61244",
+    "relic.33195",
+    "relic.43195",
+    "relic.53195",
+    "relic.63195",
+    "relic.33196",
+    "relic.43196",
+    "relic.53196",
+    "relic.63196",
+    "relic.33205",
+    "relic.43205",
+    "relic.53205",
+    "relic.63205",
+    "relic.33206",
+    "relic.43206",
+    "relic.53206",
+    "relic.63206",
+    "relic.31251",
+    "relic.41251",
+    "relic.51251",
+    "relic.61251",
+    "relic.31252",
+    "relic.41252",
+    "relic.51252",
+    "relic.61252",
+    "relic.31253",
+    "relic.41253",
+    "relic.51253",
+    "relic.61253",
+    "relic.31254",
+    "relic.41254",
+    "relic.51254",
+    "relic.61254",
+    "relic.31261",
+    "relic.41261",
+    "relic.51261",
+    "relic.61261",
+    "relic.31262",
+    "relic.41262",
+    "relic.51262",
+    "relic.61262",
+    "relic.31263",
+    "relic.41263",
+    "relic.51263",
+    "relic.61263",
+    "relic.31264",
+    "relic.41264",
+    "relic.51264",
+    "relic.61264",
+    "relic.33215",
+    "relic.43215",
+    "relic.53215",
+    "relic.63215",
+    "relic.33216",
+    "relic.43216",
+    "relic.53216",
+    "relic.63216",
+    "relic.33225",
+    "relic.43225",
+    "relic.53225",
+    "relic.63225",
+    "relic.33226",
+    "relic.43226",
+    "relic.53226",
+    "relic.63226",
+    "relic.31271",
+    "relic.41271",
+    "relic.51271",
+    "relic.61271",
+    "relic.31272",
+    "relic.41272",
+    "relic.51272",
+    "relic.61272",
+    "relic.31273",
+    "relic.41273",
+    "relic.51273",
+    "relic.61273",
+    "relic.31274",
+    "relic.41274",
+    "relic.51274",
+    "relic.61274",
+    "relic.31281",
+    "relic.41281",
+    "relic.51281",
+    "relic.61281",
+    "relic.31282",
+    "relic.41282",
+    "relic.51282",
+    "relic.61282",
+    "relic.31283",
+    "relic.41283",
+    "relic.51283",
+    "relic.61283",
+    "relic.31284",
+    "relic.41284",
+    "relic.51284",
+    "relic.61284",
+    "relic.33235",
+    "relic.43235",
+    "relic.53235",
+    "relic.63235",
+    "relic.33236",
+    "relic.43236",
+    "relic.53236",
+    "relic.63236",
+    "relic.33245",
+    "relic.43245",
+    "relic.53245",
+    "relic.63245",
+    "relic.33246",
+    "relic.43246",
+    "relic.53246",
+    "relic.63246",
+    "relic.31291",
+    "relic.41291",
+    "relic.51291",
+    "relic.61291",
+    "relic.31292",
+    "relic.41292",
+    "relic.51292",
+    "relic.61292",
+    "relic.31293",
+    "relic.41293",
+    "relic.51293",
+    "relic.61293",
+    "relic.31294",
+    "relic.41294",
+    "relic.51294",
+    "relic.61294",
+    "relic.31301",
+    "relic.41301",
+    "relic.51301",
+    "relic.61301",
+    "relic.31302",
+    "relic.41302",
+    "relic.51302",
+    "relic.61302",
+    "relic.31303",
+    "relic.41303",
+    "relic.51303",
+    "relic.61303",
+    "relic.31304",
+    "relic.41304",
+    "relic.51304",
+    "relic.61304",
+    "relic.33255",
+    "relic.43255",
+    "relic.53255",
+    "relic.63255",
+    "relic.33256",
+    "relic.43256",
+    "relic.53256",
+    "relic.63256",
+    "relic.33265",
+    "relic.43265",
+    "relic.53265",
+    "relic.63265",
+    "relic.33266",
+    "relic.43266",
+    "relic.53266",
+    "relic.63266",
+    "relic.31311",
+    "relic.41311",
+    "relic.51311",
+    "relic.61311",
+    "relic.31312",
+    "relic.41312",
+    "relic.51312",
+    "relic.61312",
+    "relic.31313",
+    "relic.41313",
+    "relic.51313",
+    "relic.61313",
+    "relic.31314",
+    "relic.41314",
+    "relic.51314",
+    "relic.61314",
+    "relic.31321",
+    "relic.41321",
+    "relic.51321",
+    "relic.61321",
+    "relic.31322",
+    "relic.41322",
+    "relic.51322",
+    "relic.61322",
+    "relic.31323",
+    "relic.41323",
+    "relic.51323",
+    "relic.61323",
+    "relic.31324",
+    "relic.41324",
+    "relic.51324",
+    "relic.61324",
+    "relic.33275",
+    "relic.43275",
+    "relic.53275",
+    "relic.63275",
+    "relic.33276",
+    "relic.43276",
+    "relic.53276",
+    "relic.63276",
+    "relic.33285",
+    "relic.43285",
+    "relic.53285",
+    "relic.63285",
+    "relic.33286",
+    "relic.43286",
+    "relic.53286",
+    "relic.63286",
+    "relic.31331",
+    "relic.41331",
+    "relic.51331",
+    "relic.61331",
+    "relic.31332",
+    "relic.41332",
+    "relic.51332",
+    "relic.61332",
+    "relic.31333",
+    "relic.41333",
+    "relic.51333",
+    "relic.61333",
+    "relic.31334",
+    "relic.41334",
+    "relic.51334",
+    "relic.61334",
+    "relic.31341",
+    "relic.41341",
+    "relic.51341",
+    "relic.61341",
+    "relic.31342",
+    "relic.41342",
+    "relic.51342",
+    "relic.61342",
+    "relic.31343",
+    "relic.41343",
+    "relic.51343",
+    "relic.61343",
+    "relic.31344",
+    "relic.41344",
+    "relic.51344",
+    "relic.61344",
+    "relic.33295",
+    "relic.43295",
+    "relic.53295",
+    "relic.63295",
+    "relic.33296",
+    "relic.43296",
+    "relic.53296",
+    "relic.63296",
+    "relic.33305",
+    "relic.43305",
+    "relic.53305",
+    "relic.63305",
+    "relic.33306",
+    "relic.43306",
+    "relic.53306",
+    "relic.63306"
+  ],
+  "relic_set_ids": [
+    "set.101",
+    "set.102",
+    "set.103",
+    "set.104",
+    "set.105",
+    "set.106",
+    "set.107",
+    "set.108",
+    "set.109",
+    "set.110",
+    "set.111",
+    "set.112",
+    "set.113",
+    "set.114",
+    "set.115",
+    "set.116",
+    "set.117",
+    "set.118",
+    "set.119",
+    "set.120",
+    "set.121",
+    "set.122",
+    "set.123",
+    "set.124",
+    "set.125",
+    "set.126",
+    "set.127",
+    "set.128",
+    "set.129",
+    "set.130",
+    "set.131",
+    "set.132",
+    "set.133",
+    "set.134",
+    "set.301",
+    "set.302",
+    "set.303",
+    "set.304",
+    "set.305",
+    "set.306",
+    "set.307",
+    "set.308",
+    "set.309",
+    "set.310",
+    "set.311",
+    "set.312",
+    "set.313",
+    "set.314",
+    "set.315",
+    "set.316",
+    "set.317",
+    "set.318",
+    "set.319",
+    "set.320",
+    "set.321",
+    "set.322",
+    "set.323",
+    "set.324",
+    "set.325",
+    "set.326",
+    "set.327",
+    "set.328",
+    "set.329",
+    "set.330"
+  ]
+}

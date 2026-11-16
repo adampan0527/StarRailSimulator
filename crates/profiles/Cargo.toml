@@ -1,0 +1,13 @@
+[package]
+name = "star-rail-profiles"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+rusqlite = { version = "=0.39.0", features = ["bundled"] }
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = { version = "=1.0.154", features = ["raw_value"] }
+sha2 = "=0.10.9"
+star-rail-battle-core = { path = "../battle-core" }
+thiserror = "=2.0.21"

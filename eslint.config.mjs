@@ -8,6 +8,7 @@ export default [
       'target/**',
       'src-tauri/gen/**',
       '.local-toolchain/**',
+      '.m03-data/**',
       'html_report/**',
     ],
   },

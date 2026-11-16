@@ -1,0 +1,59 @@
+{
+  "sources": [
+    {
+      "directory": "starrailres",
+      "repository": "Mar-7th/StarRailRes",
+      "revision": "03907e798b46f9eb109a1f882055cdf49ce3d374",
+      "flat": false,
+      "files": {
+        "info.json": "96250f3eefa048f5cd4d673b4e5ddd48bd7edd7280ca6296a346aed55c416865",
+        "LICENSE": "20b067f86de375aae6db0f283ab2e65de24d537733b89bd58432c101259d84cf",
+        "index_new/cn/characters.json": "f81e6f0257c08adbe43b84cb4a59b9c9756de652b938453bae2dce8ca2b70e3c",
+        "index_new/cn/character_promotions.json": "af02a02d849a887ac59c5fadcd84d1c52d7d0a4779f912c5e726a36a825392f5",
+        "index_new/cn/character_ranks.json": "aa3bf89397d44e70ffba40201d1cfaa2d4b08b7d29d3de0069dad63e9cdc4ff8",
+        "index_new/cn/character_skills.json": "7ae6bf73a9be60e3f38e247d8e39ddf2e22f35b65c4b25321624c639612bbf5f",
+        "index_new/cn/character_skill_trees.json": "0cb9ada8b37e426e36de6c116f4e5ccc33e15152c9b9cdcbe103fbfeb8dad656",
+        "index_new/cn/light_cones.json": "c7f49e659cb32a77e7f3a0366a9da1735c24bf653e19147ed5e98bdb8e499e8f",
+        "index_new/cn/light_cone_promotions.json": "95c13a3399b800950740d2907cf5f98cfdbb3a5b49f868f258b90c8d77a0465c",
+        "index_new/cn/light_cone_ranks.json": "640e2c749a308b0bfb57fb0591f24d5d8fbf6b49250ed882d6a2e4d2dd7c1e28",
+        "index_new/cn/relics.json": "0974a2b76e117df1cd20f474f10e3010879f65460e75e29951b4c2b2781c691e",
+        "index_new/cn/relic_sets.json": "12395431fcea8ebd89015e70e6d76be69c04bbafbe7bd3bde715a78738688013",
+        "index_new/cn/paths.json": "ed86537d2fa626fa13fa4f46d676eb13746336af0ae5025747e5de26527a8a9f",
+        "index_new/cn/elements.json": "2c879352d6e5f8de32cd899923e7c53fce419df1c35984e800573b5c8161b2a7",
+        "index_new/cn/properties.json": "0c89d2275665f124418a2d12fa0df787dbe7d11a391cec4ecb73c6cd49297af0"
+      }
+    },
+    {
+      "directory": "turnbased",
+      "repository": "DimbreathBot/TurnBasedGameData",
+      "revision": "dad9155eb00fdeda31fb8456507c53590d49071f",
+      "flat": true,
+      "files": {
+        "TextMap/TextMapCHS.json": "d35c053373302d4afb0ad942710ffdf2758c84aa9f64992b5ba789c30ae3307a",
+        "ExcelOutput/AvatarConfig.json": "58743b34a9cd522e340def25b1f284b2b4de4a2989ca303c2406b5b5ef938249",
+        "ExcelOutput/AvatarConfigLD.json": "cd8311ab6c4d048acc6c0dcd3008030c24a3d2e595f44eab62cbf156a27eab24",
+        "ExcelOutput/AvatarConfigEnhanced.json": "9dd2e9165d61d54cee0b9477464dd4f7d9880259109c18e0787c00b2fe3a01de",
+        "ExcelOutput/AvatarRankConfig.json": "10b51ac3dcf99ed589863cdfe7e5d37d91f0aa9af46a891bc6a51d83699249ac",
+        "ExcelOutput/AvatarRankConfigLD.json": "d385230661a9b0bbcfb58ed07615d56d523ecad4021613599e8499511b649e9e",
+        "ExcelOutput/AvatarExRankConfig.json": "52f888862c028538b3df6b79c433698de8452dddcc1dec158b88bf4087ad2b44",
+        "ExcelOutput/AvatarSkillConfig.json": "221ea39cfaed0be986c3cb8abcd75755eff4dbb4e8c642972942ff02db0acdea",
+        "ExcelOutput/AvatarSkillConfigLD.json": "19241c92055c4fa439c0e4bc5e1d383446eee74fbe3f817f0729ccbfaf4af38f",
+        "ExcelOutput/AvatarServantConfig.json": "038aba8fc5c5b4501bf32d96ff7a597aeb635e9f8ad958ba743f6adc2d486a60",
+        "ExcelOutput/AvatarServantSkillConfig.json": "4a74d9bccf11e8eadca238654857194ca5efbd511095cb0b27a7001fa327244e",
+        "ExcelOutput/AvatarSkillTreeConfig.json": "cdcf4308738f09fa5be96cde3095d76d6c48b4af8cae86179da4dd5cce482f04",
+        "ExcelOutput/AvatarSkillTreeConfigLD.json": "ad0f4cf456905119636f339e48283b0ec7d277da9029125ccf33ca631ddb497b",
+        "ExcelOutput/AvatarSeriesSkill.json": "c30ee7c37e9b85e381125d8f5cc58c92146aafc16254039760da30952f5a5972",
+        "ExcelOutput/MultiplePathAvatarConfig.json": "70556deb9ccf38cef43e26f48e1a960711c4164d7800cacff698ff2a8e9e6d59",
+        "ExcelOutput/EquipmentConfig.json": "c380d8e1b31c01bcb4ff1f7f782da1ad265ed58cc9458bf0fb8ca198e407c794",
+        "ExcelOutput/EquipmentSkillConfig.json": "411372179b5439ad0016a2c62e25942c3bf6746b49d71336fe3fe444aa22c61e",
+        "ExcelOutput/RelicConfig.json": "61a8c182d645885e9b0037ce7bc62f2cfc55b83cc6b6df6ea157cac35529806d",
+        "ExcelOutput/RelicSetConfig.json": "b07fd102a4835020ae4276f76c686398ee4ca14a3010d3853b4ad009be0f8ef5",
+        "ExcelOutput/RelicMainAffixConfig.json": "12d2b1a74ba7b4c72b08eaedabd4fe2804bf909356776a810b8bcb3c9cd6ec8b",
+        "ExcelOutput/RelicSubAffixConfig.json": "52ec6eb167da9d2cd7bce76960d8031f799de25f4becd7f15f4d253a0f9489e7",
+        "ExcelOutput/AvatarPromotionConfig.json": "f782fd43db117e102f3860b8c92b2afab371902772df449c1c0415e2f4a3f8b5",
+        "ExcelOutput/AvatarPromotionConfigLD.json": "32d7ac2c590f6e65a86861da37bd36d977197cc9242ca45dc5daefd325bcdd21",
+        "ExcelOutput/EquipmentPromotionConfig.json": "e930defdd52e3b409afbbc94cb828599244d9c0cccf8938e2c3c80a0d94fabd6"
+      }
+    }
+  ]
+}

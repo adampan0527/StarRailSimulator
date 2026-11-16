@@ -33,9 +33,9 @@
         <p class="eyebrow"><span class="mono">M03</span> <span aria-hidden="true">/</span> 里程碑</p>
         <h1>可保存和复用的全局角色档案</h1>
         <dl class="detail-meta">
-          <div><dt>当前状态</dt><dd><span class="status status--not-started">未开始</span></dd></div>
+          <div><dt>当前状态</dt><dd><span class="status status--accepted">已验收</span></dd></div>
           <div><dt>验收依赖</dt><dd><a href="./m01.html">M01</a></dd></div>
-          <div><dt>验收记录</dt><dd>暂无</dd></div>
+          <div><dt>验收记录</dt><dd><a href="../../../docs/m03-profiles.md">2026-11-16 · 4.7.0 数据与档案</a></dd></div>
         </dl>
       </header>
       <section class="prose detail-body" aria-labelledby="criteria">
@@ -43,11 +43,16 @@
         <p>实现本地持久化。每个角色形态有一份全局档案，记录等级、行迹、星魂、光锥叠影和六件遗器，可管理多套配装和当前方案。队伍只引用角色形态 ID。4.7.0 正式服数据支持角色及光锥默认 80 级，光锥叠影 1–5 独立查询。</p>
 <h3>验收清单</h3>
 <ul class="checklist">
-<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>关闭并重新打开本地档案后，角色配置、预设和队伍引用一致。用应用层测试验证：编辑两个队伍共用角色的当前配装后，两队重新生成的模拟输入均读取新配置，已生成的输入快照保持原值。此项不依赖战斗核心或图形界面。</span></li>
-<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>无效装备槽位或非法配置无法保存；保存失败不会留下部分写入，未保存内容可重试。</span></li>
-<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>以固定修订逐 ID 核对 4.7.0 正式服角色、光锥和遗器，验证角色技能与属性成长、星魂、六槽规则及光锥五档叠影。角色强化状态和奇缘星魂可随配装冻结。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>关闭并重新打开本地档案后，角色配置、预设和队伍引用一致。用应用层测试验证：编辑两个队伍共用角色的当前配装后，两队重新生成的模拟输入均读取新配置，已生成的输入快照保持原值。此项不依赖战斗核心或图形界面。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>无效装备槽位或非法配置无法保存；保存失败不会留下部分写入，未保存内容可重试。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>以固定修订逐 ID 核对 4.7.0 正式服角色、光锥和遗器，验证角色技能与属性成长、星魂、六槽规则及光锥五档叠影。角色强化状态和奇缘星魂可随配装冻结。</span></li>
 </ul>
-<p><strong>验收证据：</strong> 数据覆盖对账、共享角色集成测试、存档重启及失败恢复记录。</p>
+<p><strong>验收证据：</strong> <a href="../../../docs/m03-coverage.json">覆盖对账</a>、两队引用同一角色的集成测试、重启及保存失败演示。</p>
+<h3>进展记录</h3>
+<ul>
+<li>2026-11-16：锁定 4.7.0 两个源修订，实现离线导入、SQLite 档案、版本化队伍快照和 M02 合成契约接入。<a href="../../../docs/m03-profiles.md">实施与验证记录</a></li>
+<li>2026-11-16：完成 94 个角色形态、172 张光锥及 790 条遗器记录的离线对账。两个 Windows 进程验证重启、共享配装与旧快照。事务回滚及原草稿重试通过。Rust 工作区 15 项测试与 npm 检查通过，M03 验收通过。<a href="../../../docs/m03-profiles.md">验证证据</a></li>
+</ul>
       </section>
     </article>
     <nav class="detail-pagination" aria-label="相邻里程碑">

@@ -47,3 +47,13 @@ cargo test --locked -p star-rail-battle-core
 ```
 
 回放输出合成战斗的状态和事件 JSON。规则、完整夹具和测量方法见 [M02 验收记录](docs/m02-core.md)，公式来源见 [战斗机制调研](docs/m02-combat-mechanics.md)。
+
+## 导入 4.7.0 数据与验证档案
+
+```powershell
+node scripts/m03/download.mjs
+node scripts/m03/import.mjs
+cargo run --offline --locked -p star-rail-profiles --example m03 -- audit .m03-data/4.7.0/catalog.json
+```
+
+首次下载获取固定修订的源表。导入、角色查询和 SQLite 档案操作均可离线执行。跨进程重启演示、数据覆盖和接口说明见 [M03 验收记录](docs/m03-profiles.md)。
