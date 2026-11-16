@@ -31,3 +31,5 @@ Windows x64 Release 可执行文件 SHA-256 为 `36e9e5fc901b1d957482da46794e073
 - 2026-11-16 在 Windows x64 `26200` 上通过 Playwright 驱动实际 Tauri WebView2。测试版只覆盖应用标识以隔离 QA 存档。原生 100% 下配装和战斗页面的内容宽度与可用宽度一致，均为 1041 CSS px。首次启动显示空回放提示。Tab、方向键和 Enter 覆盖导航、保存、开战、选目标与执行基准指令。[配装截图](m04-evidence/loadout.png) · [终结技插入截图](m04-evidence/battle-ultimate.png)
 - 速度 `+2.3` 与 `+2.6` 的两场合成战斗各执行八条指令并获胜。有效伤害为 1950。第二个 Windows 进程读取已保存的 `+2.6` 配装，打开旧回放并定位到 `200 AV` 的终结技，旧回放的 64 条事件与重启前逐项一致。[重启后回放](m04-evidence/replay-reopened.png) · [操作录屏](m04-evidence/desktop-workflow.mp4)
 - 调整 WebView 设备像素比至 1.5，并将视口收窄到 704 CSS px。配装、战斗和回放的可用宽度与内容宽度均为 689 CSS px，无横向溢出。此项使用 WebView 模拟，Windows 原生 150% 显示缩放下的布局、完整键盘路径和失败状态仍待验收。[模拟缩放配装](m04-evidence/loadout-150-emulated.png) · [模拟缩放战斗](m04-evidence/battle-150-emulated.png)
+- 2026-11-16 原生桌面复验确认当前唯一连接的显示器和 QA 应用窗口均为 96 DPI（100%）。使用 Tab、Enter 和方向键打开已结束的训练 #6，并在「定位事件」选中「200 AV · 终结技 丹恒 · 巡猎 → 左侧靶机」。
+- 同次复验用独立连接临时持有 QA 配装数据库的 SQLite 写锁，再用 Tab 和 Enter 保存测试草稿。应用提示「无法读取或写入本地存档，请重试。」，当前配装和草稿内容均保留。释放写锁后，直接重试同一份草稿，应用显示「配装已保存并启用。」。本项通过于原生 100%。

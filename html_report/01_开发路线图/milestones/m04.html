@@ -47,10 +47,11 @@
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>重启应用后能打开旧回放并定位关键事件；切换星魂或速度遗器后，以新会话展示可预期的差异，旧回放结果不变。</span></li>
 <li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>按 <code>design.md</code> 审查配装页与战斗页；在 100% 和 150% Windows 显示缩放下检查布局、字体和关键路径，键盘可操作，加载、空白和失败状态可理解。</span></li>
 </ul>
-<p><strong>验收证据：</strong> <a href="../../../docs/m04-desktop.md#桌面端到端证据">桌面端到端记录与截图</a>、<a href="../../../docs/m04-evidence/desktop-workflow.mp4">操作录屏</a>、<a href="../../../src-tauri/src/workbench_tests.rs">应用层集成测试</a>。100% 原生 WebView 检查通过，150% 已完成 WebView 等效视口检查，Windows 原生 150% 验收待补。</p>
+<p><strong>验收证据：</strong> <a href="../../../docs/m04-desktop.md#桌面端到端证据">桌面端到端记录与截图</a>、<a href="../../../docs/m04-evidence/desktop-workflow.mp4">操作录屏</a>、<a href="../../../src-tauri/src/workbench_tests.rs">应用层集成测试</a>。Windows 原生 100% 已验证键盘定位回放和写入失败后重试。WebView 150% 等效视口检查通过，Windows 原生 150% 验收待补。</p>
 <h3>进展记录</h3>
 <ul>
 <li>2026-11-16 接入训练配装、队伍站位、选敌、逐步战斗和 SQLite 回放。应用层覆盖新旧会话隔离、跨重开复现和写入失败重试。原生 WebView 跑通完整合成战斗，在新进程定位旧回放并核对 64 条事件。状态为「待验收」。<a href="../../../docs/m04-desktop.md">验证记录</a></li>
+<li>2026-11-16 在 Windows 原生 100% 缩放下补验键盘打开旧回放、定位终结技，以及 QA 存档写入失败提示、草稿保留和重试保存。当前显示器为 96 DPI，原生 150% 项仍开放。<a href="../../../docs/m04-desktop.md#桌面端到端证据">复验记录</a></li>
 </ul>
       </section>
     </article>
