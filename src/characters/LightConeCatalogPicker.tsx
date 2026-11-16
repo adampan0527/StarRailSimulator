@@ -26,9 +26,7 @@ export function LightConeCatalogPicker({
         (!path || cone.path === path) &&
         cone.name.toLowerCase().includes(query.trim().toLowerCase()),
     )
-    .sort((first, second) =>
-      compareLightConeRelease(first.default, second.default),
-    );
+    .sort(compareLightConeRelease);
 
   useEffect(() => {
     dialog.current?.showModal();

@@ -51,9 +51,39 @@
 
 .character-identity {
   display: grid;
-  grid-template-columns: auto minmax(0, 31rem);
-  align-items: start;
-  gap: clamp(0.6rem, 2vw, 1.25rem);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.75rem, 3vw, 1.5rem);
+}
+
+.character-art {
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: min(100%, clamp(13rem, 53vw, 19rem));
+  aspect-ratio: 1;
+  background: radial-gradient(closest-side, var(--surface), transparent);
+}
+
+.character-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.character-art > .character-portrait {
+  width: min(70%, 13rem);
+}
+
+@media (min-width: 48rem) {
+  .character-identity {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  }
+
+  .character-art {
+    width: min(100%, 29rem);
+  }
 }
 
 .character-card-body {

@@ -12,11 +12,12 @@ export function LightConePage({ catalog }: { catalog: Catalog }) {
   const [issue, setIssue] = useState('');
   const [status, setStatus] = useState('');
   const [attempt, setAttempt] = useState(0);
-  const sortedItems =
-    items &&
-    [...items].sort((first, second) =>
-      compareLightConeRelease(first.cone, second.cone),
-    );
+  const definitions = new Map(
+    catalog.light_cones.map((cone) => [cone.default.data_id, cone]),
+  );
+  const sortedItems = items
+    ?.map((item) => ({ item, data: definitions.get(item.cone.data_id) }))
+    .sort((first, second) => compareLightConeRelease(first.data, second.data));
 
   useEffect(() => {
     let canceled = false;
@@ -84,10 +85,7 @@ export function LightConePage({ catalog }: { catalog: Catalog }) {
       )}
       {sortedItems && sortedItems.length > 0 && (
         <ul className="light-cone-results">
-          {sortedItems.map((item) => {
-            const data = catalog.light_cones.find(
-              (cone) => cone.default.data_id === item.cone.data_id,
-            );
+          {sortedItems.map(({ item, data }) => {
             const owner = catalog.characters.find(
               ({ id }) => id === item.owner_id,
             )?.name;

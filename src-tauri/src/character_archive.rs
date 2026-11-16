@@ -37,6 +37,7 @@ pub struct CharacterEdit {
 pub struct CharacterSummary {
     id: String,
     name: String,
+    rarity: u8,
     path: String,
     element: String,
     source_ids: Vec<String>,
@@ -190,6 +191,7 @@ impl CharacterArchive {
                 Ok(CharacterSummary {
                     id: id.clone(),
                     name: character.name.clone(),
+                    rarity: character.rarity,
                     path: character.path.clone(),
                     element: character.element.clone(),
                     source_ids: character.source_ids.clone(),

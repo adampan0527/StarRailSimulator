@@ -1,5 +1,41 @@
 import lightConeDebutBatches from './light-cone-debuts.json' with { type: 'json' };
 
+// Asia server patch boundaries, newest first. Phase changes stay in the same version.
+const versionStarts = [
+  '2026-11-11', // 4.7
+  '2026-09-28',
+  '2026-08-26',
+  '2026-07-15',
+  '2026-06-01',
+  '2026-04-22',
+  '2026-03-25',
+  '2026-02-13', // 4.0
+  '2025-12-17', // 3.8
+  '2025-11-05',
+  '2025-09-24',
+  '2025-08-13',
+  '2025-07-02',
+  '2025-05-21',
+  '2025-04-09',
+  '2025-02-26',
+  '2025-01-15', // 3.0
+  '2024-12-04', // 2.7
+  '2024-10-23',
+  '2024-09-10',
+  '2024-07-31',
+  '2024-06-19',
+  '2024-05-08',
+  '2024-03-27',
+  '2024-02-06', // 2.0
+  '2023-12-27', // 1.6
+  '2023-11-15',
+  '2023-10-11',
+  '2023-08-30',
+  '2023-07-19',
+  '2023-06-07',
+  '2023-04-26', // 1.0
+];
+
 // First obtainable dates on the Asia server for the 4.7.0 roster.
 const characterDebutBatches = {
   '2026-11-11': { 'character.1511': 'Aeon ★ Aha' },
@@ -134,22 +170,30 @@ const englishAlphabetical = new Intl.Collator('en', { sensitivity: 'base' });
 
 function releaseComparator(batches: Record<string, Record<string, string>>) {
   const debutById = new Map(
-    Object.entries(batches).flatMap(([date, entries]) =>
-      Object.entries(entries).map(([id, englishName]) => [
+    Object.entries(batches).flatMap(([date, entries]) => {
+      const version = versionStarts.find((start) => start <= date) ?? date;
+      return Object.entries(entries).map(([id, englishName]) => [
         id,
-        { date, englishName },
-      ]),
-    ),
+        { version, date, englishName },
+      ]);
+    }),
   );
 
-  return (firstId: string, secondId: string) => {
-    const first = debutById.get(firstId);
-    const second = debutById.get(secondId);
+  return (
+    firstId: string | undefined,
+    secondId: string | undefined,
+    firstRarity = 0,
+    secondRarity = 0,
+  ) => {
+    const first = firstId && debutById.get(firstId);
+    const second = secondId && debutById.get(secondId);
     if (!first || !second) {
       // Keep entries without a known date at the end in input order.
       return Number(!!second) - Number(!!first);
     }
     return (
+      second.version.localeCompare(first.version, 'en') ||
+      secondRarity - firstRarity ||
       second.date.localeCompare(first.date, 'en') ||
       englishAlphabetical.compare(first.englishName, second.englishName)
     );
@@ -160,14 +204,27 @@ const compareCharacterDebut = releaseComparator(characterDebutBatches);
 const compareLightConeDebut = releaseComparator(lightConeDebutBatches);
 
 export function compareCharacterRelease(
-  first: { id: string },
-  second: { id: string },
+  first: { id: string; rarity?: number },
+  second: { id: string; rarity?: number },
 ) {
-  return compareCharacterDebut(first.id, second.id);
+  return compareCharacterDebut(
+    first.id,
+    second.id,
+    first.rarity,
+    second.rarity,
+  );
 }
+
+type LightConeReleaseEntry = { default: { data_id: string }; rarity: number };
+
 export function compareLightConeRelease(
-  first: { data_id: string },
-  second: { data_id: string },
+  first: LightConeReleaseEntry | undefined,
+  second: LightConeReleaseEntry | undefined,
 ) {
-  return compareLightConeDebut(first.data_id, second.data_id);
+  return compareLightConeDebut(
+    first?.default.data_id,
+    second?.default.data_id,
+    first?.rarity,
+    second?.rarity,
+  );
 }

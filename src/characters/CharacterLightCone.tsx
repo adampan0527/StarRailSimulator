@@ -110,7 +110,7 @@ function LightConePicker({
       : owned;
   const visible = choices
     .filter(({ data }) => !path || data.path === path)
-    .sort((first, second) => compareLightConeRelease(first.cone, second.cone));
+    .sort((first, second) => compareLightConeRelease(first.data, second.data));
 
   useEffect(() => {
     dialog.current?.showModal();

@@ -11,6 +11,35 @@ const localPortraits = import.meta.glob<string>(
   { eager: true, import: 'default', query: '?url' },
 );
 
+const localArtwork = import.meta.glob<string>(
+  '/.m03-data/4.7.0/character-art/*.webp',
+  { eager: true, import: 'default', query: '?url&no-inline' },
+);
+
+export function CharacterArtwork({
+  character,
+}: {
+  character: CharacterSummary;
+}) {
+  const [failed, setFailed] = useState<string[]>([]);
+  const source = character.source_ids
+    .map((id) => localArtwork[`/.m03-data/4.7.0/character-art/${id}.webp`])
+    .find((url) => url && !failed.includes(url));
+  return (
+    <span className="character-art" aria-hidden="true">
+      {source ? (
+        <img
+          src={source}
+          alt=""
+          onError={() => setFailed((previous) => [...previous, source])}
+        />
+      ) : (
+        <CharacterPortrait character={character} />
+      )}
+    </span>
+  );
+}
+
 export function CharacterPortrait({
   character,
 }: {

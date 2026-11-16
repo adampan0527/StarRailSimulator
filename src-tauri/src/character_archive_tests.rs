@@ -13,7 +13,13 @@ const EXAMPLE: &str = include_str!("../../contracts/battle-session.v1.example.js
 fn clean_release_archive_opens_the_bundled_roster() {
     let dir = TestData::new();
     let mut archive = CharacterArchive::installed(dir.path()).unwrap();
-    assert_eq!(archive.index().unwrap().characters.len(), 94);
+    let index = serde_json::to_value(archive.index().unwrap()).unwrap();
+    let roster = index["characters"].as_array().unwrap();
+    assert_eq!(roster.len(), 94);
+    for (id, rarity) in [("character.1003", 5), ("march_7th.hunt", 4)] {
+        let character = roster.iter().find(|character| character["id"] == id);
+        assert_eq!(character.unwrap()["rarity"], rarity);
+    }
     assert!(!dir.path().join("catalog.json").exists());
     let himeko = serde_json::to_value(archive.profile("character.1003").unwrap()).unwrap();
     assert!(himeko["edit"]["light_cone"].is_null());
@@ -34,10 +40,10 @@ fn identical_relics_are_distinct_and_a_conflict_keeps_the_saved_character() {
         .unwrap();
     cone.superimposition = 3;
     let mut archive = CharacterArchive::open(dir.path(), catalog).unwrap();
-    assert_eq!(
-        archive.index().unwrap().characters.len(),
-        template.input.team.len()
-    );
+    let index = serde_json::to_value(archive.index().unwrap()).unwrap();
+    let roster = index["characters"].as_array().unwrap();
+    assert_eq!(roster.len(), template.input.team.len());
+    assert!(roster.iter().all(|character| character["rarity"] == 5));
     let options = archive.relic_options("fixture.training_boots", 3).unwrap();
     assert_eq!(options.substats["speed"], [2_000_000, 2_300_000, 2_600_000]);
 

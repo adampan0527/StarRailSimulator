@@ -24,6 +24,7 @@ export type CharacterStats = {
   effect_resistance: number | null;
 };
 export type CharacterSummary = Name & {
+  rarity?: number;
   element: string;
   path: string;
   source_ids: string[];

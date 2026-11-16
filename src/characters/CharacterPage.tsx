@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CharacterSummary } from '../training/client';
 import {
+  CharacterArtwork,
   CharacterCardBody,
-  CharacterPortrait,
   CharacterStatGrid,
 } from './CharacterCard';
 import { CharacterFilters, matchesCharacterTraits } from './CharacterFilters';
@@ -278,7 +278,7 @@ function CharacterForm({
       }}
     >
       <div className="character-identity">
-        <CharacterPortrait character={active} />
+        <CharacterArtwork character={active} />
         <div className="field-stack">
           <p className="muted combat-trait-inline">
             <CombatTraitIcon kind="element" id={active.element} />

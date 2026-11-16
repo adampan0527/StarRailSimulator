@@ -5,6 +5,7 @@ import {
   matchesCharacterTraits,
 } from '../characters/CharacterFilters';
 import { combatTraitName } from '../characters/CombatTrait';
+import { compareCharacterRelease } from '../characters/releaseOrder';
 import type { CharacterSummary, TeamSlots } from '../training/client';
 
 export function CharacterPicker({
@@ -23,7 +24,9 @@ export function CharacterPicker({
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useId();
   const [traits, setTraits] = useState({ element: '', path: '' });
-  const visible = roster.filter((item) => matchesCharacterTraits(item, traits));
+  const visible = roster
+    .filter((item) => matchesCharacterTraits(item, traits))
+    .sort(compareCharacterRelease);
 
   useEffect(() => {
     dialog.current?.showModal();
