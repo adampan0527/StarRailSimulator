@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { LightConeFields } from './CharacterLightCone';
-import { CombatTraitIcon } from './CombatTrait';
+import { LightConeRank } from './CharacterLightCone';
+import { LightConeCard } from './LightConeCard';
+import { LightConeCatalogPicker } from './LightConeCatalogPicker';
 import { catalogError, characters } from './client';
 import type { Catalog, InventoryLightCone, LightCone } from './client';
+import { compareLightConeRelease } from './releaseOrder';
 
 export function LightConePage({ catalog }: { catalog: Catalog }) {
   const [items, setItems] = useState<InventoryLightCone[]>();
@@ -10,6 +12,11 @@ export function LightConePage({ catalog }: { catalog: Catalog }) {
   const [issue, setIssue] = useState('');
   const [status, setStatus] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const sortedItems =
+    items &&
+    [...items].sort((first, second) =>
+      compareLightConeRelease(first.cone, second.cone),
+    );
 
   useEffect(() => {
     let canceled = false;
@@ -75,9 +82,9 @@ export function LightConePage({ catalog }: { catalog: Catalog }) {
       {items?.length === 0 && !editing && (
         <p className="muted">录入你实际持有的光锥，即可在「角色」页装备。</p>
       )}
-      {items && items.length > 0 && (
-        <ul className="inventory-list">
-          {items.map((item) => {
+      {sortedItems && sortedItems.length > 0 && (
+        <ul className="light-cone-results">
+          {sortedItems.map((item) => {
             const data = catalog.light_cones.find(
               (cone) => cone.default.data_id === item.cone.data_id,
             );
@@ -86,25 +93,18 @@ export function LightConePage({ catalog }: { catalog: Catalog }) {
             )?.name;
             return (
               <li key={item.id}>
-                <div>
-                  <h3 className="combat-trait-inline">
-                    {data && <CombatTraitIcon kind="path" id={data.path} />}
-                    <span>{data?.name ?? item.cone.data_id}</span>
-                    <span className="muted">#{item.id}</span>
-                  </h3>
-                  <p className="muted">
-                    Lv. {item.cone.level} · S{item.cone.superimposition} ·{' '}
-                    {owner ?? item.owner_id ?? '未装备'}
-                  </p>
-                </div>
                 <button
                   type="button"
-                  className="secondary"
+                  className="light-cone-card-button"
                   disabled={editing !== undefined}
-                  aria-label={`编辑光锥 #${item.id}`}
+                  aria-description={`编辑光锥 #${item.id}`}
+                  title={`编辑光锥 #${item.id}`}
                   onClick={() => edit(item)}
                 >
-                  编辑
+                  <LightConeCard data={data} dataId={item.cone.data_id}>
+                    Lv. {item.cone.level} · S{item.cone.superimposition} · #
+                    {item.id} · {owner ?? item.owner_id ?? '未装备'}
+                  </LightConeCard>
                 </button>
               </li>
             );
@@ -127,9 +127,13 @@ function LightConeEditor({
   onSaved: (items: InventoryLightCone[], message: string) => void;
 }) {
   const [cone, setCone] = useState<LightCone | null>(item?.cone ?? null);
+  const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const data = catalog.light_cones.find(
+    (entry) => entry.default.data_id === cone?.data_id,
+  );
 
   async function submit(
     operation: () => Promise<InventoryLightCone[]>,
@@ -147,117 +151,140 @@ function LightConeEditor({
   }
 
   return (
-    <form
-      className="inventory-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (cone && !confirmDelete && !busy)
-          void submit(
-            () => characters.saveLightCone(item?.id ?? null, cone),
-            '光锥已保存。',
-          );
-      }}
-    >
-      <h3>{item ? `编辑光锥 #${item.id}` : '录入持有的光锥'}</h3>
-      <fieldset className="field-stack" disabled={busy || confirmDelete}>
-        <LightConeFields
-          cones={catalog.light_cones}
-          label="光锥"
-          saved={item?.cone ?? null}
-          value={cone}
-          onChange={setCone}
-        />
-        {cone && (
-          <div className="equipment-grid">
-            <label>
-              等级
-              <input
-                type="number"
-                required
-                min={1}
-                max={80}
-                value={Number.isNaN(cone.level) ? '' : cone.level}
-                onChange={(event) =>
-                  setCone({ ...cone, level: event.target.valueAsNumber })
+    <>
+      <form
+        className="inventory-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (cone && !confirmDelete && !busy)
+            void submit(
+              () => characters.saveLightCone(item?.id ?? null, cone),
+              '光锥已保存。',
+            );
+        }}
+      >
+        <h3>{item ? `编辑光锥 #${item.id}` : '录入持有的光锥'}</h3>
+        <fieldset className="field-stack" disabled={busy || confirmDelete}>
+          <button
+            type="button"
+            className="choice light-cone-preview"
+            aria-haspopup="dialog"
+            onClick={() => setPicking(true)}
+          >
+            <strong>选择光锥</strong>
+            {cone && <LightConeCard data={data} dataId={cone.data_id} />}
+          </button>
+          {cone && (
+            <div className="equipment-grid">
+              <LightConeRank
+                value={cone.superimposition}
+                onChange={(superimposition) =>
+                  setCone({ ...cone, superimposition })
                 }
               />
-            </label>
-            <label>
-              突破阶段
-              <select
-                value={cone.ascension}
-                onChange={(event) =>
-                  setCone({ ...cone, ascension: Number(event.target.value) })
+              <label>
+                等级
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  max={80}
+                  value={Number.isNaN(cone.level) ? '' : cone.level}
+                  onChange={(event) =>
+                    setCone({ ...cone, level: event.target.valueAsNumber })
+                  }
+                />
+              </label>
+              <label>
+                突破阶段
+                <select
+                  value={cone.ascension}
+                  onChange={(event) =>
+                    setCone({ ...cone, ascension: Number(event.target.value) })
+                  }
+                >
+                  {Array.from({ length: 7 }, (_, stage) => (
+                    <option key={stage} value={stage}>
+                      {stage} 阶
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+        </fieldset>
+        <div className="form-actions">
+          {confirmDelete && item ? (
+            <>
+              <span>删除光锥 #{item.id}？</span>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  void submit(
+                    () => characters.deleteLightCone(item.id),
+                    '光锥已删除。',
+                  )
                 }
               >
-                {Array.from({ length: 7 }, (_, stage) => (
-                  <option key={stage} value={stage}>
-                    {stage} 阶
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
-      </fieldset>
-      <div className="form-actions">
-        {confirmDelete && item ? (
-          <>
-            <span>删除光锥 #{item.id}？</span>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void submit(
-                  () => characters.deleteLightCone(item.id),
-                  '光锥已删除。',
-                )
-              }
-            >
-              确认删除
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={busy}
-              onClick={() => {
-                setConfirmDelete(false);
-                setIssue('');
-              }}
-            >
-              返回编辑
-            </button>
-          </>
-        ) : (
-          <>
-            <button type="submit" disabled={!cone || busy}>
-              {busy ? '正在保存…' : '保存光锥'}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={busy}
-              onClick={onCancel}
-            >
-              取消
-            </button>
-            {item && !item.owner_id && (
+                确认删除
+              </button>
               <button
                 type="button"
                 className="secondary"
                 disabled={busy}
-                onClick={() => setConfirmDelete(true)}
+                onClick={() => {
+                  setConfirmDelete(false);
+                  setIssue('');
+                }}
               >
-                删除
+                返回编辑
               </button>
-            )}
-            {item?.owner_id && (
-              <span className="muted">卸下后可以删除这件光锥。</span>
-            )}
-          </>
-        )}
-      </div>
-      {issue && <p role="alert">{issue}</p>}
-    </form>
+            </>
+          ) : (
+            <>
+              <button type="submit" disabled={!cone || busy}>
+                {busy ? '正在保存…' : '保存光锥'}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={busy}
+                onClick={onCancel}
+              >
+                取消
+              </button>
+              {item && !item.owner_id && (
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  删除
+                </button>
+              )}
+              {item?.owner_id && (
+                <span className="muted">卸下后可以删除这件光锥。</span>
+              )}
+            </>
+          )}
+        </div>
+        {issue && <p role="alert">{issue}</p>}
+      </form>
+      {picking && (
+        <LightConeCatalogPicker
+          cones={catalog.light_cones}
+          selectedId={cone?.data_id}
+          onSelect={({ default: selected }) => {
+            if (cone?.data_id === selected.data_id) return;
+            setCone(
+              item?.cone.data_id === selected.data_id ? item.cone : selected,
+            );
+          }}
+          onClose={() => setPicking(false)}
+        />
+      )}
+    </>
   );
 }

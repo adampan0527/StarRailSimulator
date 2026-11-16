@@ -1,5 +1,7 @@
+import lightConeDebutBatches from './light-cone-debuts.json' with { type: 'json' };
+
 // First obtainable dates on the Asia server for the 4.7.0 roster.
-const debutBatches = {
+const characterDebutBatches = {
   '2026-11-11': { 'character.1511': 'Aeon ★ Aha' },
   '2026-09-28': { 'character.1503': 'Pearl' },
   '2026-09-12': { 'character.1513': 'Aventurine • Waveflair' },
@@ -128,28 +130,44 @@ const debutBatches = {
   },
 };
 
-const debutById = new Map(
-  Object.entries(debutBatches).flatMap(([date, characters]) =>
-    Object.entries(characters).map(([id, englishName]) => [
-      id,
-      { date, englishName },
-    ]),
-  ),
-);
 const englishAlphabetical = new Intl.Collator('en', { sensitivity: 'base' });
+
+function releaseComparator(batches: Record<string, Record<string, string>>) {
+  const debutById = new Map(
+    Object.entries(batches).flatMap(([date, entries]) =>
+      Object.entries(entries).map(([id, englishName]) => [
+        id,
+        { date, englishName },
+      ]),
+    ),
+  );
+
+  return (firstId: string, secondId: string) => {
+    const first = debutById.get(firstId);
+    const second = debutById.get(secondId);
+    if (!first || !second) {
+      // Keep entries without a known date at the end in input order.
+      return Number(!!second) - Number(!!first);
+    }
+    return (
+      second.date.localeCompare(first.date, 'en') ||
+      englishAlphabetical.compare(first.englishName, second.englishName)
+    );
+  };
+}
+
+const compareCharacterDebut = releaseComparator(characterDebutBatches);
+const compareLightConeDebut = releaseComparator(lightConeDebutBatches);
 
 export function compareCharacterRelease(
   first: { id: string },
   second: { id: string },
 ) {
-  const firstDebut = debutById.get(first.id);
-  const secondDebut = debutById.get(second.id);
-  if (!firstDebut || !secondDebut) {
-    // Keep imported entries without a known date at the end in catalog order.
-    return Number(!!secondDebut) - Number(!!firstDebut);
-  }
-  return (
-    secondDebut.date.localeCompare(firstDebut.date, 'en') ||
-    englishAlphabetical.compare(firstDebut.englishName, secondDebut.englishName)
-  );
+  return compareCharacterDebut(first.id, second.id);
+}
+export function compareLightConeRelease(
+  first: { data_id: string },
+  second: { data_id: string },
+) {
+  return compareLightConeDebut(first.data_id, second.data_id);
 }

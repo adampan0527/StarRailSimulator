@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CharacterSummary } from '../training/client';
-import { CombatTraitFilter, CombatTraitIcon } from './CombatTrait';
+import { CombatTraitFilter } from './CombatTrait';
+import { LightConeCard } from './LightConeCard';
 import type {
   Catalog,
   InventoryLightCone,
@@ -8,6 +9,7 @@ import type {
   LightConeEquipment,
   LightConeSummary,
 } from './client';
+import { compareLightConeRelease } from './releaseOrder';
 
 const tabs = [
   ['custom', '自选光锥'],
@@ -40,19 +42,23 @@ export function CharacterLightCone(props: LightConeProps) {
       <h3>光锥</h3>
       <button
         type="button"
-        className="choice light-cone-choice"
+        className="choice light-cone-preview"
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
       >
         <strong>选择光锥</strong>
-        <span className="muted combat-trait-inline">
-          {data && <CombatTraitIcon kind="path" id={data.path} />}
-          {selected
-            ? `${data?.name ?? selected.data_id} · Lv. ${selected.level} · S${selected.superimposition} · ${value?.source === 'custom' ? '自选' : '光锥库'}`
-            : value?.source === 'inventory'
+        {selected ? (
+          <LightConeCard data={data} dataId={selected.data_id}>
+            Lv. {selected.level} · S{selected.superimposition} ·{' '}
+            {value?.source === 'custom' ? '自选' : '光锥库'}
+          </LightConeCard>
+        ) : (
+          <span className="muted">
+            {value?.source === 'inventory'
               ? `光锥 #${value.value} 已不在库中`
               : '未装备'}
-        </span>
+          </span>
+        )}
       </button>
       {data && data.path !== active.path && (
         <p className="muted">
@@ -97,12 +103,14 @@ function LightConePicker({
   });
   const choices: ConeChoice[] =
     source === 'custom'
-      ? sortLightCones(catalog.light_cones).map((data) => ({
+      ? catalog.light_cones.map((data) => ({
           data,
           cone: data.default,
         }))
       : owned;
-  const visible = choices.filter(({ data }) => !path || data.path === path);
+  const visible = choices
+    .filter(({ data }) => !path || data.path === path)
+    .sort((first, second) => compareLightConeRelease(first.cone, second.cone));
 
   useEffect(() => {
     dialog.current?.showModal();
@@ -251,23 +259,20 @@ function LightConePicker({
                       <li key={owned?.id ?? cone.data_id}>
                         <button
                           type="button"
-                          className="choice light-cone-choice"
+                          className="light-cone-card-button"
                           disabled={occupied}
                           aria-pressed={selected}
                           onClick={() => chooseCone(choice)}
                         >
-                          <strong>{data.name}</strong>
-                          <span className="muted combat-trait-inline">
-                            <CombatTraitIcon kind="path" id={data.path} />
-                            <span>{data.rarity} 星</span>
-                          </span>
-                          {owned && (
-                            <span className="muted">
-                              Lv. {cone.level} · S{cone.superimposition} · #
-                              {owned.id}
-                              {owner && ` · ${owner}已装备`}
-                            </span>
-                          )}
+                          <LightConeCard data={data} dataId={cone.data_id}>
+                            {owned && (
+                              <>
+                                Lv. {cone.level} · S{cone.superimposition} · #
+                                {owned.id}
+                                {owner && ` · ${owner}已装备`}
+                              </>
+                            )}
+                          </LightConeCard>
                         </button>
                       </li>
                     );
@@ -282,62 +287,7 @@ function LightConePicker({
   );
 }
 
-export function LightConeFields({
-  cones,
-  label,
-  saved,
-  value,
-  onChange,
-}: {
-  cones: LightConeSummary[];
-  label: string;
-  saved: LightCone | null;
-  value: LightCone | null;
-  onChange: (cone: LightCone | null) => void;
-}) {
-  const selected = cones.find(
-    (cone) => cone.default.data_id === value?.data_id,
-  );
-  return (
-    <>
-      <div className="light-cone-field">
-        <label>
-          {label}
-          <select
-            value={value?.data_id ?? ''}
-            onChange={(event) => {
-              const id = event.target.value;
-              onChange(
-                saved?.data_id === id
-                  ? saved
-                  : (cones.find((cone) => cone.default.data_id === id)
-                      ?.default ?? null),
-              );
-            }}
-          >
-            <option value="">选择光锥</option>
-            {sortLightCones(cones).map((cone) => (
-              <option key={cone.default.data_id} value={cone.default.data_id}>
-                {cone.name} · {cone.rarity} 星
-              </option>
-            ))}
-          </select>
-        </label>
-        {selected && <CombatTraitIcon kind="path" id={selected.path} />}
-      </div>
-      {value && (
-        <LightConeRank
-          value={value.superimposition}
-          onChange={(superimposition) =>
-            onChange({ ...value, superimposition })
-          }
-        />
-      )}
-    </>
-  );
-}
-
-function LightConeRank({
+export function LightConeRank({
   value,
   onChange,
 }: {
@@ -358,12 +308,6 @@ function LightConeRank({
         ))}
       </select>
     </label>
-  );
-}
-
-function sortLightCones(cones: LightConeSummary[]) {
-  return [...cones].sort(
-    (a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name, 'zh-CN'),
   );
 }
 

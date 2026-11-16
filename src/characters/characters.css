@@ -251,14 +251,12 @@
 }
 
 .relic-slot,
-.relic-choice,
-.light-cone-choice {
+.relic-choice {
   display: grid;
   gap: 0.15rem;
 }
 
-.relic-picker-results,
-.light-cone-results {
+.relic-picker-results {
   display: grid;
   gap: 0.5rem;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
@@ -267,11 +265,129 @@
   list-style: none;
 }
 
-.relic-choice,
-.light-cone-results .light-cone-choice {
+.relic-choice {
   height: 100%;
   align-content: start;
   font-weight: 400;
+}
+
+.light-cone-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5rem), 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0;
+  padding: 0.25rem;
+  list-style: none;
+}
+
+.light-cone-card-button {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--text);
+  text-align: center;
+}
+
+.light-cone-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-content: start;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.45rem;
+  border: 1px solid var(--cone-border, var(--line));
+  border-radius: 0.75rem;
+  background: var(--cone-background, var(--surface));
+  line-height: 1.35;
+}
+
+.light-cone-card[data-rarity='5'] {
+  --cone-background: linear-gradient(
+    160deg,
+    light-dark(#ffe6a9, #63481f),
+    light-dark(#fff4da, #3e2d19)
+  );
+  --cone-border: light-dark(#c69a4e, #a37b3f);
+  --cone-stars: light-dark(#805210, #ffda88);
+}
+
+.light-cone-card[data-rarity='4'] {
+  --cone-background: linear-gradient(
+    160deg,
+    light-dark(#e6d3ff, #51356e),
+    light-dark(#f4ebff, #362549)
+  );
+  --cone-border: light-dark(#b498d9, #8b6bad);
+  --cone-stars: light-dark(#643c94, #e5c7ff);
+}
+
+.light-cone-card-button[aria-pressed='true'] > .light-cone-card {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.light-cone-artwork {
+  display: grid;
+  place-items: center;
+  width: min(100%, 7.5rem);
+  aspect-ratio: 1;
+}
+
+.light-cone-artwork img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.light-cone-identity {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.light-cone-stars {
+  color: var(--cone-stars, var(--accent));
+  letter-spacing: 0.08em;
+}
+
+.light-cone-path,
+.light-cone-details {
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.light-cone-path {
+  justify-content: center;
+}
+
+.light-cone-path .combat-trait-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.light-cone-preview {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.light-cone-preview > .light-cone-card {
+  grid-template-columns: minmax(0, 4rem) minmax(0, 1fr);
+  justify-items: start;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.light-cone-preview .light-cone-path {
+  justify-content: start;
 }
 
 .light-cone-tabs {
@@ -300,17 +416,6 @@
 
 .light-cone-panel > * + * {
   margin-top: 0.65rem;
-}
-
-.light-cone-field {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 0.5rem;
-}
-
-.light-cone-field > .combat-trait-icon {
-  margin-bottom: 0.6rem;
 }
 
 @media (max-width: 420px) {
