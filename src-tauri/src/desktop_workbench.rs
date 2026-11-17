@@ -6,7 +6,8 @@ use star_rail_profiles::TeamSlots;
 use tauri::{AppHandle, Manager};
 
 use crate::workbench::{
-    BattleView, Error, LoadoutEdit, ProfileView, ReplaySummary, Setup, Workbench,
+    AnalysisKind, BattleView, Error, LoadoutEdit, ProfileView, ReplaySummary, Setup,
+    TrainingAnalysis, Workbench,
 };
 
 #[derive(Default)]
@@ -23,6 +24,7 @@ impl From<Error> for CommandError {
             Error::Loadout => "invalid_loadout",
             Error::Team => "invalid_team",
             Error::Enemies => "invalid_enemies",
+            Error::RandomAnalysis => "random_analysis",
             Error::ReplayNotFound(_) => "replay_not_found",
             Error::ReplayVersion(_)
             | Error::Battle(
@@ -123,6 +125,21 @@ pub async fn training_start(
     enemy_ids: Vec<String>,
 ) -> Result<BattleView, CommandError> {
     with_workbench(app, move |workbench| workbench.start(&enemy_ids)).await
+}
+
+#[tauri::command]
+pub async fn training_analyze(
+    app: AppHandle,
+    enemy_ids: Vec<String>,
+    kind: AnalysisKind,
+) -> Result<TrainingAnalysis, CommandError> {
+    let input = with_workbench(app, move |workbench| workbench.analysis_input(&enemy_ids)).await?;
+    tauri::async_runtime::spawn_blocking(move || input.run(kind))
+        .await
+        .map_err(|_| CommandError {
+            code: "storage_failed",
+        })?
+        .map_err(CommandError::from)
 }
 
 #[tauri::command]

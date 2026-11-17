@@ -141,14 +141,7 @@ impl Archive {
         let transaction = self
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        if transaction.execute(
-            "INSERT INTO profiles (character_id, current_preset) VALUES (?1, ?2)
-             ON CONFLICT(character_id) DO NOTHING",
-            params![character_id, preset],
-        )? == 1
-        {
-            put_preset(&transaction, character_id, preset, loadout)?;
-        }
+        insert_profile_if_missing(&transaction, character_id, preset, loadout)?;
         let profile = read_profile(&transaction, character_id)?;
         transaction.commit()?;
         Ok(profile)
@@ -310,7 +303,12 @@ impl Archive {
             ));
         }
         let slots = std::array::from_fn(|i| team.character_form_ids.get(i).cloned());
-        self.write_slots(&team.id, &team.name, &slots, preserve_existing)
+        let mode = if preserve_existing {
+            TeamWrite::Ensure
+        } else {
+            TeamWrite::Upsert
+        };
+        self.write_slots(&team.id, &team.name, &slots, mode)
     }
 
     pub fn save_team_slots(
@@ -319,7 +317,57 @@ impl Archive {
         name: &str,
         slots: &TeamSlots,
     ) -> Result<(), Error> {
-        self.write_slots(id, name, slots, false)
+        self.write_slots(id, name, slots, TeamWrite::Upsert)
+    }
+
+    pub fn save_named_team(
+        &mut self,
+        id: Option<&str>,
+        name: &str,
+        slots: &TeamSlots,
+    ) -> Result<SavedTeam, Error> {
+        let generated;
+        let (id, mode) = match id {
+            Some(id) => (id, TeamWrite::Update),
+            None => {
+                generated = self.db.query_row(
+                    "SELECT 'team.' || lower(hex(randomblob(16)))",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?;
+                (generated.as_str(), TeamWrite::Create)
+            }
+        };
+        self.write_slots(id, name, slots, mode)?;
+        Ok(SavedTeam {
+            id: id.into(),
+            name: name.into(),
+            slots: slots.clone(),
+        })
+    }
+
+    pub fn saved_teams(&self) -> Result<Vec<SavedTeam>, Error> {
+        let mut query = self.db.prepare(
+            "SELECT t.id, t.name, m.position, m.character_id
+             FROM teams t LEFT JOIN team_members m ON t.id = m.team_id
+             ORDER BY t.rowid, m.position",
+        )?;
+        let mut rows = query.query([])?;
+        let mut teams: Vec<SavedTeam> = Vec::new();
+        while let Some(row) = rows.next()? {
+            let id: String = row.get(0)?;
+            if teams.last().is_none_or(|team| team.id != id) {
+                teams.push(SavedTeam {
+                    id,
+                    name: row.get(1)?,
+                    slots: TeamSlots::default(),
+                });
+            }
+            if let (Some(team), Some(position)) = (teams.last_mut(), row.get::<_, Option<u8>>(2)?) {
+                team.slots[usize::from(position)] = row.get(3)?;
+            }
+        }
+        Ok(teams)
     }
 
     fn write_slots(
@@ -327,7 +375,7 @@ impl Archive {
         id: &str,
         name: &str,
         slots: &TeamSlots,
-        preserve_existing: bool,
+        mode: TeamWrite,
     ) -> Result<(), Error> {
         validate_name("team.name", name)?;
         if !valid_id(id) {
@@ -340,23 +388,37 @@ impl Archive {
         let transaction = self
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        if preserve_existing
-            && transaction
-                .query_row("SELECT 1 FROM teams WHERE id = ?1", [id], |row| {
-                    row.get::<_, u8>(0)
-                })
-                .optional()?
-                .is_some()
-        {
-            return Ok(());
+        match mode {
+            TeamWrite::Ensure => match team_name(&transaction, id) {
+                Ok(_) => return Ok(()),
+                Err(Error::NotFound { kind: "team", .. }) => {}
+                Err(error) => return Err(error),
+            },
+            TeamWrite::Update => {
+                team_name(&transaction, id)?;
+            }
+            TeamWrite::Create | TeamWrite::Upsert => {}
         }
         for member in slots.iter().flatten() {
-            current_preset(&transaction, member)?;
+            match current_preset(&transaction, member) {
+                Ok(_) => {}
+                Err(Error::NotFound {
+                    kind: "profile", ..
+                }) if matches!(mode, TeamWrite::Create | TeamWrite::Update) => {
+                    let loadout = self.catalog.default_loadout(member)?;
+                    insert_profile_if_missing(&transaction, member, INITIAL_PRESET, &loadout)?;
+                }
+                Err(error) => return Err(error),
+            }
         }
-        transaction.execute(
-            "INSERT INTO teams (id, name) VALUES (?1, ?2) ON CONFLICT(id) DO UPDATE SET name = excluded.name",
-            params![id, name],
-        )?;
+        let statement = match mode {
+            TeamWrite::Create | TeamWrite::Ensure => "INSERT INTO teams (id, name) VALUES (?1, ?2)",
+            TeamWrite::Update => "UPDATE teams SET name = ?2 WHERE id = ?1",
+            TeamWrite::Upsert => {
+                "INSERT INTO teams (id, name) VALUES (?1, ?2) ON CONFLICT(id) DO UPDATE SET name = excluded.name"
+            }
+        };
+        transaction.execute(statement, params![id, name])?;
         transaction.execute("DELETE FROM team_members WHERE team_id = ?1", [id])?;
         for (position, member) in slots.iter().enumerate() {
             if let Some(member) = member {
@@ -456,6 +518,20 @@ impl Archive {
 
 pub type TeamSlots = [Option<String>; 4];
 
+#[derive(Debug, Eq, PartialEq, Serialize)]
+pub struct SavedTeam {
+    pub id: String,
+    pub name: String,
+    pub slots: TeamSlots,
+}
+
+enum TeamWrite {
+    Create,
+    Update,
+    Ensure,
+    Upsert,
+}
+
 fn validate_name(field: &'static str, name: &str) -> Result<(), Error> {
     if name.trim().is_empty() || name.trim() != name || name.chars().any(char::is_control) {
         return Err(Error::invalid(field, name));
@@ -479,6 +555,23 @@ fn team_name(db: &Connection, id: &str) -> Result<String, Error> {
     })
     .optional()?
     .ok_or_else(|| Error::missing("team", id))
+}
+
+fn insert_profile_if_missing(
+    db: &Connection,
+    character_id: &str,
+    preset: &str,
+    loadout: &Loadout,
+) -> Result<(), Error> {
+    if db.execute(
+        "INSERT INTO profiles (character_id, current_preset) VALUES (?1, ?2)
+         ON CONFLICT(character_id) DO NOTHING",
+        params![character_id, preset],
+    )? == 1
+    {
+        put_preset(db, character_id, preset, loadout)?;
+    }
+    Ok(())
 }
 
 fn put_preset(db: &Connection, id: &str, name: &str, loadout: &Loadout) -> Result<(), Error> {

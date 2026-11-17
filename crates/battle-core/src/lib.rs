@@ -8,7 +8,10 @@ mod fixture;
 mod report;
 mod rng;
 
-pub use battle::{Battle, PreparedBattle};
+pub use battle::{
+    Battle, DprResult, PreparedBattle, VictorySearch, VictorySolution, calculate_dpr,
+    search_fastest_victory,
+};
 pub use contract::{
     Action, AllyInput, BattleError, Command, Config, EnemyInput, InitialInput, LightCone, Relic,
     Relics, Session,

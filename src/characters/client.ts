@@ -51,9 +51,10 @@ export type InventoryLightCone = {
   cone: LightCone;
   owner_id: string | null;
 };
+export type SavedTeam = { id: string; name: string; slots: TeamSlots };
 export type Catalog = {
   game_version: string;
-  team_slots: TeamSlots;
+  teams: SavedTeam[];
   characters: CharacterSummary[];
   light_cones: LightConeSummary[];
   relics: RelicSummary[];
@@ -102,8 +103,8 @@ export const characters = {
         edit,
       },
     ),
-  saveTeam: (slots: TeamSlots) =>
-    invoke<TeamSlots>('character_save_team', { slots }),
+  saveTeam: (id: string | null, name: string, slots: TeamSlots) =>
+    invoke<SavedTeam>('character_save_team', { id, name, slots }),
   inventory: () => invoke<InventoryItem[]>('relic_inventory'),
   lightConeInventory: () =>
     invoke<InventoryLightCone[]>('light_cone_inventory'),
@@ -142,6 +143,10 @@ export function catalogError(error: unknown) {
       return '请先在角色页卸下该遗器。';
     case 'invalid_profile':
       return '找不到所选角色或遗器，请刷新后重试。';
+    case 'invalid_team_name':
+      return '配队名称需填写 1–48 个字符。';
+    case 'invalid_team':
+      return '配队已变更或站位有重复角色，请检查后重试。';
     default:
       return describeError(error);
   }

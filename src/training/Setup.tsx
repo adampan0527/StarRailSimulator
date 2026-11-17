@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { TeamBoard } from '../team/TeamBoard';
+import { AnalysisResult } from './AnalysisResult';
 import { describeError, training } from './client';
-import type { Equipment, Profile, Setup, TeamSlots } from './client';
+import type {
+  AnalysisKind,
+  Equipment,
+  Profile,
+  Setup,
+  TeamSlots,
+  TrainingAnalysis,
+} from './client';
 
 export function TrainingSetup({
   setup,
@@ -10,6 +18,7 @@ export function TrainingSetup({
   onTeam,
   onStart,
   onLoadout,
+  onResume,
 }: {
   setup: Setup;
   starting: boolean;
@@ -17,31 +26,149 @@ export function TrainingSetup({
   onTeam: (slots: TeamSlots) => void;
   onStart: (enemies: string[]) => void;
   onLoadout: () => void;
+  onResume?: () => void;
 }) {
   const [enemies, setEnemies] = useState(() =>
     setup.enemies.map(({ id }) => id),
   );
+  const [slots, setSlots] = useState(setup.team_slots);
+  const [saving, setSaving] = useState(false);
+  const [saveIssue, setSaveIssue] = useState('');
+  const [analysis, setAnalysis] = useState<TrainingAnalysis>();
+  const [running, setRunning] = useState<AnalysisKind>();
+  const [analysisIssue, setAnalysisIssue] = useState('');
+  const dirty = slots.some((id, index) => id !== setup.team_slots[index]);
+  const locked = starting || saving || running !== undefined;
+  const ready = !dirty && slots.some((id) => id !== null) && enemies.length > 0;
+
+  async function saveTeam() {
+    setSaving(true);
+    setSaveIssue('');
+    try {
+      onTeam(await training.saveTeam(slots));
+    } catch (error) {
+      setSaveIssue(describeError(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function clearAnalysis() {
+    setAnalysis(undefined);
+    setAnalysisIssue('');
+  }
+
+  async function analyze(kind: AnalysisKind) {
+    setRunning(kind);
+    clearAnalysis();
+    try {
+      setAnalysis(await training.analyze(enemies, kind));
+    } catch (error) {
+      setAnalysisIssue(describeError(error));
+    } finally {
+      setRunning(undefined);
+    }
+  }
+
   return (
-    <TeamBoard
-      roster={setup.profiles}
-      savedSlots={setup.team_slots}
-      save={training.saveTeam}
-      onSaved={onTeam}
-      busy={starting}
-      issue={issue}
-      training={{
-        targets: setup.enemies,
-        selected: enemies,
-        toggle: (id) =>
-          setEnemies((current) =>
-            current.includes(id)
-              ? current.filter((enemy) => enemy !== id)
-              : [...current, id],
-          ),
-        start: () => onStart(enemies),
-        onLoadout,
-      }}
-    />
+    <>
+      <section
+        className="field-zone enemy-zone"
+        aria-labelledby="training-enemy-title"
+      >
+        <h3 id="training-enemy-title">敌方 · 训练靶机</h3>
+        <div className="enemy-slots" role="group" aria-label="选择训练靶机">
+          {setup.enemies.map(({ id, name }) => (
+            <button
+              key={id}
+              type="button"
+              className="choice"
+              aria-pressed={enemies.includes(id)}
+              disabled={locked}
+              onClick={() => {
+                clearAnalysis();
+                setEnemies((current) =>
+                  current.includes(id)
+                    ? current.filter((enemy) => enemy !== id)
+                    : [...current, id],
+                );
+              }}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      </section>
+      <TeamBoard
+        roster={setup.profiles}
+        slots={slots}
+        onChange={(slots) => {
+          setSlots(slots);
+          clearAnalysis();
+        }}
+        disabled={locked}
+      />
+      <div className="form-actions">
+        <button
+          type="button"
+          className="secondary"
+          disabled={locked}
+          onClick={() => {
+            clearAnalysis();
+            onLoadout();
+          }}
+        >
+          训练配装
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          disabled={!dirty || locked}
+          onClick={() => void saveTeam()}
+        >
+          {saving ? '正在保存…' : '保存站位'}
+        </button>
+        <span role="status">{dirty ? '有未保存的站位。' : ''}</span>
+      </div>
+      <div className="form-actions">
+        <button
+          type="button"
+          disabled={!ready || locked}
+          onClick={() => onStart(enemies)}
+        >
+          {starting ? '正在开战…' : '开始战斗'}
+        </button>
+        {onResume && (
+          <button
+            type="button"
+            className="secondary"
+            disabled={locked}
+            onClick={onResume}
+          >
+            继续战斗
+          </button>
+        )}
+        <button
+          type="button"
+          className="secondary"
+          disabled={!ready || locked}
+          onClick={() => void analyze('dpr')}
+        >
+          {running === 'dpr' ? '正在计算…' : '计算 DPR'}
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          disabled={!ready || locked}
+          onClick={() => void analyze('fastest_victory')}
+        >
+          {running === 'fastest_victory' ? '正在搜索…' : '计算最优解'}
+        </button>
+      </div>
+      {analysis && <AnalysisResult analysis={analysis} />}
+      {(saveIssue || issue) && <p role="alert">{saveIssue || issue}</p>}
+      {analysisIssue && <p role="alert">{analysisIssue}</p>}
+    </>
   );
 }
 

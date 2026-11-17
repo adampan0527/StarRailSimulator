@@ -5,11 +5,41 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::workbench::{LoadoutEdit, Workbench};
+use crate::workbench::{AnalysisKind, LoadoutEdit, TrainingAnalysis, Workbench};
 use star_rail_battle_core::{Command, Outcome};
 
 const SCRIPT: &str = include_str!("../../crates/battle-core/fixtures/full-replay.commands.json");
 static NEXT_TEMP: AtomicU32 = AtomicU32::new(0);
+
+#[test]
+fn training_analysis_uses_frozen_inputs_and_produces_replayable_commands() {
+    let dir = TestData::new();
+    let mut app = Workbench::open(dir.path()).unwrap();
+    let left = [app.setup().unwrap().enemies[0].id.clone()];
+    let frozen = app.analysis_input(&left).unwrap();
+    app.save_team(Default::default()).unwrap();
+    assert!(app.analysis_input(&left).is_err());
+    let TrainingAnalysis::FastestVictory { result, .. } =
+        frozen.run(AnalysisKind::FastestVictory).unwrap()
+    else {
+        panic!("expected fastest victory");
+    };
+    assert!(result.exact);
+    assert!(app.replays().unwrap().is_empty());
+    let solution = result.victory.unwrap();
+
+    let template = app.setup().unwrap();
+    app.save_team(std::array::from_fn(|index| {
+        Some(template.profiles[index].id.clone())
+    }))
+    .unwrap();
+    let mut battle = app.start(&left).unwrap();
+    for action in solution.commands {
+        battle = app.act(battle.id, &action).unwrap();
+    }
+    assert_eq!(battle.snapshot.outcome, Outcome::Victory);
+    assert_eq!(battle.snapshot.av_micros, solution.av_micros);
+}
 
 pub(crate) struct TestData(PathBuf);
 

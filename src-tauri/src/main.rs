@@ -36,6 +36,7 @@ fn main() -> ExitCode {
             desktop_workbench::training_select_loadout,
             desktop_workbench::training_save_team,
             desktop_workbench::training_start,
+            desktop_workbench::training_analyze,
             desktop_workbench::training_act,
             desktop_workbench::training_replays,
             desktop_workbench::training_replay,

@@ -15,7 +15,8 @@ pub use loadout::{FrozenCharacter, FrozenTeam, Loadout, RelicSubstatValues};
 pub use panel::{CharacterStats, ScaledStat};
 pub use star_rail_battle_core::{Config, LightCone, Relic, Relics};
 pub use store::{
-    Archive, InventoryLightCone, InventoryRelic, LightConeEquipment, Profile, Team, TeamSlots,
+    Archive, InventoryLightCone, InventoryRelic, LightConeEquipment, Profile, SavedTeam, Team,
+    TeamSlots,
 };
 pub use training::training_catalog;
 

@@ -2,7 +2,8 @@ use std::{path::Path, sync::Mutex};
 
 use serde::Serialize;
 use star_rail_profiles::{
-    Error as ProfileError, InventoryLightCone, InventoryRelic, LightCone, Relic, TeamSlots,
+    Error as ProfileError, InventoryLightCone, InventoryRelic, LightCone, Relic, SavedTeam,
+    TeamSlots,
 };
 use tauri::{AppHandle, Manager};
 
@@ -24,6 +25,7 @@ impl From<Error> for CommandError {
             Error::MissingCatalog => "catalog_missing",
             Error::Catalog(_) | Error::CatalogSize => "catalog_invalid",
             Error::Profile(ProfileError::Version { .. }) => "catalog_mismatch",
+            Error::TeamName => "invalid_team_name",
             Error::Profile(ProfileError::Invalid {
                 field: "eidolon" | "affinitive_eidolon",
                 ..
@@ -37,9 +39,10 @@ impl From<Error> for CommandError {
                 ..
             }) => "relic_equipped",
             Error::Profile(ProfileError::Invalid {
-                field: "team.members",
+                field: "team.id" | "team.members",
                 ..
-            }) => "invalid_team",
+            })
+            | Error::Profile(ProfileError::NotFound { kind: "team", .. }) => "invalid_team",
             Error::Profile(ProfileError::Invalid { field, .. }) if field.starts_with("relic.") => {
                 "invalid_relic"
             }
@@ -160,9 +163,14 @@ pub async fn character_save(
 #[tauri::command]
 pub async fn character_save_team(
     app: AppHandle,
+    id: Option<String>,
+    name: String,
     slots: TeamSlots,
-) -> Result<TeamSlots, CommandError> {
-    with_archive(app, move |archive| archive.save_team(slots)).await
+) -> Result<SavedTeam, CommandError> {
+    with_archive(app, move |archive| {
+        archive.save_team(id.as_deref(), &name, &slots)
+    })
+    .await
 }
 
 #[tauri::command]

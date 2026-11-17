@@ -1,11 +1,11 @@
 mod replays;
 
-use std::{collections::BTreeSet, fs, path::Path};
+use std::{collections::BTreeSet, fs, num::NonZeroU32, path::Path};
 
 use serde::{Deserialize, Serialize};
 use star_rail_battle_core::{
-    ActionOrderEntry, Battle, BattleError, Command, Event, LogMode, PreparedBattle, Session,
-    Snapshot, training_attributes,
+    ActionOrderEntry, Battle, BattleError, Command, DprResult, Event, LogMode, PreparedBattle,
+    Session, Snapshot, VictorySearch, calculate_dpr, search_fastest_victory, training_attributes,
 };
 use star_rail_profiles::{
     Archive, Catalog, CharacterStats, Loadout, Profile, Relic, Team, TeamSlots, training_catalog,
@@ -18,6 +18,8 @@ const TEMPLATE: &str = include_str!("../../contracts/battle-session.v1.example.j
 const TRAINING_TEAM: &str = "training.team";
 const INITIAL_PRESET: &str = "初始训练配装";
 const SPEED_TIERS: [u32; 3] = [2_000_000, 2_300_000, 2_600_000];
+const DPR_CYCLES: NonZeroU32 = NonZeroU32::new(3).unwrap();
+const SEARCH_BUDGET: NonZeroU32 = NonZeroU32::new(20_000).unwrap();
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -37,6 +39,8 @@ pub enum Error {
     Team,
     #[error("invalid enemy selection")]
     Enemies,
+    #[error("fastest victory search requires a deterministic training encounter")]
+    RandomAnalysis,
     #[error("replay {0} not found")]
     ReplayNotFound(u32),
     #[error("unsupported replay database version: {0}")]
@@ -92,6 +96,52 @@ pub struct BattleView {
     pub legal_actions: Vec<Command>,
     pub events: Vec<Event>,
     pub names: Vec<Name>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalysisKind {
+    Dpr,
+    FastestVictory,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TrainingAnalysis {
+    Dpr {
+        result: DprResult,
+    },
+    FastestVictory {
+        result: VictorySearch,
+        names: Vec<Name>,
+    },
+}
+
+pub struct AnalysisInput {
+    session: Session,
+    names: Vec<Name>,
+}
+
+impl AnalysisInput {
+    pub fn run(self, kind: AnalysisKind) -> Result<TrainingAnalysis, Error> {
+        let plan = PreparedBattle::new(&self.session.input)?;
+        match kind {
+            AnalysisKind::Dpr => Ok(TrainingAnalysis::Dpr {
+                result: calculate_dpr(&plan, DPR_CYCLES)?,
+            }),
+            AnalysisKind::FastestVictory => {
+                let result =
+                    search_fastest_victory(&plan, SEARCH_BUDGET).map_err(|error| match error {
+                        BattleError::UnsupportedData(_) => Error::RandomAnalysis,
+                        error => error.into(),
+                    })?;
+                Ok(TrainingAnalysis::FastestVictory {
+                    result,
+                    names: self.names,
+                })
+            }
+        }
+    }
 }
 
 pub struct Workbench {
@@ -266,7 +316,7 @@ impl Workbench {
         Ok(slots)
     }
 
-    pub fn start(&mut self, enemy_ids: &[String]) -> Result<BattleView, Error> {
+    fn encounter(&self, enemy_ids: &[String]) -> Result<Session, Error> {
         let team = self.archive.freeze_team(TRAINING_TEAM)?;
         let mut input = self.template.input.clone();
         input.team = team
@@ -288,7 +338,17 @@ impl Workbench {
         if input.waves[0].is_empty() || input.waves[0].len() != enemy_ids.len() {
             return Err(Error::Enemies);
         }
-        let session = team.fixture_session(&Session::new(input))?;
+        Ok(team.fixture_session(&Session::new(input))?)
+    }
+
+    pub fn analysis_input(&self, enemy_ids: &[String]) -> Result<AnalysisInput, Error> {
+        let session = self.encounter(enemy_ids)?;
+        let names = battle_names(&session, self.archive.catalog());
+        Ok(AnalysisInput { session, names })
+    }
+
+    pub fn start(&mut self, enemy_ids: &[String]) -> Result<BattleView, Error> {
+        let session = self.encounter(enemy_ids)?;
         let prepared = PreparedBattle::new(&session.input)?;
         let battle = Battle::start(&prepared, LogMode::Detailed);
         let id = self.replays.insert(&session, battle.outcome())?;
@@ -319,7 +379,18 @@ impl Workbench {
 }
 
 fn battle_view(id: u32, session: &Session, battle: &Battle<'_>, catalog: &Catalog) -> BattleView {
-    let names = session
+    BattleView {
+        id,
+        snapshot: battle.snapshot(),
+        order: battle.action_order(),
+        legal_actions: battle.legal_actions(),
+        events: battle.events().to_vec(),
+        names: battle_names(session, catalog),
+    }
+}
+
+fn battle_names(session: &Session, catalog: &Catalog) -> Vec<Name> {
+    session
         .input
         .team
         .iter()
@@ -334,15 +405,7 @@ fn battle_view(id: u32, session: &Session, battle: &Battle<'_>, catalog: &Catalo
             id: enemy.unit_id.clone(),
             name: enemy_name(&enemy.enemy_id).into(),
         }))
-        .collect();
-    BattleView {
-        id,
-        snapshot: battle.snapshot(),
-        order: battle.action_order(),
-        legal_actions: battle.legal_actions(),
-        events: battle.events().to_vec(),
-        names,
-    }
+        .collect()
 }
 
 fn enemy_name(id: &str) -> &str {

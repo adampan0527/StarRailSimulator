@@ -51,6 +51,8 @@
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>光锥录入、库存与装备选择展示本地图片、星星、命途和名称。五星使用金色卡片，四星使用紫色卡片，三星使用蓝色卡片。</span></li>
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>光锥录入、库存和装备选择按首次上线版本倒序，同版本按星级降序，同星级按上线批次倒序，同批按英文名 A–Z。</span></li>
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>「角色」页卡片展示头像、名称、属性图标和命途图标，可组合使用名称搜索、属性筛选和命途筛选。角色列表和组队选人与光锥列表采用相同排序。打开卡片可查看对应形态的立绘并配置角色，返回后恢复筛选和卡片位置。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>主页从全局角色库选人并读取当前配装面板，可创建、命名、保存和切换多套配队，原已保存配队可继续使用。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>从「组队」按名称、怪物 ID 或类别查找 4.7.0 可独立出场的敌人，逐站位设置等级并查看只读属性。同一入口能启动合成战斗，返回后保留已选目标。</span></li>
 <li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>按 <code>design.md</code> 审查配装页与战斗页；在 100% 和 150% Windows 显示缩放下检查布局、字体和关键路径，键盘可操作，加载、空白和失败状态可理解。</span></li>
 </ul>
 <p><strong>验收证据：</strong> <a href="../../../docs/m04-desktop.md#桌面端到端证据">桌面端到端记录与截图</a>、<a href="../../../docs/m04-evidence/desktop-workflow.mp4">操作录屏</a>、<a href="../../../src-tauri/src/workbench_tests.rs">应用层集成测试</a>、<a href="../../../docs/m04-desktop.md#角色库存与站位复验">角色目录加载复验</a>。Windows 原生 100% 已验证键盘定位回放和写入失败后重试。WebView 150% 等效视口检查通过，Windows 原生 150% 验收待补。</p>
@@ -72,6 +74,12 @@
 <li>2026-11-16 光锥列表改为按上线日期倒序、同批英文名 A–Z。对账覆盖 172 张光锥，Edge 模拟 IPC 验证录入、库存、两个装备标签和筛选顺序。<a href="../../../docs/m04-desktop.md#光锥库与遗器筛选">验证记录</a></li>
 <li>2026-11-16 在角色配置页加入离线立绘，角色与光锥列表同版本优先显示高星级。Edge 模拟 IPC 核对 99 张立绘、头像回退、三种视口布局及列表顺序。Rust 工作区和前端检查通过。<a href="../../../docs/m04-desktop.md#角色卡片">验证记录</a></li>
 <li>2026-11-17 三星光锥卡片改用蓝色背景。Edge 核对录入、库存和装备选择在浅色与深色主题下的底色。<a href="../../../docs/m04-desktop.md#光锥库与遗器筛选">验证记录</a></li>
+<li>2026-11-17 主页统一为命名配队，站位引用角色库的形态 ID，沿用旧配队存档。合成战斗入口移至「训练战斗」。Rust 应用层验证旧配队、多队和稀疏站位的重开恢复。Edge 模拟 IPC 验证 94 个角色可选、保存重试、配队切换和面板刷新，360、704 和 1056 CSS px 下布局通过。主页的敌方及计算入口等待正式战斗数据。<a href="../../../docs/m04-desktop.md#合成数据计算">桌面验证</a> · <a href="../../../src-tauri/src/character_archive_tests.rs">存档回归</a></li>
+<li>2026-11-17 「已保存配队」菜单改用工作台配色，显示当前配队和勾选标记。Edge 深浅色验证通过，覆盖键盘选队、Escape、点击外部关闭，以及 360 CSS px 下长名称换行和草稿切换。</li>
+<li>2026-11-17 配队标题、选择器和「新建配队」改为紧凑同排布局。Edge 在 360、523、704 和 1056 CSS px 下核对同行与横向溢出，复验键盘选择和草稿切换。</li>
+<li>2026-11-17 合并组队与训练入口。首批八个 4.7.0 怪物的属性和弱点由固定版本数据提供。Edge 模拟 IPC 核对选敌、切换等级、保留草稿、开战和恢复。正式关卡和角色规则待接入。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">数据范围与验证</a></li>
+<li>2026-11-17 扩展到全部 2,781 条 4.7.0 敌方配置，逐 ID 对账。Edge 离线验证搜索、类别筛选、分页、立绘解码和缺图回退。内置头像覆盖 2,726 条配置，专属立绘覆盖 2,679 条。Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">敌方目录与验证</a></li>
+<li>2026-11-17 根据关卡、图鉴与召唤归属筛出 383 种可独立配置的敌人。选敌按名称归并同名难度档，等级改为各站位独立配置。Edge 离线复验重复卡归并、银枝雕像排除、逐站位改级和窄窗键盘操作，Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">组队与敌方阵容</a></li>
 </ul>
       </section>
     </article>

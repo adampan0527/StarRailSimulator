@@ -1,4 +1,5 @@
 /// Versioned SplitMix64 stream. All draws go through the same session-local state.
+#[derive(Clone)]
 pub(crate) struct Rng {
     state: u64,
     pub draws: u32,

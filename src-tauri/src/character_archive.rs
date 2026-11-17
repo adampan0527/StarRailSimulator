@@ -3,12 +3,11 @@ use std::{collections::BTreeMap, fs, io, path::Path};
 use serde::{Deserialize, Serialize};
 use star_rail_profiles::{
     Archive, Catalog, CharacterStats, Eidolon, InventoryLightCone, InventoryRelic, LightCone,
-    LightConeEquipment, Relic, RelicSlot, TeamSlots,
+    LightConeEquipment, Relic, RelicSlot, SavedTeam, TeamSlots,
 };
 
 const MAX_CATALOG_BYTES: usize = 8 * 1024 * 1024;
 const CATALOG_FILE: &str = "catalog.json";
-const TEAM_ID: &str = "desktop.team";
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -22,6 +21,8 @@ pub enum Error {
     Profile(#[from] star_rail_profiles::Error),
     #[error("character archive filesystem: {0}")]
     Io(#[from] io::Error),
+    #[error("invalid team name")]
+    TeamName,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -72,7 +73,7 @@ struct LightConeSummary {
 #[derive(Serialize)]
 pub struct Index {
     game_version: String,
-    team_slots: TeamSlots,
+    teams: Vec<SavedTeam>,
     pub characters: Vec<CharacterSummary>,
     light_cones: Vec<LightConeSummary>,
     relics: Vec<RelicSummary>,
@@ -130,7 +131,7 @@ impl CharacterArchive {
         let catalog = self.0.catalog();
         Ok(Index {
             game_version: catalog.game_version.clone(),
-            team_slots: self.team_slots()?,
+            teams: self.0.saved_teams()?,
             characters: self.roster()?,
             light_cones: catalog
                 .light_cones
@@ -302,22 +303,17 @@ impl CharacterArchive {
         self.inventory()
     }
 
-    pub fn save_team(&mut self, slots: TeamSlots) -> Result<TeamSlots, Error> {
-        for id in slots.iter().flatten() {
-            self.0.ensure_profile(id)?;
+    pub fn save_team(
+        &mut self,
+        id: Option<&str>,
+        name: &str,
+        slots: &TeamSlots,
+    ) -> Result<SavedTeam, Error> {
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 48 || name.chars().any(char::is_control) {
+            return Err(Error::TeamName);
         }
-        self.0.save_team_slots(TEAM_ID, "当前队伍", &slots)?;
-        Ok(slots)
-    }
-
-    pub fn team_slots(&self) -> Result<TeamSlots, Error> {
-        match self.0.team_slots(TEAM_ID) {
-            Ok(slots) => Ok(slots),
-            Err(star_rail_profiles::Error::NotFound { kind: "team", .. }) => {
-                Ok(TeamSlots::default())
-            }
-            Err(error) => Err(error.into()),
-        }
+        Ok(self.0.save_named_team(id, name, slots)?)
     }
 }
 

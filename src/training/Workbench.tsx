@@ -3,9 +3,9 @@ import { CharacterPage } from '../characters/CharacterPage';
 import { LightConePage } from '../characters/LightConePage';
 import { RelicPage } from '../characters/RelicPage';
 import { catalogError, characters } from '../characters/client';
-import type { Catalog } from '../characters/client';
+import type { Catalog, SavedTeam } from '../characters/client';
 import { Diagnostics } from '../desktop/Diagnostics';
-import { TeamBoard } from '../team/TeamBoard';
+import { TeamWorkspace } from '../team/TeamWorkspace';
 import { BattlePanel } from './Battle';
 import { History } from './History';
 import { TrainingLoadouts, TrainingSetup } from './Setup';
@@ -17,39 +17,47 @@ const pages = [
   { id: 'characters', name: '角色' },
   { id: 'relics', name: '遗器' },
   { id: 'light-cones', name: '光锥库' },
-  { id: 'battle', name: '训练战斗' },
   { id: 'history', name: '历史回放' },
 ] as const;
 
-type Page = (typeof pages)[number]['id'] | 'training-loadout';
+type Page = (typeof pages)[number]['id'] | 'battle' | 'training-loadout';
 
 export function Workbench() {
   const [page, setPage] = useState<Page>('setup');
+  const [trainingMode, setTrainingMode] = useState(false);
   const [setup, setSetup] = useState<Setup>();
   const [initialError, setInitialError] = useState('');
   const [catalog, setCatalog] = useState<Catalog>();
   const [catalogIssue, setCatalogIssue] = useState('');
   const [rosterIssue, setRosterIssue] = useState('');
   const [catalogBusy, setCatalogBusy] = useState(true);
-  const [trainingMode, setTrainingMode] = useState(false);
   const [battle, setBattle] = useState<BattleView>();
   const [startIssue, setStartIssue] = useState('');
   const [actionIssue, setActionIssue] = useState('');
   const [busy, setBusy] = useState(false);
   const main = useRef<HTMLElement>(null);
   const requestedFocus = useRef(false);
+  const loadingTraining = useRef(false);
 
   async function load() {
+    if (loadingTraining.current) return;
+    loadingTraining.current = true;
     setInitialError('');
     try {
       setSetup(await training.setup());
     } catch (error) {
       setInitialError(describeError(error));
+    } finally {
+      loadingTraining.current = false;
     }
   }
 
+  function selectBattlefield(isTraining: boolean) {
+    setTrainingMode(isTraining);
+    if (isTraining && !setup) void load();
+  }
+
   useEffect(() => {
-    void load();
     void loadCatalog();
   }, []);
 
@@ -66,7 +74,6 @@ export function Workbench() {
           ? await characters.importCatalog(await file.text())
           : await characters.index(),
       );
-      setTrainingMode(false);
     } catch (error) {
       setCatalogIssue(catalogError(error));
     } finally {
@@ -115,8 +122,14 @@ export function Workbench() {
     setSetup((current) => current && { ...current, team_slots: slots });
   }
 
-  function updateCatalogTeam(slots: TeamSlots) {
-    setCatalog((current) => current && { ...current, team_slots: slots });
+  function updateCatalogTeam(team: SavedTeam) {
+    setCatalog((current) => {
+      if (!current) return current;
+      const teams = current.teams.some(({ id }) => id === team.id)
+        ? current.teams.map((item) => (item.id === team.id ? team : item))
+        : [...current.teams, team];
+      return { ...current, teams };
+    });
   }
 
   async function start(enemies: string[]) {
@@ -163,7 +176,7 @@ export function Workbench() {
             <p>
               {catalog
                 ? `离线工作台 · 数据 ${catalog.game_version}`
-                : '离线训练 · 合成规则'}
+                : '离线工作台'}
             </p>
           </div>
         </div>
@@ -174,7 +187,9 @@ export function Workbench() {
               type="button"
               className="nav-button"
               aria-current={
-                page === id || (id === 'setup' && page === 'training-loadout')
+                page === id ||
+                (id === 'setup' &&
+                  (page === 'battle' || page === 'training-loadout'))
                   ? 'page'
                   : undefined
               }
@@ -189,57 +204,38 @@ export function Workbench() {
       <main
         ref={main}
         tabIndex={-1}
-        aria-label={pages.find(({ id }) => page === id)?.name ?? '训练配装'}
+        aria-label={
+          pages.find(({ id }) => page === id)?.name ??
+          (page === 'battle' ? '战斗' : '训练配装')
+        }
       >
-        {page === 'setup' && (
-          <>
-            <div className="team-mode">
-              {catalog ? (
-                <div role="group" aria-label="队伍类型">
-                  <button
-                    type="button"
-                    className="choice"
-                    aria-pressed={!trainingMode}
-                    disabled={busy}
-                    onClick={() => setTrainingMode(false)}
-                  >
-                    正式服队伍
-                  </button>
-                  <button
-                    type="button"
-                    className="choice"
-                    aria-pressed={trainingMode}
-                    disabled={busy}
-                    onClick={() => setTrainingMode(true)}
-                  >
-                    合成训练
-                  </button>
-                </div>
+        <div hidden={page !== 'setup'}>
+          <TeamWorkspace
+            catalog={catalog}
+            catalogStatus={
+              catalogBusy ? (
+                <p role="status">正在读取角色库…</p>
               ) : (
-                !catalogBusy && (
+                <section className="field-zone">
+                  <h3>己方</h3>
+                  {catalogIssue && <p role="alert">{catalogIssue}</p>}
                   <button
                     type="button"
                     className="secondary"
                     onClick={() => navigate('characters')}
                   >
-                    载入正式服数据
+                    前往角色库
                   </button>
-                )
-              )}
-            </div>
-            {catalog && (
-              <div hidden={trainingMode}>
-                <TeamBoard
-                  roster={catalog.characters}
-                  savedSlots={catalog.team_slots}
-                  save={characters.saveTeam}
-                  onSaved={updateCatalogTeam}
-                  issue={rosterIssue}
-                />
-              </div>
-            )}
-            <div hidden={catalog ? !trainingMode : catalogBusy}>
-              {setup ? (
+                </section>
+              )
+            }
+            onSaved={updateCatalogTeam}
+            rosterIssue={rosterIssue}
+            training={trainingMode}
+            onModeChange={selectBattlefield}
+            busy={busy}
+            trainingContent={
+              setup ? (
                 <TrainingSetup
                   setup={setup}
                   starting={busy}
@@ -247,21 +243,23 @@ export function Workbench() {
                   onTeam={updateTeam}
                   onStart={(enemies) => void start(enemies)}
                   onLoadout={() => navigate('training-loadout')}
+                  onResume={
+                    battle?.snapshot.outcome === 'ongoing'
+                      ? () => navigate('battle')
+                      : undefined
+                  }
                 />
               ) : (
-                <TrainingStatus
-                  error={initialError}
-                  onRetry={() => void load()}
-                />
-              )}
-            </div>
-            {!catalog && catalogBusy && (
-              <p role="status" className="panel">
-                正在读取数据…
-              </p>
-            )}
-          </>
-        )}
+                trainingMode && (
+                  <TrainingStatus
+                    error={initialError}
+                    onRetry={() => void load()}
+                  />
+                )
+              )
+            }
+          />
+        </div>
         {page === 'training-loadout' && (
           <>
             <div className="team-mode">
@@ -270,7 +268,7 @@ export function Workbench() {
                 className="secondary"
                 onClick={() => navigate('setup')}
               >
-                返回训练队伍
+                返回组队
               </button>
             </div>
             {setup && (
@@ -315,8 +313,18 @@ export function Workbench() {
               )}
             </section>
           ))}
-        {page === 'battle' &&
-          (battle ? (
+        {page === 'battle' && battle && (
+          <>
+            <div className="team-mode">
+              <button
+                type="button"
+                className="secondary"
+                disabled={busy}
+                onClick={() => navigate('setup')}
+              >
+                返回组队
+              </button>
+            </div>
             <BattlePanel
               key={battle.id}
               battle={battle}
@@ -325,26 +333,14 @@ export function Workbench() {
               issue={actionIssue}
               onAct={(command) => void act(command)}
             />
-          ) : (
-            <section className="panel">
-              <h2>尚未开始训练</h2>
-              <p>选择阵容和训练目标后即可开战。</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setTrainingMode(true);
-                  navigate('setup');
-                }}
-              >
-                去准备训练队伍
-              </button>
-            </section>
-          ))}
+          </>
+        )}
         {page === 'history' && (
           <History
             onResume={(entry) => {
               setBattle(entry);
               setActionIssue('');
+              selectBattlefield(true);
               navigate('battle');
             }}
           />
@@ -365,7 +361,7 @@ function TrainingStatus({
   onRetry: () => void;
 }) {
   return (
-    <section className="panel">
+    <section className="field-zone">
       {error ? (
         <>
           <p role="alert">{error}</p>
@@ -374,7 +370,7 @@ function TrainingStatus({
           </button>
         </>
       ) : (
-        <p role="status">正在读取训练队伍…</p>
+        <p role="status">正在读取合成战斗…</p>
       )}
     </section>
   );

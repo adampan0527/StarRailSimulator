@@ -1,3 +1,4 @@
+mod analysis;
 mod resolve;
 mod setup;
 
@@ -9,6 +10,9 @@ use crate::{
     fixture::{Ability, GAUGE_FULL, SKILL_POINT_CAP, TURN_LIMIT, Target},
     rng::Rng,
 };
+pub use analysis::{
+    DprResult, VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
+};
 use setup::Kit;
 pub use setup::PreparedBattle;
 
@@ -19,6 +23,7 @@ struct Status {
     expires_after_turn: u32,
 }
 
+#[derive(Clone)]
 struct UnitState {
     hp: u32,
     energy_milli: u32,
@@ -36,6 +41,7 @@ impl UnitState {
 }
 
 /// A deterministic state machine advanced only by accepted commands and automatic actions.
+#[derive(Clone)]
 pub struct Battle<'a> {
     plan: &'a PreparedBattle,
     units: Vec<UnitState>,

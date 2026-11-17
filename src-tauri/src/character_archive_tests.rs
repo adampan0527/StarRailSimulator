@@ -1,5 +1,5 @@
 use star_rail_battle_core::Session;
-use star_rail_profiles::{LightConeEquipment, Relic, RelicSlot, training_catalog};
+use star_rail_profiles::{Archive, LightConeEquipment, Relic, RelicSlot, training_catalog};
 
 use crate::{
     character_archive::{CharacterArchive, Error},
@@ -83,11 +83,12 @@ fn identical_relics_are_distinct_and_a_conflict_keeps_the_saved_character() {
     archive.save(second, conflict.clone()).unwrap();
 
     let slots = [None, Some(first.clone()), None, Some(second.clone())];
-    archive.save_team(slots.clone()).unwrap();
+    let team = archive.save_team(None, "样例配队", &slots).unwrap();
     drop(archive);
 
     let mut reopened = CharacterArchive::open(dir.path(), training_catalog(&template)).unwrap();
-    assert_eq!(reopened.team_slots().unwrap(), slots);
+    let saved = serde_json::to_value(reopened.index().unwrap()).unwrap();
+    assert_eq!(saved["teams"], serde_json::json!([team]));
     assert_eq!(reopened.profile(first).unwrap().edit, draft);
     assert_eq!(reopened.profile(second).unwrap().edit, conflict);
     assert_eq!(
@@ -108,4 +109,53 @@ fn identical_relics_are_distinct_and_a_conflict_keeps_the_saved_character() {
     conflict.relics.insert(RelicSlot::Feet, id);
     reopened.save(second, conflict).unwrap();
     assert!(reopened.delete_relic(other_id).is_ok());
+}
+
+#[test]
+fn opens_the_legacy_team_and_saves_independent_named_formations() {
+    let template = Session::from_json(EXAMPLE).unwrap();
+    let dir = TestData::new();
+    let catalog = training_catalog(&template);
+    let first = template.input.team[0].character_form_id.clone();
+    let second = template.input.team[1].character_form_id.clone();
+    let legacy_slots = [None, Some(first.clone()), None, None];
+    let db = dir.path().join("profiles.sqlite");
+    let mut legacy = Archive::open(&db, catalog.clone()).unwrap();
+    legacy.ensure_profile(&first).unwrap();
+    legacy
+        .save_team_slots("desktop.team", "当前队伍", &legacy_slots)
+        .unwrap();
+    drop(legacy);
+
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let slots = [Some(second.clone()), None, None, Some(first.clone())];
+    let created = archive.save_team(None, "第二队", &slots).unwrap();
+    let empty = archive
+        .save_team(None, "空白配队", &Default::default())
+        .unwrap();
+    assert_ne!(created.id, empty.id);
+    assert!(
+        archive
+            .save_team(
+                Some(&created.id),
+                "重复角色",
+                &[Some(first.clone()), Some(first), None, None]
+            )
+            .is_err()
+    );
+    assert!(
+        archive
+            .save_team(Some("team.missing"), "无效配队", &slots)
+            .is_err()
+    );
+    let legacy = archive
+        .save_team(Some("desktop.team"), "第一队", &legacy_slots)
+        .unwrap();
+    drop(archive);
+
+    let reopened = CharacterArchive::open(dir.path(), catalog).unwrap();
+    let index = serde_json::to_value(reopened.index().unwrap()).unwrap();
+    assert_eq!(index["teams"], serde_json::json!([legacy, created, empty]));
+    assert_eq!(legacy.slots, legacy_slots);
+    assert_eq!(created.slots, slots);
 }

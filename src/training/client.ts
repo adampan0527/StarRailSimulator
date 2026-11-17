@@ -136,6 +136,23 @@ export type ReplaySummary = {
   finished: boolean;
 };
 
+export type AnalysisKind = 'dpr' | 'fastest_victory';
+export type TrainingAnalysis =
+  | {
+      kind: 'dpr';
+      result: { cycles: number; enemy_hp_lost: number; dpr: number };
+    }
+  | {
+      kind: 'fastest_victory';
+      names: Name[];
+      result: {
+        exact: boolean;
+        evaluated: number;
+        budget: number;
+        victory: { av_micros: number; commands: Command[] } | null;
+      };
+    };
+
 export const training = {
   setup: () => invoke<Setup>('training_setup'),
   saveLoadout: (
@@ -154,6 +171,8 @@ export const training = {
     invoke<TeamSlots>('training_save_team', { slots }),
   start: (enemyIds: string[]) =>
     invoke<BattleView>('training_start', { enemyIds }),
+  analyze: (enemyIds: string[], kind: AnalysisKind) =>
+    invoke<TrainingAnalysis>('training_analyze', { enemyIds, kind }),
   act: (sessionId: number, command: Command) =>
     invoke<BattleView>('training_act', { sessionId, command }),
   replays: () => invoke<ReplaySummary[]>('training_replays'),
@@ -175,6 +194,8 @@ export function describeError(error: unknown) {
       return '请检查队伍站位。角色不能重复上阵，开战至少需要一名角色。';
     case 'invalid_enemies':
       return '请选择至少一台训练靶机。';
+    case 'random_analysis':
+      return '最少行动值搜索需要确定性战场。多名角色上阵时，请只选择左侧靶机。';
     case 'replay_not_found':
       return '找不到这场战斗的记录。';
     case 'incompatible_version':
