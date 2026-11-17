@@ -167,35 +167,104 @@
 
 .enemy-lineup {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.3rem, 1.4vw, 0.85rem);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+@media (min-width: 40rem) {
+  .enemy-lineup {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 56rem) {
+  .enemy-lineup {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 .enemy-entry {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   min-width: 0;
-  border: 1px solid var(--line);
+  min-height: 13rem;
+  padding: clamp(0.25rem, 0.7vw, 0.55rem);
+  border: 1px dashed var(--line);
   border-radius: 0.65rem;
-  padding: 0.55rem;
+  background: var(--surface);
 }
 
-.enemy-entry-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.45rem;
+.enemy-entry[data-filled] {
+  border-style: solid;
+  background: var(--selected);
 }
 
-.enemy-slot-level {
-  margin-top: 0.5rem;
+.enemy-entry:has(> .enemy-slot:hover) {
+  border-color: var(--accent);
 }
 
 .enemy-slot {
   display: grid;
-  gap: 0.1rem;
+  flex: 1;
+  align-content: start;
+  padding: 1.45rem 0.15rem 0.15rem;
+  border: 0;
+  background: transparent;
+}
+
+.enemy-slot :is(.enemy-avatar, .character-portrait) {
+  width: min(100%, 8.5rem);
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+}
+
+.enemy-name {
   overflow-wrap: anywhere;
-  text-align: left;
+}
+
+.enemy-attributes {
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.enemy-weaknesses {
+  justify-content: center;
+  column-gap: 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.enemy-stats .character-stat:first-child {
+  grid-column: 1 / -1;
+}
+
+.enemy-stats .character-stat:last-child {
+  grid-column: auto;
+}
+
+.enemy-slot-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.3rem;
+}
+
+.enemy-slot-actions :is(select, button) {
+  min-height: 2.15rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.enemy-slot-art {
+  min-height: 1.6rem;
 }
 
 .enemy-card-body {
@@ -228,13 +297,15 @@
 }
 
 .enemy-artwork {
-  margin-top: 0.6rem;
   color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .enemy-artwork summary {
   width: max-content;
+  padding-block: 0.2rem;
   cursor: pointer;
+  line-height: 1.5;
 }
 
 .enemy-artwork img {
@@ -277,29 +348,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-}
-
-.enemy-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem 0.9rem;
-  margin: 0.55rem 0 0;
-}
-
-.enemy-stats div,
-.enemy-weaknesses {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.enemy-stats dt {
-  color: var(--muted);
-}
-
-.enemy-stats dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
 }
 
 .ally-slots {

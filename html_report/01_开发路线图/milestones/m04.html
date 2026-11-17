@@ -35,7 +35,7 @@
         <dl class="detail-meta">
           <div><dt>当前状态</dt><dd><span class="status status--ready">待验收</span></dd></div>
           <div><dt>验收依赖</dt><dd><a href="./m02.html">M02</a>、<a href="./m03.html">M03</a></dd></div>
-          <div><dt>验收记录</dt><dd><a href="../../../docs/m04-desktop.md">2026-11-16 · 桌面实现与验证</a></dd></div>
+          <div><dt>验收记录</dt><dd><a href="../../../docs/m04-desktop.md">2026-11-17 · 桌面实现与验证</a></dd></div>
         </dl>
       </header>
       <section class="prose detail-body" aria-labelledby="criteria">
@@ -53,6 +53,7 @@
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>「角色」页卡片展示头像、名称、属性图标和命途图标，可组合使用名称搜索、属性筛选和命途筛选。角色列表和组队选人与光锥列表采用相同排序。打开卡片可查看对应形态的立绘并配置角色，返回后恢复筛选和卡片位置。</span></li>
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>主页从全局角色库选人并读取当前配装面板，可创建、命名、保存和切换多套配队，原已保存配队可继续使用。</span></li>
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>从「组队」按名称、怪物 ID 或类别查找 4.7.0 可独立出场的敌人，逐站位设置等级并查看只读属性。同一入口能启动合成战斗，返回后保留已选目标。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>自选敌方提供五个可留空的固定站位。敌方卡片显示头像、名称、弱点及生命值、防御力和速度。宽窗口五个站位同排，窄窗口自动换行。</span></li>
 <li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>按 <code>design.md</code> 审查配装页与战斗页；在 100% 和 150% Windows 显示缩放下检查布局、字体和关键路径，键盘可操作，加载、空白和失败状态可理解。</span></li>
 </ul>
 <p><strong>验收证据：</strong> <a href="../../../docs/m04-desktop.md#桌面端到端证据">桌面端到端记录与截图</a>、<a href="../../../docs/m04-evidence/desktop-workflow.mp4">操作录屏</a>、<a href="../../../src-tauri/src/workbench_tests.rs">应用层集成测试</a>、<a href="../../../docs/m04-desktop.md#角色库存与站位复验">角色目录加载复验</a>。Windows 原生 100% 已验证键盘定位回放和写入失败后重试。WebView 150% 等效视口检查通过，Windows 原生 150% 验收待补。</p>
@@ -80,6 +81,7 @@
 <li>2026-11-17 合并组队与训练入口。首批八个 4.7.0 怪物的属性和弱点由固定版本数据提供。Edge 模拟 IPC 核对选敌、切换等级、保留草稿、开战和恢复。正式关卡和角色规则待接入。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">数据范围与验证</a></li>
 <li>2026-11-17 扩展到全部 2,781 条 4.7.0 敌方配置，逐 ID 对账。Edge 离线验证搜索、类别筛选、分页、立绘解码和缺图回退。内置头像覆盖 2,726 条配置，专属立绘覆盖 2,679 条。Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">敌方目录与验证</a></li>
 <li>2026-11-17 根据关卡、图鉴与召唤归属筛出 383 种可独立配置的敌人。选敌按名称归并同名难度档，等级改为各站位独立配置。Edge 离线复验重复卡归并、银枝雕像排除、逐站位改级和窄窗键盘操作，Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">组队与敌方阵容</a></li>
+<li>2026-11-17 自选敌方改为五个固定站位卡片。Chromium 模拟 IPC 核对头像、弱点、等级属性、空位保留和键盘焦点，并验证三种视口宽度的换行布局。重建 Windows x64 Release 后，在实际 WebView2 中复验五个空位和选敌后的卡片显示。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">组队与敌方阵容</a></li>
 </ul>
       </section>
     </article>
