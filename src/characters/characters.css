@@ -356,6 +356,16 @@
   --cone-stars: light-dark(#643c94, #e5c7ff);
 }
 
+.light-cone-card[data-rarity='3'] {
+  --cone-background: linear-gradient(
+    160deg,
+    light-dark(#c8e4fc, #224c76),
+    light-dark(#eaf5ff, #1b304e)
+  );
+  --cone-border: light-dark(#7da9d3, #5d8fbc);
+  --cone-stars: light-dark(#21548a, #b7dcff);
+}
+
 .light-cone-card-button[aria-pressed='true'] > .light-cone-card {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
