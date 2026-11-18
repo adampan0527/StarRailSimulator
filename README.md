@@ -68,12 +68,13 @@ cargo run --offline --locked -p star-rail-profiles --example m03 -- audit .m03-d
 
 首次下载获取固定修订的源表。导入、角色查询和 SQLite 档案操作均可离线执行。跨进程重启演示、数据覆盖和接口说明见 [M03 验收记录](docs/m03-profiles.md)。
 
-生成目录后，运行以下命令准备角色头像、立绘和光锥图片。立绘准备脚本需要 PATH 中有支持 WebP 的 FFmpeg。构建会将 `.m03-data/4.7.0` 中的图片打包到桌面应用，运行时可离线显示。缺少立绘时，角色配置页显示头像。[FFmpeg 下载](https://ffmpeg.org/download.html)
+生成目录后，运行以下命令准备角色头像、立绘、光锥图片以及五星遗器、套装和词条图标。立绘准备脚本需要 PATH 中有支持 WebP 的 FFmpeg。构建会将 `.m03-data/4.7.0` 中的图片打包到桌面应用，运行时可离线显示。缺少立绘时，角色配置页显示头像。[FFmpeg 下载](https://ffmpeg.org/download.html)
 
 ```powershell
 node scripts/m03/download-avatars.mjs
 node scripts/m03/download-character-art.mjs
 node scripts/m03/download-light-cones.mjs
+node scripts/m03/download-relic-icons.mjs
 ```
 
 如需重建离线敌方图片，按 [敌方阵容说明](docs/m04-desktop.md#组队与敌方阵容) 生成目录后运行 `node scripts/m03/download-enemy-art.mjs`，再构建 Release。

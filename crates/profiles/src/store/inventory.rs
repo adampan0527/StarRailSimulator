@@ -22,6 +22,15 @@ CREATE TABLE equipped_relics (
 ) STRICT;
 ";
 
+pub(super) const IMPORT_SCHEMA: &str = "
+CREATE TABLE imported_relics (
+    source_uid TEXT NOT NULL,
+    source_relic TEXT NOT NULL,
+    relic_id INTEGER NOT NULL UNIQUE REFERENCES relic_inventory(id) ON DELETE CASCADE,
+    PRIMARY KEY (source_uid, source_relic)
+) STRICT;
+";
+
 const SLOTS: [RelicSlot; 6] = [
     RelicSlot::Head,
     RelicSlot::Hands,
@@ -70,14 +79,7 @@ impl Archive {
     }
 
     pub fn save_inventory_relic(&mut self, id: Option<u32>, relic: &Relic) -> Result<(), Error> {
-        let data = self
-            .catalog
-            .relics
-            .get(&relic.data_id)
-            .ok_or_else(|| Error::missing("relic", &relic.data_id))?;
-        self.catalog.validate_relic(data.slot, relic)?;
-        let slot = slot_number(data.slot);
-        let json = serde_json::to_string(relic)?;
+        let (slot, json) = self.inventory_entry(relic)?;
         let transaction = self
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -100,6 +102,49 @@ impl Archive {
         }
         transaction.commit()?;
         Ok(())
+    }
+
+    /// Imports source instances together. An already imported instance with the same stats
+    /// keeps its local inventory ID and any subsequent local edits.
+    pub fn import_inventory_relics(&mut self, relics: &[(String, Relic)]) -> Result<usize, Error> {
+        let entries = relics
+            .iter()
+            .map(|(uid, relic)| self.inventory_entry(relic).map(|entry| (uid, entry)))
+            .collect::<Result<Vec<_>, _>>()?;
+        let transaction = self
+            .db
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let mut added = 0;
+        {
+            let mut imported = transaction.prepare(
+                "SELECT 1 FROM imported_relics WHERE source_uid = ?1 AND source_relic = ?2",
+            )?;
+            let mut inventory =
+                transaction.prepare("INSERT INTO relic_inventory (slot, relic) VALUES (?1, ?2)")?;
+            let mut source = transaction.prepare(
+                "INSERT INTO imported_relics (source_uid, source_relic, relic_id) VALUES (?1, ?2, ?3)",
+            )?;
+            for (uid, (slot, json)) in entries {
+                if imported.exists(params![uid, json])? {
+                    continue;
+                }
+                inventory.execute(params![slot, json])?;
+                source.execute(params![uid, json, transaction.last_insert_rowid()])?;
+                added += 1;
+            }
+        }
+        transaction.commit()?;
+        Ok(added)
+    }
+
+    fn inventory_entry(&self, relic: &Relic) -> Result<(u8, String), Error> {
+        let data = self
+            .catalog
+            .relics
+            .get(&relic.data_id)
+            .ok_or_else(|| Error::missing("relic", &relic.data_id))?;
+        self.catalog.validate_relic(data.slot, relic)?;
+        Ok((slot_number(data.slot), serde_json::to_string(relic)?))
     }
 
     pub fn delete_inventory_relic(&mut self, id: u32) -> Result<(), Error> {

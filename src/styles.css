@@ -176,6 +176,15 @@ h3 {
   margin-top: 0.7rem;
 }
 
+.relic-export-link {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.relic-export-link input {
+  min-width: 0;
+}
+
 .section-heading,
 .unit-heading,
 .battle-summary {

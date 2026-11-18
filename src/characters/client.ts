@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { readRelicExportFile } from '../relic-export/client';
 import { describeError, errorCode } from '../training/client';
 import type {
   CharacterStats,
@@ -6,14 +7,19 @@ import type {
   TeamSlots,
 } from '../training/client';
 
-export const relicSlots = [
+export const outerRelicSlots = [
   ['head', '头部'],
   ['hands', '手部'],
   ['body', '躯干'],
   ['feet', '脚部'],
+] as const;
+
+export const innerRelicSlots = [
   ['planar_sphere', '位面球'],
   ['link_rope', '连结绳'],
 ] as const;
+
+export const relicSlots = [...outerRelicSlots, ...innerRelicSlots] as const;
 
 export type RelicSlot = (typeof relicSlots)[number][0];
 export type Relic = {
@@ -106,6 +112,10 @@ export const characters = {
   saveTeam: (id: string | null, name: string, slots: TeamSlots) =>
     invoke<SavedTeam>('character_save_team', { id, name, slots }),
   inventory: () => invoke<InventoryItem[]>('relic_inventory'),
+  importRelics: async (file: File) =>
+    invoke<[number, InventoryItem[]]>('relic_inventory_import', {
+      snapshot: await readRelicExportFile(file),
+    }),
   lightConeInventory: () =>
     invoke<InventoryLightCone[]>('light_cone_inventory'),
   saveLightCone: (id: number | null, cone: LightCone) =>
@@ -131,6 +141,10 @@ export function catalogError(error: unknown) {
       return '请检查星魂等级和奇缘星魂。';
     case 'invalid_relic':
       return '遗器无法保存。请检查部位、强化等级和词条组合。';
+    case 'invalid_relic_snapshot':
+      return '遗器 JSON 缺少库存字段、格式不完整或超过 8 MB。';
+    case 'unsupported_relic_snapshot':
+      return '请选择 Archiver 第 4 版导出文件，或模拟器保存的第 1 版遗器 JSON。';
     case 'invalid_light_cone':
       return '光锥无法保存。请检查光锥、等级、突破和叠影。';
     case 'light_cone_occupied':
@@ -155,6 +169,14 @@ export function catalogError(error: unknown) {
 const flatStats = new Set(['hp_flat', 'attack_flat', 'defense_flat', 'speed']);
 export const statName = (catalog: Catalog, id: string) =>
   catalog.properties[id] ?? id;
+export function relicStatName(catalog: Catalog, id: string) {
+  const name = statName(catalog, id);
+  return ['hp_ratio', 'attack_ratio', 'defense_ratio', 'speed_ratio'].includes(
+    id,
+  )
+    ? `${name}百分比`
+    : name;
+}
 export const statValue = (id: string, value: number) =>
   flatStats.has(id)
     ? String(Number(value.toFixed(6)))

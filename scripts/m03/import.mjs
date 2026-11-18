@@ -5,6 +5,7 @@ import process from 'node:process';
 import { buildCharacters } from './characters.mjs';
 import { buildEquipment } from './equipment.mjs';
 import { propertyNames } from './patches.mjs';
+import { propertyId } from './property-ids.mjs';
 import {
   check,
   gameVersion,
@@ -15,20 +16,6 @@ import {
   sha256,
   textValue,
 } from './sources.mjs';
-
-const statIds = {
-  HPDelta: 'hp_flat',
-  AttackDelta: 'attack_flat',
-  DefenceDelta: 'defense_flat',
-  Speed: 'speed_total',
-  SpeedDelta: 'speed',
-  HPAddedRatio: 'hp_ratio',
-  AttackAddedRatio: 'attack_ratio',
-  DefenceAddedRatio: 'defense_ratio',
-  SpeedAddedRatio: 'speed_ratio',
-  CriticalChanceBase: 'crit_rate',
-  CriticalDamageBase: 'crit_damage',
-};
 
 const identity = (text) =>
   text.toLowerCase().replaceAll(' ', '_').replace(/^the_/, '');
@@ -59,13 +46,13 @@ async function main() {
   const toPath = (id) => lookup(paths, id, 'path');
   const toElement = (id) =>
     identity(lookup(compact.elements, id, 'element').id);
-  const propertyId = (key) => {
+  const knownPropertyId = (key) => {
     lookup(compact.properties, key, 'property');
-    return statIds[key] ?? key.toLowerCase();
+    return propertyId(key);
   };
   const propertyBonuses = (rows, label) =>
     rows.map((row) => ({
-      property: propertyId(row.type),
+      property: knownPropertyId(row.type),
       value: numberValue(row.value, label, -Infinity),
     }));
   const properties = Object.fromEntries(
@@ -89,7 +76,7 @@ async function main() {
     compact,
     native,
     toPath,
-    propertyId,
+    knownPropertyId,
     propertyBonuses,
   );
   const content = {

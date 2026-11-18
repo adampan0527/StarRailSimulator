@@ -14,7 +14,7 @@ mod light_cones;
 pub use inventory::InventoryRelic;
 pub use light_cones::{InventoryLightCone, LightConeEquipment};
 
-const SCHEMA_VERSION: u32 = 3;
+const SCHEMA_VERSION: u32 = 4;
 const INITIAL_PRESET: &str = "默认配装";
 
 const SCHEMA: &str = "
@@ -112,6 +112,9 @@ impl Archive {
         }
         if version < 3 {
             transaction.execute_batch(light_cones::SCHEMA)?;
+        }
+        if version < 4 {
+            transaction.execute_batch(inventory::IMPORT_SCHEMA)?;
         }
         if version < SCHEMA_VERSION {
             transaction.pragma_update(None, "user_version", SCHEMA_VERSION)?;

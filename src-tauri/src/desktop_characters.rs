@@ -10,6 +10,7 @@ use tauri::{AppHandle, Manager};
 use crate::character_archive::{
     CharacterArchive, CharacterEdit, CharacterProfile, CharacterSummary, Error, Index, RelicOptions,
 };
+use crate::desktop_relic_export::ExportError;
 
 #[derive(Default)]
 pub struct CharacterState(Mutex<Option<CharacterArchive>>);
@@ -26,6 +27,8 @@ impl From<Error> for CommandError {
             Error::Catalog(_) | Error::CatalogSize => "catalog_invalid",
             Error::Profile(ProfileError::Version { .. }) => "catalog_mismatch",
             Error::TeamName => "invalid_team_name",
+            Error::RelicSnapshot(ExportError::InvalidSnapshot) => "invalid_relic_snapshot",
+            Error::RelicSnapshot(ExportError::UnsupportedFormat) => "unsupported_relic_snapshot",
             Error::Profile(ProfileError::Invalid {
                 field: "eidolon" | "affinitive_eidolon",
                 ..
@@ -176,6 +179,18 @@ pub async fn character_save_team(
 #[tauri::command]
 pub async fn relic_inventory(app: AppHandle) -> Result<Vec<InventoryRelic>, CommandError> {
     with_archive(app, |archive| archive.inventory()).await
+}
+
+#[tauri::command]
+pub async fn relic_inventory_import(
+    app: AppHandle,
+    snapshot: String,
+) -> Result<(usize, Vec<InventoryRelic>), CommandError> {
+    with_archive(app, move |archive| {
+        let added = archive.import_relics(&snapshot)?;
+        Ok((added, archive.inventory()?))
+    })
+    .await
 }
 
 #[tauri::command]

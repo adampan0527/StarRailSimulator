@@ -8,6 +8,68 @@ use crate::{
 
 const EXAMPLE: &str = include_str!("../../contracts/battle-session.v1.example.json");
 
+#[test]
+fn imports_snapshot_relics_into_a_migrated_inventory_once() {
+    let dir = TestData::new();
+    let template = Session::from_json(EXAMPLE).unwrap();
+    let mut catalog = training_catalog(&template);
+    let mut boots = catalog.relics.remove("fixture.training_boots").unwrap();
+    boots.set_id = "set.102".into();
+    catalog.relics.insert("relic.31024".into(), boots);
+    let set = catalog.relic_sets.remove("fixture.training").unwrap();
+    catalog.relic_sets.insert("set.102".into(), set);
+
+    let expected = Relic {
+        data_id: "relic.31024".into(),
+        level: 3,
+        main_stat: "attack_ratio".into(),
+        substats: [("speed".into(), 2_300_000)].into(),
+    };
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let manual_id = archive.save_relic(None, &expected).unwrap()[0].id;
+    drop(archive);
+    rusqlite::Connection::open(dir.path().join("profiles.sqlite"))
+        .unwrap()
+        .execute_batch("DROP TABLE imported_relics; PRAGMA user_version = 3;")
+        .unwrap();
+
+    let relic = |uid: &str, value: f64| {
+        serde_json::json!({
+            "set_id": "102", "name": "Musketeer of Wild Wheat", "slot": "Feet",
+            "rarity": 2, "level": 3, "mainstat": "ATK",
+            "substats": [{ "key": "SPD", "value": value, "count": 1, "step": 1 }],
+            "location": "1001", "lock": true, "discard": false, "_uid": uid
+        })
+    };
+    let mut snapshot = serde_json::json!({
+        "format": "star-rail-simulator.relic-export", "version": 1,
+        "source": "reliquary_archiver", "source_version": 4,
+        "relics": [relic("first", 2.29999995), relic("second", 2.29999995)]
+    });
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    assert_eq!(archive.import_relics(&snapshot.to_string()).unwrap(), 2);
+    let inventory = archive.inventory().unwrap();
+    assert_eq!(inventory.len(), 3);
+    assert_eq!(inventory[2].id, manual_id);
+    assert!(inventory.iter().all(|item| item.relic == expected));
+    let ids: Vec<_> = inventory.iter().map(|item| item.id).collect();
+    drop(archive);
+
+    let mut archive = CharacterArchive::open(dir.path(), catalog).unwrap();
+    assert_eq!(archive.import_relics(&snapshot.to_string()).unwrap(), 0);
+    snapshot["relics"] = serde_json::json!([relic("third", 2.3), relic("invalid", 5.0)]);
+    assert!(archive.import_relics(&snapshot.to_string()).is_err());
+    assert_eq!(
+        archive
+            .inventory()
+            .unwrap()
+            .into_iter()
+            .map(|item| item.id)
+            .collect::<Vec<_>>(),
+        ids
+    );
+}
+
 #[cfg(all(not(debug_assertions), bundled_catalog))]
 #[test]
 fn clean_release_archive_opens_the_bundled_roster() {

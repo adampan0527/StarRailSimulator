@@ -301,6 +301,264 @@
   font-weight: 400;
 }
 
+.relic-inventory-count {
+  display: block;
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+}
+
+.relic-inventory-filters {
+  display: grid;
+  gap: 0.55rem;
+  margin-block: 0.85rem;
+}
+
+.relic-inventory-filters > button {
+  justify-self: start;
+  min-height: 2rem;
+  font-size: 0.85rem;
+}
+
+.relic-filter-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  align-items: start;
+  gap: 0.5rem;
+}
+
+.relic-filter-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  font-size: 0.88rem;
+}
+
+.relic-filter-trigger[data-filtered='true'] {
+  border-color: var(--border);
+  background: var(--selected);
+}
+
+.relic-filter-trigger span {
+  color: var(--muted);
+  font-size: 0.77rem;
+  font-weight: 400;
+}
+
+.relic-filter-dialog {
+  width: min(40rem, calc(100% - 1.5rem));
+}
+
+.relic-filter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: min(36rem, calc(100dvh - 4.5rem));
+}
+
+.relic-filter-body {
+  display: grid;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem;
+}
+
+.relic-filter-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
+  gap: 0.4rem;
+}
+
+.relic-filter-slot-group {
+  cursor: pointer;
+}
+
+.relic-filter-option {
+  min-height: 2.45rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--surface);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  font-weight: 400;
+}
+
+.relic-filter-option:has(:checked) {
+  border-color: var(--border);
+  background: var(--selected);
+}
+
+.relic-filter-option input,
+.relic-filter-option img {
+  flex-shrink: 0;
+}
+
+.relic-filter-option img {
+  object-fit: contain;
+}
+
+.relic-filter-option .relic-filter-stat-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0.18rem;
+  border-radius: 0.3rem;
+  background: #35476d;
+}
+
+.relic-filter-minimum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.45rem 0.75rem;
+}
+
+.relic-filter-minimum p {
+  padding-block: 0.4rem;
+}
+
+.relic-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
+}
+
+.relic-results-heading {
+  margin-block: 0.65rem;
+}
+
+.relic-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.relic-pages select {
+  width: auto;
+}
+
+.relic-inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr));
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.relic-inventory-grid > li {
+  min-width: 0;
+}
+
+.relic-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 0.25rem;
+  width: 100%;
+  height: 100%;
+  padding: 0.38rem;
+  border: 1px solid light-dark(#d2b67d, #76603d);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+}
+
+.relic-card:not(:disabled):hover {
+  border-color: var(--accent);
+}
+
+.relic-card-artwork {
+  position: relative;
+  display: grid;
+  min-height: 4.6rem;
+  place-items: center;
+  border-radius: 0.45rem;
+  background: linear-gradient(
+    160deg,
+    light-dark(#ffe8b5, #614823),
+    light-dark(#f0d299, #3e301f)
+  );
+  color: light-dark(#654715, #ffe0a5);
+}
+
+.relic-card-artwork img {
+  display: block;
+  width: 4rem;
+  height: 4rem;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.relic-card-level {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  padding: 0 0.3rem;
+  border-radius: 0.24rem;
+  background: light-dark(#fff5dc, #231b12);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.relic-card-name,
+.relic-card-main,
+.relic-card-detail {
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+.relic-card-name {
+  padding: 0.15rem 0.08rem 0;
+  font-size: 0.82rem;
+}
+
+.relic-card-detail {
+  padding: 0 0.08rem 0.08rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.relic-card-main {
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
+.relic-card-substats {
+  display: grid;
+  margin: 0.15rem 0.15rem 0;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: start;
+}
+
+.relic-card-stat {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.relic-card-stat > :last-child {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 .light-cone-results {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5rem), 1fr));

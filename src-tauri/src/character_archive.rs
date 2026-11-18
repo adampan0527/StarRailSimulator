@@ -6,6 +6,8 @@ use star_rail_profiles::{
     LightConeEquipment, Relic, RelicSlot, SavedTeam, TeamSlots,
 };
 
+use crate::desktop_relic_export::{ExportError, inventory_snapshot};
+
 const MAX_CATALOG_BYTES: usize = 8 * 1024 * 1024;
 const CATALOG_FILE: &str = "catalog.json";
 
@@ -23,6 +25,8 @@ pub enum Error {
     Io(#[from] io::Error),
     #[error("invalid team name")]
     TeamName,
+    #[error(transparent)]
+    RelicSnapshot(#[from] ExportError),
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -269,6 +273,11 @@ impl CharacterArchive {
 
     pub fn inventory(&self) -> Result<Vec<InventoryRelic>, Error> {
         Ok(self.0.inventory()?)
+    }
+
+    pub fn import_relics(&mut self, snapshot: &str) -> Result<usize, Error> {
+        let relics = inventory_snapshot(snapshot, self.0.catalog())?;
+        Ok(self.0.import_inventory_relics(&relics)?)
     }
 
     pub fn light_cone_inventory(&self) -> Result<Vec<InventoryLightCone>, Error> {

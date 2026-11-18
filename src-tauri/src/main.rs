@@ -4,6 +4,7 @@ mod character_archive;
 #[cfg(test)]
 mod character_archive_tests;
 mod desktop_characters;
+mod desktop_relic_export;
 mod desktop_status;
 mod desktop_workbench;
 mod workbench;
@@ -18,6 +19,7 @@ fn main() -> ExitCode {
         .manage(desktop_workbench::WorkbenchState::default())
         .invoke_handler(tauri::generate_handler![
             desktop_status::desktop_status,
+            desktop_relic_export::relic_export_save,
             desktop_characters::character_index,
             desktop_characters::character_roster,
             desktop_characters::character_import_catalog,
@@ -26,6 +28,7 @@ fn main() -> ExitCode {
             desktop_characters::character_save_team,
             desktop_characters::character_relic_options,
             desktop_characters::relic_inventory,
+            desktop_characters::relic_inventory_import,
             desktop_characters::relic_save,
             desktop_characters::relic_delete,
             desktop_characters::light_cone_inventory,

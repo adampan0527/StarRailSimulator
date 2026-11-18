@@ -1,4 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { RelicCard } from './RelicCard';
+import { RelicInventoryFilters } from './RelicInventoryFilters';
+import { emptyRelicFilters, filterRelics } from './relicInventory';
+import type { RelicFilters } from './relicInventory';
 import {
   catalogError,
   characters,
@@ -15,12 +19,48 @@ import type {
   RelicSummary,
 } from './client';
 
+const pageSize = 24;
+
 export function RelicPage({ catalog }: { catalog: Catalog }) {
   const [items, setItems] = useState<InventoryItem[]>();
   const [editing, setEditing] = useState<InventoryItem | 'new'>();
   const [issue, setIssue] = useState('');
   const [message, setMessage] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const [importIssue, setImportIssue] = useState('');
+  const [filters, setFilters] = useState(emptyRelicFilters);
+  const [page, setPage] = useState(0);
+  const importInput = useRef<HTMLInputElement>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
+  const editTrigger = useRef<HTMLButtonElement>(null);
+  const owners = new Map(catalog.characters.map(({ id, name }) => [id, name]));
+  const fiveStarItems = useMemo(() => {
+    const relicData = new Map(catalog.relics.map((entry) => [entry.id, entry]));
+    return (
+      items?.flatMap((item) => {
+        const data = relicData.get(item.relic.data_id);
+        return data?.rarity === 5 ? [{ item, data }] : [];
+      }) ?? []
+    );
+  }, [catalog.relics, items]);
+  const matches = useMemo(
+    () => filterRelics(fiveStarItems, filters),
+    [fiveStarItems, filters],
+  );
+  const pageCount = Math.ceil(matches.length / pageSize);
+  const currentPage = Math.min(page, Math.max(0, pageCount - 1));
+  const visible = matches.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize,
+  );
+
+  useEffect(() => {
+    if (editing || !editTrigger.current) return;
+    const trigger = editTrigger.current;
+    editTrigger.current = null;
+    (trigger.isConnected ? trigger : addButton.current)?.focus();
+  }, [editing]);
   useEffect(() => {
     let canceled = false;
     void characters
@@ -36,22 +76,77 @@ export function RelicPage({ catalog }: { catalog: Catalog }) {
     };
   }, [attempt]);
 
+  async function importFile(file: File) {
+    setImporting(true);
+    setImportIssue('');
+    setMessage('正在导入遗器库存…');
+    try {
+      const [added, inventory] = await characters.importRelics(file);
+      setItems(inventory);
+      setPage(0);
+      setMessage(`本次新增 ${added} 件遗器，库存共 ${inventory.length} 件。`);
+    } catch (error) {
+      setMessage('');
+      setImportIssue(
+        error instanceof Error ? error.message : catalogError(error),
+      );
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function changeFilters(next: RelicFilters) {
+    setFilters(next);
+    setPage(0);
+  }
+
   return (
     <section className="panel" aria-labelledby="inventory-title">
       <div className="section-heading">
-        <h2 id="inventory-title">遗器库存</h2>
+        <div>
+          <h2 id="inventory-title">遗器库存</h2>
+          {items && (
+            <span className="relic-inventory-count muted">
+              {fiveStarItems.length} 件五星遗器
+            </span>
+          )}
+        </div>
         {items && !editing && (
-          <button
-            type="button"
-            onClick={() => {
-              setMessage('');
-              setEditing('new');
-            }}
-          >
-            新增遗器
-          </button>
+          <div className="section-heading">
+            <button
+              type="button"
+              className="secondary"
+              disabled={importing}
+              onClick={() => importInput.current?.click()}
+            >
+              导入 JSON
+            </button>
+            <button
+              ref={addButton}
+              type="button"
+              disabled={importing}
+              onClick={(event) => {
+                setMessage('');
+                editTrigger.current = event.currentTarget;
+                setEditing('new');
+              }}
+            >
+              新增遗器
+            </button>
+          </div>
         )}
       </div>
+      <input
+        ref={importInput}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (file && !importing) void importFile(file);
+        }}
+      />
       {issue && (
         <div>
           <p role="alert">{issue}</p>
@@ -68,6 +163,16 @@ export function RelicPage({ catalog }: { catalog: Catalog }) {
         </div>
       )}
       {!items && !issue && <p role="status">正在读取遗器库存…</p>}
+      {importIssue && <p role="alert">{importIssue}</p>}
+      {fiveStarItems.length > 0 && (
+        <RelicInventoryFilters
+          catalog={catalog}
+          entries={fiveStarItems}
+          filters={filters}
+          disabled={editing !== undefined || importing}
+          onChange={changeFilters}
+        />
+      )}
       {editing && (
         <RelicEditor
           catalog={catalog}
@@ -75,6 +180,7 @@ export function RelicPage({ catalog }: { catalog: Catalog }) {
           onCancel={() => setEditing(undefined)}
           onSaved={(updated, status) => {
             setItems(updated);
+            setPage(currentPage);
             setEditing(undefined);
             setMessage(status);
           }}
@@ -83,46 +189,76 @@ export function RelicPage({ catalog }: { catalog: Catalog }) {
       <p role="status" className="muted">
         {message}
       </p>
-      {items && items.length === 0 && !editing && (
-        <p className="muted">库存还没有遗器。</p>
+      {items && fiveStarItems.length === 0 && !editing && !importing && (
+        <p className="muted">
+          库存还没有五星遗器。可导入 Archiver 或模拟器保存的遗器 JSON。
+        </p>
       )}
-      {items && items.length > 0 && (
-        <ul className="inventory-list">
-          {items.map((item) => {
-            const data = catalog.relics.find(
-              (entry) => entry.id === item.relic.data_id,
-            );
-            const owner = catalog.characters.find(
-              (entry) => entry.id === item.owner_id,
-            );
-            return (
-              <li key={item.id}>
-                <div>
-                  <h3>
-                    {data?.name ?? item.relic.data_id}{' '}
-                    <span className="muted">#{item.id}</span>
-                  </h3>
-                  <p className="muted">
-                    {data?.rarity} 星 +{item.relic.level} ·{' '}
-                    {statName(catalog, item.relic.main_stat)} ·{' '}
-                    {owner?.name ?? item.owner_id ?? '未穿戴'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="secondary"
-                  disabled={editing !== undefined}
-                  aria-label={`编辑遗器 #${item.id}`}
-                  onClick={() => {
-                    setMessage('');
-                    setEditing(item);
-                  }}
-                >
-                  编辑
-                </button>
-              </li>
-            );
-          })}
+      {fiveStarItems.length > 0 && (
+        <div className="section-heading relic-results-heading">
+          <p className="muted" role="status">
+            {matches.length
+              ? `筛选结果 ${matches.length} 件`
+              : '没有符合筛选的五星遗器。'}
+          </p>
+          {pageCount > 1 && (
+            <nav className="relic-pages" aria-label="遗器分页">
+              <button
+                type="button"
+                className="secondary"
+                disabled={
+                  currentPage === 0 || editing !== undefined || importing
+                }
+                onClick={() => setPage(currentPage - 1)}
+              >
+                上一页
+              </button>
+              <select
+                aria-label="跳转到遗器页码"
+                value={currentPage}
+                disabled={editing !== undefined || importing}
+                onChange={(event) => setPage(Number(event.target.value))}
+              >
+                {Array.from({ length: pageCount }, (_, index) => (
+                  <option key={index} value={index}>
+                    第 {index + 1} / {pageCount} 页
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="secondary"
+                disabled={
+                  currentPage + 1 === pageCount ||
+                  editing !== undefined ||
+                  importing
+                }
+                onClick={() => setPage(currentPage + 1)}
+              >
+                下一页
+              </button>
+            </nav>
+          )}
+        </div>
+      )}
+      {visible.length > 0 && (
+        <ul className="relic-inventory-grid">
+          {visible.map(({ item, data }) => (
+            <li key={item.id}>
+              <RelicCard
+                catalog={catalog}
+                item={item}
+                data={data}
+                owner={item.owner_id ? owners.get(item.owner_id) : undefined}
+                disabled={editing !== undefined || importing}
+                onEdit={(button) => {
+                  editTrigger.current = button;
+                  setMessage('');
+                  setEditing(item);
+                }}
+              />
+            </li>
+          ))}
         </ul>
       )}
     </section>
@@ -152,6 +288,8 @@ function RelicEditor({
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const editorTitle = useRef<HTMLHeadingElement>(null);
+  useEffect(() => editorTitle.current?.focus(), []);
   const data = catalog.relics.find((entry) => entry.id === draft?.data_id);
   const options = catalog.relics.filter(
     (entry) => entry.slot === slot && entry.rarity === rarity,
@@ -198,7 +336,9 @@ function RelicEditor({
           );
       }}
     >
-      <h3>{item ? `编辑遗器 #${item.id}` : '新增遗器'}</h3>
+      <h3 ref={editorTitle} tabIndex={-1}>
+        {item ? `编辑${original?.name ?? '遗器'}` : '新增遗器'}
+      </h3>
       <fieldset disabled={busy || confirmDelete} className="field-stack">
         <div className="equipment-grid">
           <label>
@@ -268,7 +408,7 @@ function RelicEditor({
       <div className="form-actions">
         {confirmDelete && item ? (
           <>
-            <span>删除遗器 #{item.id}？</span>
+            <span>删除{original?.name ?? '这件遗器'}？</span>
             <button
               type="button"
               disabled={busy}

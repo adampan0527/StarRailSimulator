@@ -5,6 +5,7 @@ import { RelicPage } from '../characters/RelicPage';
 import { catalogError, characters } from '../characters/client';
 import type { Catalog, SavedTeam } from '../characters/client';
 import { Diagnostics } from '../desktop/Diagnostics';
+import { RelicExportPage } from '../relic-export/RelicExportPage';
 import { TeamWorkspace } from '../team/TeamWorkspace';
 import { BattlePanel } from './Battle';
 import { History } from './History';
@@ -16,6 +17,7 @@ const pages = [
   { id: 'setup', name: '组队' },
   { id: 'characters', name: '角色' },
   { id: 'relics', name: '遗器' },
+  { id: 'relic-export', name: '遗器导出' },
   { id: 'light-cones', name: '光锥库' },
   { id: 'history', name: '历史回放' },
 ] as const;
@@ -313,6 +315,9 @@ export function Workbench() {
               )}
             </section>
           ))}
+        <div hidden={page !== 'relic-export'}>
+          <RelicExportPage />
+        </div>
         {page === 'battle' && battle && (
           <>
             <div className="team-mode">
