@@ -2,7 +2,11 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { innerRelicSlots, outerRelicSlots, relicStatName } from './client';
 import type { Catalog } from './client';
 import { relicIcon } from './relicIcons';
-import { compareRelicStatOrder, emptyRelicFilters } from './relicInventory';
+import {
+  compareRelicSetRelease,
+  compareRelicStatOrder,
+  emptyRelicFilters,
+} from './relicInventory';
 import type { RelicFilters, RelicInventoryEntry } from './relicInventory';
 
 const groups = [
@@ -55,10 +59,11 @@ function filterOptions(
       ? (relicIcon(id) ?? itemIcons.get(id))
       : relicIcon(`stat.${id}`),
   }));
-  options.sort(
-    (a, b) =>
-      (itemIcons ? 0 : compareRelicStatOrder(a.id, b.id)) ||
-      a.name.localeCompare(b.name, 'zh-CN'),
+  options.sort((a, b) =>
+    itemIcons
+      ? compareRelicSetRelease(a.id, b.id)
+      : compareRelicStatOrder(a.id, b.id) ||
+        a.name.localeCompare(b.name, 'zh-CN'),
   );
   return [{ options }];
 }
