@@ -29,7 +29,7 @@ function RelicCardStat({
       </span>{' '}
       <span className="relic-card-stat-result">
         <span className="relic-card-stat-value">
-          +{statValue(id, value / 1_000_000)}
+          +{statValue(id, value / 1_000_000, 3)}
         </span>{' '}
         {upgrades !== undefined && (
           <span

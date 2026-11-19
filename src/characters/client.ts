@@ -183,7 +183,7 @@ export function relicStatName(catalog: Catalog, id: string) {
     ? `${name}百分比`
     : name;
 }
-export const statValue = (id: string, value: number) =>
+export const statValue = (id: string, value: number, maxDecimals?: number) =>
   flatStats.has(id)
-    ? String(Number(value.toFixed(6)))
-    : `${Number((value * 100).toFixed(4))}%`;
+    ? String(Number(value.toFixed(maxDecimals ?? 6)))
+    : `${Number((value * 100).toFixed(maxDecimals ?? 4))}%`;
