@@ -10,8 +10,10 @@ use crate::{
     fixture::{Ability, GAUGE_FULL, SKILL_POINT_CAP, TURN_LIMIT, Target},
     rng::Rng,
 };
+use analysis::DummyDamage;
 pub use analysis::{
-    DprResult, VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
+    DprCharacter, DprCredit, DprHit, DprResult, DprTarget, VictorySearch, VictorySolution,
+    calculate_dpr, search_fastest_victory,
 };
 use setup::Kit;
 pub use setup::PreparedBattle;
@@ -55,6 +57,7 @@ pub struct Battle<'a> {
     enemy_hp_lost: u32,
     rng: Rng,
     log: Option<Vec<Event>>,
+    dummy_damage: Vec<DummyDamage>,
 }
 
 impl<'a> Battle<'a> {
@@ -88,6 +91,7 @@ impl<'a> Battle<'a> {
                 LogMode::Detailed => Some(Vec::new()),
                 LogMode::Off => None,
             },
+            dummy_damage: Vec::new(),
         };
         battle.emit(EventKind::WaveStarted, None, None);
         battle.advance_to_decision();
@@ -355,17 +359,20 @@ impl<'a> Battle<'a> {
             self.units[actor].advanced_to_front = false;
             self.emit(EventKind::TurnStarted, Some(actor), None);
 
-            match self.plan.units[actor].kit {
+            let kit = self.plan.units[actor].kit;
+            match kit {
                 Kit::Ally(_) => {
                     self.ordinary_actor = Some(actor);
                     return;
                 }
-                Kit::Enemy(kit) => {
+                Kit::Enemy(_) | Kit::Dummy { .. } => {
                     if self.units[actor].toughness == 0 {
-                        self.set_toughness(actor, actor, kit.max_toughness);
+                        self.set_toughness(actor, actor, kit.max_toughness());
                     }
                     self.reset_gauge(actor);
-                    self.resolve_enemy(actor, kit);
+                    if let Kit::Enemy(enemy) = kit {
+                        self.resolve_enemy(actor, enemy);
+                    }
                     self.finish_turn(actor);
                     self.resolve_wave_or_end();
                 }

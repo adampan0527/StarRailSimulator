@@ -7,7 +7,7 @@ use crate::{
     },
 };
 
-use super::{Battle, Kit, Status};
+use super::{Battle, DummyDamage, Kit, Status};
 
 impl Battle<'_> {
     pub(super) fn resolve_ability(
@@ -118,17 +118,11 @@ impl Battle<'_> {
         let source = self.plan.units[actor].stats;
         let crit =
             source.crit_rate_bp > 0 && self.rng.below(10_000) < u64::from(source.crit_rate_bp);
-        let amount = damage::direct(
-            source,
-            self.damage_target(target),
-            element,
-            multiplier_bp,
-            crit,
-        );
-        self.deal_damage(actor, target, DamageKind::Direct, amount, crit);
+        self.resolve_damage(actor, target, DamageKind::Direct, crit, |defender| {
+            damage::direct(source, defender, element, multiplier_bp, crit)
+        });
 
-        let hit_weakness =
-            matches!(self.plan.units[target].kit, Kit::Enemy(kit) if kit.weakness[element.index()]);
+        let hit_weakness = self.plan.units[target].kit.matches_weakness(element);
         let before = self.units[target].toughness;
         if self.units[target].hp == 0 || !hit_weakness || before == 0 || toughness == 0 {
             return;
@@ -137,12 +131,51 @@ impl Battle<'_> {
         self.set_toughness(actor, target, after);
         if after == 0 {
             self.emit(EventKind::WeaknessBroken, Some(actor), Some(target));
-            let amount = damage::weakness_break(source, self.damage_target(target), element);
-            self.deal_damage(actor, target, DamageKind::WeaknessBreak, amount, false);
+            self.resolve_damage(
+                actor,
+                target,
+                DamageKind::WeaknessBreak,
+                false,
+                |defender| damage::weakness_break(source, defender, element),
+            );
             if self.units[target].hp > 0 {
                 let delayed = self.units[target].gauge_quanta + gauge_for(BREAK_DELAY_BP);
                 self.shift_gauge(actor, target, delayed, false);
             }
+        }
+    }
+
+    fn resolve_damage(
+        &mut self,
+        actor: usize,
+        target: usize,
+        kind: DamageKind,
+        critical: bool,
+        calculate: impl Fn(DamageTarget) -> u32,
+    ) {
+        let defender = self.damage_target(target);
+        let amount = calculate(defender);
+        if matches!(self.plan.units[target].kit, Kit::Dummy { .. }) {
+            let assist = self.units[target].statuses[StatusKind::Vulnerability.index()]
+                .filter(|status| status.source != actor && status.source < self.plan.ally_count)
+                .map(|status| {
+                    let without_assist = calculate(DamageTarget {
+                        vulnerability_bp: 0,
+                        ..defender
+                    });
+                    (status.source, amount - without_assist)
+                });
+            self.dummy_damage.push(DummyDamage {
+                av_micros: self.av_micros,
+                actor,
+                target,
+                kind,
+                critical,
+                amount,
+                assist,
+            });
+        } else {
+            self.deal_damage(actor, target, kind, amount, critical);
         }
     }
 

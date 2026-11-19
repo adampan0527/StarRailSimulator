@@ -39,6 +39,8 @@ pub enum Error {
     Team,
     #[error("invalid enemy selection")]
     Enemies,
+    #[error("DPR needs one to five dummies with positive toughness")]
+    DprToughness,
     #[error("fastest victory search requires a deterministic training encounter")]
     RandomAnalysis,
     #[error("replay {0} not found")]
@@ -99,10 +101,10 @@ pub struct BattleView {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AnalysisKind {
-    Dpr,
-    FastestVictory,
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum AnalysisRequest {
+    Dpr { toughness: Vec<u16> },
+    FastestVictory { enemy_ids: Vec<String> },
 }
 
 #[derive(Serialize)]
@@ -110,6 +112,7 @@ pub enum AnalysisKind {
 pub enum TrainingAnalysis {
     Dpr {
         result: DprResult,
+        names: Vec<Name>,
     },
     FastestVictory {
         result: VictorySearch,
@@ -120,16 +123,25 @@ pub enum TrainingAnalysis {
 pub struct AnalysisInput {
     session: Session,
     names: Vec<Name>,
+    request: AnalysisRequest,
 }
 
 impl AnalysisInput {
-    pub fn run(self, kind: AnalysisKind) -> Result<TrainingAnalysis, Error> {
+    pub fn run(self) -> Result<TrainingAnalysis, Error> {
         let plan = PreparedBattle::new(&self.session.input)?;
-        match kind {
-            AnalysisKind::Dpr => Ok(TrainingAnalysis::Dpr {
-                result: calculate_dpr(&plan, DPR_CYCLES)?,
-            }),
-            AnalysisKind::FastestVictory => {
+        match self.request {
+            AnalysisRequest::Dpr { toughness } => {
+                let result =
+                    calculate_dpr(&plan, &toughness, DPR_CYCLES).map_err(|error| match error {
+                        BattleError::InvalidInput(_) => Error::DprToughness,
+                        error => error.into(),
+                    })?;
+                Ok(TrainingAnalysis::Dpr {
+                    result,
+                    names: self.names,
+                })
+            }
+            AnalysisRequest::FastestVictory { .. } => {
                 let result =
                     search_fastest_victory(&plan, SEARCH_BUDGET).map_err(|error| match error {
                         BattleError::UnsupportedData(_) => Error::RandomAnalysis,
@@ -316,7 +328,7 @@ impl Workbench {
         Ok(slots)
     }
 
-    fn encounter(&self, enemy_ids: &[String]) -> Result<Session, Error> {
+    fn encounter(&self, enemy_ids: Option<&[String]>) -> Result<Session, Error> {
         let team = self.archive.freeze_team(TRAINING_TEAM)?;
         let mut input = self.template.input.clone();
         input.team = team
@@ -333,22 +345,38 @@ impl Workbench {
             })
             .collect::<Result<_, _>>()?;
 
-        let selected: BTreeSet<_> = enemy_ids.iter().collect();
-        input.waves[0].retain(|enemy| selected.contains(&enemy.unit_id));
-        if input.waves[0].is_empty() || input.waves[0].len() != enemy_ids.len() {
-            return Err(Error::Enemies);
+        if let Some(enemy_ids) = enemy_ids {
+            let selected: BTreeSet<_> = enemy_ids.iter().collect();
+            input.waves[0].retain(|enemy| selected.contains(&enemy.unit_id));
+            if input.waves[0].is_empty() || input.waves[0].len() != enemy_ids.len() {
+                return Err(Error::Enemies);
+            }
         }
         Ok(team.fixture_session(&Session::new(input))?)
     }
 
-    pub fn analysis_input(&self, enemy_ids: &[String]) -> Result<AnalysisInput, Error> {
-        let session = self.encounter(enemy_ids)?;
-        let names = battle_names(&session, self.archive.catalog());
-        Ok(AnalysisInput { session, names })
+    pub fn analysis_input(&self, request: AnalysisRequest) -> Result<AnalysisInput, Error> {
+        let (session, names) = match &request {
+            AnalysisRequest::Dpr { .. } => {
+                let session = self.encounter(None)?;
+                let names = ally_names(&session, self.archive.catalog()).collect();
+                (session, names)
+            }
+            AnalysisRequest::FastestVictory { enemy_ids } => {
+                let session = self.encounter(Some(enemy_ids))?;
+                let names = battle_names(&session, self.archive.catalog());
+                (session, names)
+            }
+        };
+        Ok(AnalysisInput {
+            session,
+            names,
+            request,
+        })
     }
 
     pub fn start(&mut self, enemy_ids: &[String]) -> Result<BattleView, Error> {
-        let session = self.encounter(enemy_ids)?;
+        let session = self.encounter(Some(enemy_ids))?;
         let prepared = PreparedBattle::new(&session.input)?;
         let battle = Battle::start(&prepared, LogMode::Detailed);
         let id = self.replays.insert(&session, battle.outcome())?;
@@ -389,18 +417,18 @@ fn battle_view(id: u32, session: &Session, battle: &Battle<'_>, catalog: &Catalo
     }
 }
 
+fn ally_names<'a>(session: &'a Session, catalog: &'a Catalog) -> impl Iterator<Item = Name> + 'a {
+    session.input.team.iter().map(|ally| Name {
+        id: ally.unit_id.clone(),
+        name: catalog.characters.get(&ally.character_form_id).map_or_else(
+            || ally.character_form_id.clone(),
+            |character| character.name.clone(),
+        ),
+    })
+}
+
 fn battle_names(session: &Session, catalog: &Catalog) -> Vec<Name> {
-    session
-        .input
-        .team
-        .iter()
-        .map(|ally| Name {
-            id: ally.unit_id.clone(),
-            name: catalog.characters.get(&ally.character_form_id).map_or_else(
-                || ally.character_form_id.clone(),
-                |character| character.name.clone(),
-            ),
-        })
+    ally_names(session, catalog)
         .chain(session.input.waves.iter().flatten().map(|enemy| Name {
             id: enemy.unit_id.clone(),
             name: enemy_name(&enemy.enemy_id).into(),

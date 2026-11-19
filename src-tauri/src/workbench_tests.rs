@@ -5,7 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::workbench::{AnalysisKind, LoadoutEdit, TrainingAnalysis, Workbench};
+use crate::workbench::{AnalysisRequest, LoadoutEdit, TrainingAnalysis, Workbench};
 use star_rail_battle_core::{Command, Outcome};
 
 const SCRIPT: &str = include_str!("../../crates/battle-core/fixtures/full-replay.commands.json");
@@ -16,12 +16,13 @@ fn training_analysis_uses_frozen_inputs_and_produces_replayable_commands() {
     let dir = TestData::new();
     let mut app = Workbench::open(dir.path()).unwrap();
     let left = [app.setup().unwrap().enemies[0].id.clone()];
-    let frozen = app.analysis_input(&left).unwrap();
+    let request = || AnalysisRequest::FastestVictory {
+        enemy_ids: left.to_vec(),
+    };
+    let frozen = app.analysis_input(request()).unwrap();
     app.save_team(Default::default()).unwrap();
-    assert!(app.analysis_input(&left).is_err());
-    let TrainingAnalysis::FastestVictory { result, .. } =
-        frozen.run(AnalysisKind::FastestVictory).unwrap()
-    else {
+    assert!(app.analysis_input(request()).is_err());
+    let TrainingAnalysis::FastestVictory { result, .. } = frozen.run().unwrap() else {
         panic!("expected fastest victory");
     };
     assert!(result.exact);
@@ -39,6 +40,46 @@ fn training_analysis_uses_frozen_inputs_and_produces_replayable_commands() {
     }
     assert_eq!(battle.snapshot.outcome, Outcome::Victory);
     assert_eq!(battle.snapshot.av_micros, solution.av_micros);
+}
+
+#[test]
+fn training_dpr_uses_requested_dummies_and_saved_character_names() {
+    let dir = TestData::new();
+    let app = Workbench::open(dir.path()).unwrap();
+    let request = serde_json::from_value(serde_json::json!({
+        "kind": "dpr", "toughness": [30, 120, 30]
+    }))
+    .unwrap();
+    let TrainingAnalysis::Dpr { result, names } =
+        app.analysis_input(request).unwrap().run().unwrap()
+    else {
+        panic!("expected DPR")
+    };
+    assert_eq!(result.cycles, 3);
+    assert_eq!(
+        result
+            .targets
+            .iter()
+            .map(|target| target.max_toughness)
+            .collect::<Vec<_>>(),
+        [30, 120, 30]
+    );
+    assert_eq!(names.len(), result.characters.len());
+    assert_eq!(names.len(), 4);
+    assert!(
+        names
+            .iter()
+            .any(|unit| unit.id == "ally.3" && unit.name == "丹恒 · 巡猎")
+    );
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|entry| entry.own_damage + entry.assist_damage)
+            .sum::<u64>()
+    );
+    assert!(app.replays().unwrap().is_empty());
 }
 
 pub(crate) struct TestData(PathBuf);

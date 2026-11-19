@@ -2,20 +2,21 @@ use std::collections::BTreeSet;
 
 use crate::{
     BattleError, InitialInput,
-    fixture::{self, AllyKit, EnemyKit, Stats},
+    fixture::{self, AllyKit, Element, EnemyKit, Stats},
 };
 
 #[derive(Clone, Copy)]
 pub(super) enum Kit {
     Ally(&'static AllyKit),
     Enemy(&'static EnemyKit),
+    Dummy { max_toughness: u16 },
 }
 
 impl Kit {
     pub fn max_energy_milli(self) -> u32 {
         match self {
             Self::Ally(kit) => kit.max_energy_milli,
-            Self::Enemy(_) => 0,
+            Self::Enemy(_) | Self::Dummy { .. } => 0,
         }
     }
 
@@ -23,10 +24,20 @@ impl Kit {
         match self {
             Self::Ally(_) => 0,
             Self::Enemy(kit) => kit.max_toughness,
+            Self::Dummy { max_toughness } => max_toughness,
+        }
+    }
+
+    pub fn matches_weakness(self, element: Element) -> bool {
+        match self {
+            Self::Ally(_) => false,
+            Self::Enemy(kit) => kit.weakness[element.index()],
+            Self::Dummy { .. } => true,
         }
     }
 }
 
+#[derive(Clone)]
 pub(super) struct UnitPlan {
     pub id: String,
     pub kit: Kit,
@@ -123,6 +134,34 @@ impl PreparedBattle {
             wave_ends,
             seed: input.seed,
             starting_skill_points: input.starting_skill_points as u8,
+        })
+    }
+
+    pub(super) fn with_dummies(&self, toughness: &[u16]) -> Result<Self, BattleError> {
+        if !(1..=5).contains(&toughness.len()) || toughness.contains(&0) {
+            return Err(BattleError::InvalidInput(
+                "DPR needs one to five dummies with positive toughness".into(),
+            ));
+        }
+        let mut units = self.units[..self.ally_count].to_vec();
+        units.extend(
+            toughness
+                .iter()
+                .enumerate()
+                .map(|(position, &max_toughness)| UnitPlan {
+                    // The colon keeps internal analysis IDs distinct from input unit IDs.
+                    id: format!("dpr:{}", position + 1),
+                    kit: Kit::Dummy { max_toughness },
+                    stats: fixture::DUMMY_STATS,
+                    starting_energy_milli: 0,
+                }),
+        );
+        Ok(Self {
+            wave_ends: vec![units.len()],
+            units,
+            ally_count: self.ally_count,
+            seed: self.seed,
+            starting_skill_points: self.starting_skill_points,
         })
     }
 }

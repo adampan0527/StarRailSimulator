@@ -136,11 +136,39 @@ export type ReplaySummary = {
   finished: boolean;
 };
 
-export type AnalysisKind = 'dpr' | 'fastest_victory';
+export type AnalysisRequest =
+  | { kind: 'dpr'; toughness: number[] }
+  | { kind: 'fastest_victory'; enemy_ids: string[] };
+
+type DamageCredit = { unit_id: string; amount: number };
+type DprHit = {
+  av_micros: number;
+  source_id: string;
+  action: Action;
+  kind: 'direct' | 'weakness_break';
+  critical: boolean;
+  amount: number;
+  credits: DamageCredit[];
+};
+
+export type DprResult = {
+  cycles: number;
+  total_damage: number;
+  dpr: number;
+  characters: {
+    unit_id: string;
+    own_damage: number;
+    assist_damage: number;
+    dpr: number;
+  }[];
+  targets: { max_toughness: number; damage: number; hits: DprHit[] }[];
+};
+
 export type TrainingAnalysis =
   | {
       kind: 'dpr';
-      result: { cycles: number; enemy_hp_lost: number; dpr: number };
+      names: Name[];
+      result: DprResult;
     }
   | {
       kind: 'fastest_victory';
@@ -171,8 +199,8 @@ export const training = {
     invoke<TeamSlots>('training_save_team', { slots }),
   start: (enemyIds: string[]) =>
     invoke<BattleView>('training_start', { enemyIds }),
-  analyze: (enemyIds: string[], kind: AnalysisKind) =>
-    invoke<TrainingAnalysis>('training_analyze', { enemyIds, kind }),
+  analyze: (request: AnalysisRequest) =>
+    invoke<TrainingAnalysis>('training_analyze', { request }),
   act: (sessionId: number, command: Command) =>
     invoke<BattleView>('training_act', { sessionId, command }),
   replays: () => invoke<ReplaySummary[]>('training_replays'),
@@ -194,6 +222,8 @@ export function describeError(error: unknown) {
       return '请检查队伍站位。角色不能重复上阵，开战至少需要一名角色。';
     case 'invalid_enemies':
       return '请选择至少一台训练靶机。';
+    case 'invalid_dpr_toughness':
+      return '请选择 1 至 5 台 DPR 靶机，并填写有效的最大韧性。';
     case 'random_analysis':
       return '最少行动值搜索需要确定性战场。多名角色上阵时，请只选择左侧靶机。';
     case 'replay_not_found':

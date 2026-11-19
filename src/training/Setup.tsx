@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { TeamBoard } from '../team/TeamBoard';
 import { AnalysisResult } from './AnalysisResult';
+import { DprControls } from './Dpr';
 import { describeError, training } from './client';
 import type {
-  AnalysisKind,
+  AnalysisRequest,
   Equipment,
   Profile,
   Setup,
@@ -35,11 +36,12 @@ export function TrainingSetup({
   const [saving, setSaving] = useState(false);
   const [saveIssue, setSaveIssue] = useState('');
   const [analysis, setAnalysis] = useState<TrainingAnalysis>();
-  const [running, setRunning] = useState<AnalysisKind>();
+  const [running, setRunning] = useState<AnalysisRequest['kind']>();
   const [analysisIssue, setAnalysisIssue] = useState('');
   const dirty = slots.some((id, index) => id !== setup.team_slots[index]);
   const locked = starting || saving || running !== undefined;
-  const ready = !dirty && slots.some((id) => id !== null) && enemies.length > 0;
+  const teamReady = !dirty && slots.some((id) => id !== null);
+  const ready = teamReady && enemies.length > 0;
 
   async function saveTeam() {
     setSaving(true);
@@ -58,11 +60,11 @@ export function TrainingSetup({
     setAnalysisIssue('');
   }
 
-  async function analyze(kind: AnalysisKind) {
-    setRunning(kind);
+  async function analyze(request: AnalysisRequest) {
+    setRunning(request.kind);
     clearAnalysis();
     try {
-      setAnalysis(await training.analyze(enemies, kind));
+      setAnalysis(await training.analyze(request));
     } catch (error) {
       setAnalysisIssue(describeError(error));
     } finally {
@@ -86,7 +88,7 @@ export function TrainingSetup({
               aria-pressed={enemies.includes(id)}
               disabled={locked}
               onClick={() => {
-                clearAnalysis();
+                if (analysis?.kind === 'fastest_victory') clearAnalysis();
                 setEnemies((current) =>
                   current.includes(id)
                     ? current.filter((enemy) => enemy !== id)
@@ -152,20 +154,24 @@ export function TrainingSetup({
           type="button"
           className="secondary"
           disabled={!ready || locked}
-          onClick={() => void analyze('dpr')}
-        >
-          {running === 'dpr' ? '正在计算…' : '计算 DPR'}
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          disabled={!ready || locked}
-          onClick={() => void analyze('fastest_victory')}
+          onClick={() =>
+            void analyze({ kind: 'fastest_victory', enemy_ids: enemies })
+          }
         >
           {running === 'fastest_victory' ? '正在搜索…' : '计算最优解'}
         </button>
       </div>
-      {analysis && <AnalysisResult analysis={analysis} />}
+      {analysis?.kind === 'fastest_victory' && (
+        <AnalysisResult analysis={analysis} />
+      )}
+      <DprControls
+        disabled={locked}
+        teamReady={teamReady}
+        running={running === 'dpr'}
+        onChange={clearAnalysis}
+        onCalculate={(toughness) => void analyze({ kind: 'dpr', toughness })}
+      />
+      {analysis?.kind === 'dpr' && <AnalysisResult analysis={analysis} />}
       {(saveIssue || issue) && <p role="alert">{saveIssue || issue}</p>}
       {analysisIssue && <p role="alert">{analysisIssue}</p>}
     </>

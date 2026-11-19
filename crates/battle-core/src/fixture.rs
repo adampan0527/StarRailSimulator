@@ -167,6 +167,8 @@ const fn enemy_stats(hp: u32, resist_bp: [u16; 3]) -> Stats {
     }
 }
 
+pub(crate) const DUMMY_STATS: Stats = enemy_stats(1, [0; 3]);
+
 const fn hit(element: Element, multiplier_bp: u16, toughness: u16) -> Effect {
     Effect::Hit {
         element,

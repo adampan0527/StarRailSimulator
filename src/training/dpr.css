@@ -1,0 +1,63 @@
+.dpr-config p {
+  margin: 0 0 0.75rem;
+}
+
+.dpr-targets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  gap: 0.75rem;
+}
+
+.dpr-targets label {
+  min-width: 0;
+}
+
+.dpr-targets input {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpr-results h4 {
+  margin: 1rem 0 0.5rem;
+}
+
+.dpr-contributions {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpr-contributions :is(th, td) {
+  padding: 0.45rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.dpr-contributions :is(th, td):first-child {
+  text-align: left;
+}
+
+.dpr-damage {
+  border-top: 1px solid var(--border);
+}
+
+.dpr-damage summary {
+  padding: 0.65rem 0;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpr-hits {
+  margin: 0 0 0.5rem;
+  padding-inline-start: 1.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpr-hits li {
+  padding-block: 0.25rem;
+}
+
+.dpr-hits li > span {
+  display: block;
+}

@@ -4,17 +4,62 @@ use serde::Serialize;
 
 use super::{Battle, Kit, PreparedBattle};
 use crate::{
-    Action, BattleError, Command, EventKind, LogMode, Outcome,
+    Action, BattleError, Command, DamageKind, LogMode, Outcome,
     fixture::{Effect, EnemyTarget},
 };
 
 const AV_MICROS: u64 = 1_000_000;
 
-#[derive(Serialize)]
+#[derive(Debug, PartialEq, Serialize)]
 pub struct DprResult {
     pub cycles: u32,
-    pub enemy_hp_lost: u32,
+    pub total_damage: u64,
     pub dpr: f64,
+    pub characters: Vec<DprCharacter>,
+    pub targets: Vec<DprTarget>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+pub struct DprCharacter {
+    pub unit_id: String,
+    pub own_damage: u64,
+    pub assist_damage: u64,
+    pub dpr: f64,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+pub struct DprTarget {
+    pub max_toughness: u16,
+    pub damage: u64,
+    pub hits: Vec<DprHit>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+pub struct DprHit {
+    pub av_micros: u64,
+    pub source_id: String,
+    pub action: Action,
+    pub kind: DamageKind,
+    pub critical: bool,
+    pub amount: u32,
+    pub credits: Vec<DprCredit>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+pub struct DprCredit {
+    pub unit_id: String,
+    pub amount: u32,
+}
+
+#[derive(Clone)]
+pub(super) struct DummyDamage {
+    pub av_micros: u64,
+    pub actor: usize,
+    pub target: usize,
+    pub kind: DamageKind,
+    pub critical: bool,
+    pub amount: u32,
+    pub assist: Option<(usize, u32)>,
 }
 
 #[derive(Serialize)]
@@ -36,39 +81,94 @@ struct SearchNode<'a> {
     step: Option<(usize, Command)>,
 }
 
-/// Runs a fixed offensive policy (damaging ultimate, damaging skill, basic; first target).
-/// The window starts at 0 AV and excludes its end, with 150 AV for the first cycle
-/// and 100 AV for each subsequent cycle. Only actual enemy HP removed counts.
-pub fn calculate_dpr(plan: &PreparedBattle, cycles: NonZeroU32) -> Result<DprResult, BattleError> {
+/// Evaluates the frozen team against one to five indestructible dummies.
+/// Uses the fixed offensive policy, with single-target attacks aimed at the middle dummy.
+/// The window is half-open, with 150 AV for the first cycle and 100 AV thereafter.
+pub fn calculate_dpr(
+    plan: &PreparedBattle,
+    toughness: &[u16],
+    cycles: NonZeroU32,
+) -> Result<DprResult, BattleError> {
+    let plan = plan.with_dummies(toughness)?;
     let end = (150 + 100 * (u64::from(cycles.get()) - 1)) * AV_MICROS;
-    let mut battle = Battle::start(plan, LogMode::Detailed);
+    let mut battle = Battle::start(&plan, LogMode::Off);
+    let mut characters: Vec<_> = plan.units[..plan.ally_count]
+        .iter()
+        .map(|unit| DprCharacter {
+            unit_id: unit.id.clone(),
+            own_damage: 0,
+            assist_damage: 0,
+            dpr: 0.0,
+        })
+        .collect();
+    let mut targets: Vec<_> = toughness
+        .iter()
+        .map(|&max_toughness| DprTarget {
+            max_toughness,
+            damage: 0,
+            hits: Vec::new(),
+        })
+        .collect();
+    let middle = &plan.units[plan.ally_count + (targets.len() - 1) / 2].id;
     while battle.outcome == Outcome::Ongoing && battle.av_micros < end {
         let actions = battle.legal_actions();
         let command = actions
             .iter()
-            .min_by_key(|command| offensive_priority(&battle, command))
+            .min_by_key(|command| {
+                (
+                    offensive_priority(&battle, command),
+                    command.target_id.as_ref() != Some(middle),
+                )
+            })
             .ok_or(BattleError::InvalidActor)?;
         battle.apply(command)?;
-    }
-    let enemy_hp_lost = battle
-        .events()
-        .iter()
-        .take_while(|event| event.av_micros < end)
-        .filter_map(|event| match event.kind {
-            EventKind::Damage { hp_loss, .. }
-                if plan.units[plan.ally_count..]
-                    .iter()
-                    .any(|unit| event.target_id.as_ref() == Some(&unit.id)) =>
-            {
-                Some(hp_loss)
+        for hit in battle
+            .dummy_damage
+            .drain(..)
+            .filter(|hit| hit.av_micros < end)
+        {
+            let mut own_damage = hit.amount;
+            let assist = hit.assist.filter(|&(_, amount)| amount > 0);
+            if let Some((owner, amount)) = assist {
+                own_damage -= amount;
+                characters[owner].assist_damage += u64::from(amount);
             }
-            _ => None,
-        })
-        .sum();
+            let actor = &mut characters[hit.actor];
+            actor.own_damage += u64::from(own_damage);
+            let mut credits = vec![DprCredit {
+                unit_id: actor.unit_id.clone(),
+                amount: own_damage,
+            }];
+            if let Some((owner, amount)) = assist {
+                credits.push(DprCredit {
+                    unit_id: characters[owner].unit_id.clone(),
+                    amount,
+                });
+            }
+            let target = &mut targets[hit.target - plan.ally_count];
+            target.damage += u64::from(hit.amount);
+            target.hits.push(DprHit {
+                av_micros: hit.av_micros,
+                source_id: plan.units[hit.actor].id.clone(),
+                action: command.action,
+                kind: hit.kind,
+                critical: hit.critical,
+                amount: hit.amount,
+                credits,
+            });
+        }
+    }
+    let rounds = f64::from(cycles.get());
+    for character in &mut characters {
+        character.dpr = (character.own_damage + character.assist_damage) as f64 / rounds;
+    }
+    let total_damage: u64 = targets.iter().map(|target| target.damage).sum();
     Ok(DprResult {
         cycles: cycles.get(),
-        enemy_hp_lost,
-        dpr: f64::from(enemy_hp_lost) / f64::from(cycles.get()),
+        total_damage,
+        dpr: total_damage as f64 / rounds,
+        characters,
+        targets,
     })
 }
 
@@ -100,6 +200,7 @@ fn supports_fastest_victory(plan: &PreparedBattle) -> bool {
                 Kit::Enemy(kit) => {
                     matches!(kit.target, EnemyTarget::FirstLiving) || plan.ally_count == 1
                 }
+                Kit::Dummy { .. } => false,
             }
     })
 }

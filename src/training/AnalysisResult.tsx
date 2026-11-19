@@ -1,27 +1,15 @@
 import { actionNames, av } from './Timeline';
+import { DprResults } from './Dpr';
 import type { TrainingAnalysis } from './client';
 
-const dprFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
-
 export function AnalysisResult({ analysis }: { analysis: TrainingAnalysis }) {
+  const unitName = (id: string) =>
+    analysis.names.find((unit) => unit.id === id)?.name ?? id;
   if (analysis.kind === 'dpr') {
-    const { cycles, enemy_hp_lost, dpr } = analysis.result;
-    return (
-      <div role="status">
-        <p>
-          <strong>{dprFormat.format(dpr)} DPR</strong> · 前 {cycles} 个关卡轮次
-          · 有效伤害 {enemy_hp_lost}
-        </p>
-        <p className="muted">
-          固定打法优先使用伤害型终结技、伤害型战技，再用普攻。按首个合法目标结算。
-        </p>
-      </div>
-    );
+    return <DprResults result={analysis.result} unitName={unitName} />;
   }
 
   const { exact, evaluated, budget, victory } = analysis.result;
-  const unitName = (id: string) =>
-    analysis.names.find((unit) => unit.id === id)?.name ?? id;
 
   return (
     <div>
