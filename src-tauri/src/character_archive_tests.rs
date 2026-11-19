@@ -5,10 +5,158 @@ use star_rail_profiles::{
 
 use crate::{
     character_archive::{CharacterArchive, Error},
+    desktop_relic_export::ExportOrigin,
     workbench_tests::TestData,
 };
 
 const EXAMPLE: &str = include_str!("../../contracts/battle-session.v1.example.json");
+
+fn remove_archiver_schema(db: &rusqlite::Connection) {
+    db.execute_batch(
+        "DROP TABLE archiver_relics;
+         DROP TABLE archiver_light_cones;
+         DROP TABLE archiver_progression;
+         DROP TABLE archiver_account;",
+    )
+    .unwrap();
+}
+
+#[test]
+fn imports_archiver_account_over_an_existing_relic_archive() {
+    let dir = TestData::new();
+    let template = Session::from_json(EXAMPLE).unwrap();
+    let mut catalog = training_catalog(&template);
+    let id = "march_7th.preservation";
+    let variant = catalog
+        .characters
+        .get_mut(id)
+        .unwrap()
+        .variants
+        .get_mut("base")
+        .unwrap();
+    variant.skills.get_mut("basic").unwrap().kind = "Normal".into();
+    let trace = variant.traces.remove("trace.first").unwrap();
+    variant.traces.clear();
+    variant.traces.insert("trace.1001101".into(), trace);
+    let cone = catalog
+        .light_cones
+        .remove("fixture.destruction_cone")
+        .unwrap();
+    catalog.light_cones.insert("cone.20000".into(), cone);
+    let boots = catalog.relics.remove("fixture.training_boots").unwrap();
+    catalog.relics.insert("relic.31024".into(), boots);
+
+    let mut account = serde_json::json!({
+        "source": "reliquary_archiver", "version": 4,
+        "metadata": { "uid": 123, "trailblazer": "Stelle" },
+        "characters": [
+            {"id": "1001", "level": 45, "ascension": 3, "eidolon": 2, "ability_version": 0,
+             "skills": {"basic": 3}, "traces": {"ability_1": true}},
+            {"id": "1002", "level": 0, "ascension": 0, "eidolon": 0, "ability_version": 0,
+             "skills": {}, "traces": {}}
+        ],
+        "light_cones": [
+            {"id": "20000", "level": 40, "ascension": 3, "superimposition": 2, "location": "1001", "_uid": "10"},
+            {"id": "20000", "level": 40, "ascension": 3, "superimposition": 2, "location": "", "_uid": "11"}
+        ],
+        "relics": [{
+            "id": "31024", "name": "Test boots", "slot": "Feet", "rarity": 2, "level": 3,
+            "mainstat": "ATK", "substats": [{"key": "SPD", "value": 2.3, "count": 1, "step": 1}],
+            "location": "1001", "lock": false, "discard": false, "_uid": "20"
+        }]
+    });
+
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let v1 = serde_json::json!({
+        "format": "star-rail-simulator.relic-export", "version": 1,
+        "source": "reliquary_archiver", "source_version": 4, "relics": account["relics"],
+    });
+    archive.import_relics(&v1.to_string()).unwrap();
+    let relic_id = archive.inventory().unwrap()[0].id;
+    drop(archive);
+    {
+        let db = rusqlite::Connection::open(dir.path().join("profiles.sqlite")).unwrap();
+        remove_archiver_schema(&db);
+        db.pragma_update(None, "user_version", 5).unwrap();
+    }
+
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let live = serde_json::json!({ "event": "InitialScan", "data": account });
+    let summary = archive
+        .import_account(&live.to_string(), ExportOrigin::Live)
+        .unwrap();
+    assert_eq!(summary.characters_applied, 1);
+    assert_eq!(summary.characters_skipped, 1);
+    assert_eq!(summary.light_cones_added, 2);
+    assert_eq!(summary.light_cones_equipped, 1);
+    assert_eq!(summary.relics.added, 0);
+    let profile = archive.profile(id).unwrap();
+    let Some(LightConeEquipment::Inventory(cone_id)) = profile.edit.light_cone else {
+        panic!("expected an equipped inventory light cone");
+    };
+    assert_eq!(profile.edit.relics[&RelicSlot::Feet], relic_id);
+    drop(archive);
+
+    let db = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let profile = db.profile(id).unwrap();
+    let config = &profile.presets[&profile.current_preset].config;
+    assert_eq!((config.level, config.ascension, config.eidolon), (45, 3, 2));
+    assert_eq!(config.skill_levels["basic"], 3);
+    assert_eq!(config.unlocked_trace_ids, ["trace.1001101"]);
+    drop(db);
+
+    let mut archive = CharacterArchive::open(dir.path(), catalog).unwrap();
+    let summary = archive
+        .import_account(&account.to_string(), ExportOrigin::File)
+        .unwrap();
+    assert_eq!(summary.characters_applied, 0);
+    assert_eq!(summary.light_cones_added, 0);
+    assert_eq!(summary.relics.added, 0);
+
+    account["characters"][0]["eidolon"] = 3.into();
+    account["light_cones"][0]["superimposition"] = 0.into();
+    assert!(
+        archive
+            .import_account(&account.to_string(), ExportOrigin::File)
+            .is_err()
+    );
+    assert_eq!(archive.profile(id).unwrap().edit.eidolon, 2);
+
+    account["light_cones"][0]["superimposition"] = 3.into();
+    account["relics"][0]["level"] = 4.into();
+    let summary = archive
+        .import_account(&account.to_string(), ExportOrigin::File)
+        .unwrap();
+    assert_eq!(summary.characters_applied, 1);
+    assert_eq!(summary.light_cones_updated, 1);
+    assert_eq!(summary.relics_updated, 1);
+    assert_eq!(
+        archive.profile(id).unwrap().edit.light_cone,
+        Some(LightConeEquipment::Inventory(cone_id))
+    );
+    assert_eq!(archive.inventory().unwrap()[0].id, relic_id);
+
+    let mut edit = archive.profile(id).unwrap().edit;
+    edit.eidolon = 5;
+    edit.light_cone = None;
+    edit.relics.clear();
+    archive.save(id, edit.clone()).unwrap();
+    account["characters"][0]["eidolon"] = 4.into();
+    account["light_cones"][0]["superimposition"] = 4.into();
+    let summary = archive
+        .import_account(&account.to_string(), ExportOrigin::File)
+        .unwrap();
+    assert_eq!(summary.characters_preserved, 1);
+    assert_eq!(archive.profile(id).unwrap().edit, edit);
+    account["metadata"]["uid"] = 456.into();
+    assert!(matches!(
+        archive.import_account(&account.to_string(), ExportOrigin::File),
+        Err(Error::Profile(star_rail_profiles::Error::Invalid {
+            field: "archiver.uid",
+            ..
+        }))
+    ));
+}
 
 #[test]
 fn imports_snapshot_relics_into_a_migrated_inventory_once() {
@@ -30,10 +178,12 @@ fn imports_snapshot_relics_into_a_migrated_inventory_once() {
     let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
     let manual_id = archive.save_relic(None, &expected).unwrap()[0].id;
     drop(archive);
-    rusqlite::Connection::open(dir.path().join("profiles.sqlite"))
-        .unwrap()
-        .execute_batch("DROP TABLE imported_relics; PRAGMA user_version = 3;")
-        .unwrap();
+    {
+        let db = rusqlite::Connection::open(dir.path().join("profiles.sqlite")).unwrap();
+        remove_archiver_schema(&db);
+        db.execute_batch("DROP TABLE imported_relics; PRAGMA user_version = 3;")
+            .unwrap();
+    }
 
     let relic = |uid: &str, value: f64| {
         serde_json::json!({
@@ -155,12 +305,14 @@ fn backfills_v4_relic_details_and_preserves_local_equipment() {
     edit.relics.insert(RelicSlot::Feet, enhanced_id);
     archive.save(march, edit).unwrap();
     drop(archive);
-    rusqlite::Connection::open(dir.path().join("profiles.sqlite"))
-        .unwrap()
-        .execute_batch(
+    {
+        let db = rusqlite::Connection::open(dir.path().join("profiles.sqlite")).unwrap();
+        remove_archiver_schema(&db);
+        db.execute_batch(
             "ALTER TABLE imported_relics DROP COLUMN source_details; PRAGMA user_version = 4;",
         )
         .unwrap();
+    }
 
     let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
     assert!(

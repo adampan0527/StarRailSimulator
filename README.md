@@ -39,6 +39,12 @@ Release 构建产出 `.exe`，安装包留待 M08。需要检查前后端连接�
 
 Windows CI 配置使用相同检查命令。工程设计边界见 [战斗输入契约](docs/battle-contract.md) 和 [M01 基线](docs/m01-baseline.md)。
 
+## 导入游戏账号
+
+1. 在模拟器的「账号导入」页点击「打开 Archiver」。首次使用时选择下载的 Windows x64 程序。与当前 4.7 游戏对应的是 [Reliquary Archiver v0.20.0](https://github.com/IceDynamix/reliquary-archiver/releases/tag/v0.20.0)。
+2. 在 Archiver 开启 23313 端口的实时导出。回到模拟器点击「开始接收」，再从游戏标题画面进入游戏。已有 Archiver JSON 时，可以直接点击「选择导出 JSON」。
+3. 核对账号快照后点击「导入角色与装备」。已保存的快照可通过「复制链接」找到。旧版遗器快照也可导入。
+
 ## 组队与角色配装
 
 在下方生成 4.7.0 数据后构建 Release，可执行文件会内置角色和遗器目录，首次打开即可离线使用。开发版直接读取工作区生成的数据。已经导入的目录优先使用。如果构建时缺少数据，可以在「角色」或「遗器」页手动选择生成的 `catalog.json`。

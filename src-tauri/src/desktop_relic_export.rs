@@ -4,6 +4,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{Manager, Url};
 
+pub(crate) mod account;
 mod inventory;
 pub(crate) use inventory::inventory_snapshot;
 
@@ -89,6 +90,7 @@ struct Substat {
 pub(crate) struct SavedRelicExport {
     file_url: String,
     relic_count: usize,
+    account: Option<account::AccountSummary>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, thiserror::Error)]
@@ -157,10 +159,12 @@ fn save_snapshot(
     origin: ExportOrigin,
 ) -> Result<SavedRelicExport, ExportError> {
     let export = parse_snapshot(snapshot, origin)?;
+    let full = account::read_account(snapshot, origin)?;
     let elapsed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|_| ExportError::StorageUnavailable)?;
-    let filename = format!("relics-{}-{}", elapsed.as_nanos(), std::process::id());
+    let kind = if full.is_some() { "account" } else { "relics" };
+    let filename = format!("{kind}-{}-{}", elapsed.as_nanos(), std::process::id());
     let path = directory.join(format!("{filename}.json"));
     let pending_path = directory.join(format!("{filename}.tmp"));
     let file_url = Url::from_file_path(&path).map_err(|()| ExportError::StorageUnavailable)?;
@@ -178,8 +182,11 @@ fn save_snapshot(
         source_version: export.version,
         relics: &export.relics,
     };
-    let written = serde_json::to_writer(&mut pending, &document)
-        .and_then(|()| pending.sync_all().map_err(serde_json::Error::io));
+    let written = match &full {
+        Some((raw, _)) => serde_json::to_writer(&mut pending, raw),
+        None => serde_json::to_writer(&mut pending, &document),
+    }
+    .and_then(|()| pending.sync_all().map_err(serde_json::Error::io));
     drop(pending);
     if written.is_err() || fs::rename(&pending_path, &path).is_err() {
         let _ = fs::remove_file(&pending_path);
@@ -188,12 +195,48 @@ fn save_snapshot(
     Ok(SavedRelicExport {
         file_url: file_url.into(),
         relic_count: export.relics.len(),
+        account: full.map(|(_, account)| account.summary()),
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::workbench_tests::TestData;
+
+    #[test]
+    fn saves_the_complete_archiver_account_in_its_original_format() {
+        let dir = TestData::in_directory(Path::new(env!("CARGO_MANIFEST_DIR")));
+        let account = serde_json::json!({
+            "source": "reliquary_archiver", "version": 4, "build": "0.20.0",
+            "metadata": {"uid": 123, "trailblazer": "Stelle"},
+            "gacha": {"stellar_jade": 160, "oneric_shards": 0},
+            "materials": [{"id": "101", "name": "Star Rail Pass", "count": 4}],
+            "recon_relics": [42], "relics": [], "characters": [], "light_cones": [],
+            "unknown_extra": {"tracked": true}
+        });
+        let live = serde_json::json!({"event": "InitialScan", "data": account});
+        let saved = save_snapshot(dir.path(), &live.to_string(), ExportOrigin::Live).unwrap();
+        let path = Url::parse(&saved.file_url).unwrap().to_file_path().unwrap();
+        let saved_json = fs::read_to_string(path).unwrap();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&saved_json).unwrap(),
+            account
+        );
+        assert_eq!(
+            serde_json::to_value(saved.account).unwrap(),
+            serde_json::json!({
+                "uid": 123, "trailblazer": "Stelle", "characters": 0, "light_cones": 0, "materials": 1,
+                "stellar_jade": 160, "oneiric_shards": 0, "recon_relics": 1
+            })
+        );
+        assert!(
+            save_snapshot(dir.path(), &saved_json, ExportOrigin::File)
+                .unwrap()
+                .account
+                .is_some()
+        );
+    }
 
     #[test]
     fn accepts_full_snapshots_only() {

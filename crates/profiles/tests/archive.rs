@@ -87,7 +87,17 @@ fn migrated_archive_tracks_owned_light_cones_and_freezes_their_values() {
     drop(prior);
 
     let v2 = Connection::open(db.path()).unwrap();
-    v2.execute_batch("DROP TABLE imported_relics; DROP TABLE equipped_light_cones; DROP TABLE light_cone_inventory; PRAGMA user_version = 2;").unwrap();
+    v2.execute_batch(
+        "DROP TABLE archiver_relics;
+         DROP TABLE archiver_light_cones;
+         DROP TABLE archiver_progression;
+         DROP TABLE archiver_account;
+         DROP TABLE imported_relics;
+         DROP TABLE equipped_light_cones;
+         DROP TABLE light_cone_inventory;
+         PRAGMA user_version = 2;",
+    )
+    .unwrap();
     drop(v2);
 
     let first = &team.character_form_ids[0];
@@ -236,7 +246,11 @@ fn migrated_teams_freeze_current_inventory_values_without_changing_old_snapshots
     let old_schema = Connection::open(db.path()).unwrap();
     old_schema
         .execute_batch(
-            "DROP TABLE imported_relics;
+            "DROP TABLE archiver_relics;
+         DROP TABLE archiver_light_cones;
+         DROP TABLE archiver_progression;
+         DROP TABLE archiver_account;
+         DROP TABLE imported_relics;
          DROP TABLE equipped_relics;
          DROP TABLE relic_inventory;
          DROP TABLE equipped_light_cones;

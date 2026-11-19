@@ -2,15 +2,15 @@ use std::{path::Path, sync::Mutex};
 
 use serde::Serialize;
 use star_rail_profiles::{
-    Error as ProfileError, InventoryLightCone, InventoryRelic, LightCone, Relic,
-    RelicImportSummary, SavedTeam, TeamSlots,
+    AccountImportSummary, Error as ProfileError, InventoryLightCone, InventoryRelic, LightCone,
+    Relic, RelicImportSummary, SavedTeam, TeamSlots,
 };
 use tauri::{AppHandle, Manager};
 
 use crate::character_archive::{
     CharacterArchive, CharacterEdit, CharacterProfile, CharacterSummary, Error, Index, RelicOptions,
 };
-use crate::desktop_relic_export::ExportError;
+use crate::desktop_relic_export::{ExportError, ExportOrigin};
 
 #[derive(Default)]
 pub struct CharacterState(Mutex<Option<CharacterArchive>>);
@@ -29,6 +29,10 @@ impl From<Error> for CommandError {
             Error::TeamName => "invalid_team_name",
             Error::RelicSnapshot(ExportError::InvalidSnapshot) => "invalid_relic_snapshot",
             Error::RelicSnapshot(ExportError::UnsupportedFormat) => "unsupported_relic_snapshot",
+            Error::Profile(ProfileError::Invalid {
+                field: "archiver.uid",
+                ..
+            }) => "archiver_account_mismatch",
             Error::Profile(ProfileError::Invalid {
                 field: "eidolon" | "affinitive_eidolon",
                 ..
@@ -189,6 +193,18 @@ pub async fn relic_inventory_import(
     with_archive(app, move |archive| {
         let summary = archive.import_relics(&snapshot)?;
         Ok((summary, archive.inventory()?))
+    })
+    .await
+}
+
+#[tauri::command]
+pub(crate) async fn archiver_import(
+    app: AppHandle,
+    snapshot: String,
+    origin: ExportOrigin,
+) -> Result<AccountImportSummary, CommandError> {
+    with_archive(app, move |archive| {
+        archive.import_account(&snapshot, origin)
     })
     .await
 }

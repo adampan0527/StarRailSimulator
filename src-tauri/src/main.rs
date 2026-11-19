@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(windows)]
+mod archiver_launcher;
 mod character_archive;
 #[cfg(test)]
 mod character_archive_tests;
@@ -14,12 +16,18 @@ mod workbench_tests;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .manage(desktop_characters::CharacterState::default())
-        .manage(desktop_workbench::WorkbenchState::default())
+        .manage(desktop_workbench::WorkbenchState::default());
+    #[cfg(windows)]
+    let builder = builder.manage(archiver_launcher::ArchiverLauncher::default());
+    let app = builder
         .invoke_handler(tauri::generate_handler![
+            #[cfg(windows)]
+            archiver_launcher::archiver_open,
             desktop_status::desktop_status,
             desktop_relic_export::relic_export_save,
+            desktop_characters::archiver_import,
             desktop_characters::character_index,
             desktop_characters::character_roster,
             desktop_characters::character_import_catalog,

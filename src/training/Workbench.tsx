@@ -17,7 +17,7 @@ const pages = [
   { id: 'setup', name: '组队' },
   { id: 'characters', name: '角色' },
   { id: 'relics', name: '遗器' },
-  { id: 'relic-export', name: '遗器导出' },
+  { id: 'relic-export', name: '账号导入' },
   { id: 'light-cones', name: '光锥库' },
   { id: 'history', name: '历史回放' },
 ] as const;

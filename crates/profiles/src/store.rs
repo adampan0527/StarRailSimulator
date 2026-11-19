@@ -9,12 +9,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Catalog, Error, FrozenCharacter, FrozenTeam, Loadout, valid_id};
 
+mod archiver;
 mod inventory;
 mod light_cones;
+pub use archiver::{AccountImportSummary, AccountInventory, ImportedLightCone};
 pub use inventory::{ImportedRelic, InventoryRelic, RelicImportSummary, RelicRolls, RelicSource};
 pub use light_cones::{InventoryLightCone, LightConeEquipment};
 
-const SCHEMA_VERSION: u32 = 5;
+const SCHEMA_VERSION: u32 = 6;
 const INITIAL_PRESET: &str = "默认配装";
 
 const SCHEMA: &str = "
@@ -118,6 +120,9 @@ impl Archive {
         }
         if version < 5 {
             transaction.execute_batch(inventory::IMPORT_DETAILS_SCHEMA)?;
+        }
+        if version < 6 {
+            transaction.execute_batch(archiver::SCHEMA)?;
         }
         if version < SCHEMA_VERSION {
             transaction.pragma_update(None, "user_version", SCHEMA_VERSION)?;

@@ -7,9 +7,55 @@ const maxMessageBytes = 8 * 1024 * 1024;
 export type RelicExport = {
   file_url: string;
   relic_count: number;
+  account: {
+    uid: number | null;
+    trailblazer: string | null;
+    characters: number;
+    light_cones: number;
+    materials: number | null;
+    stellar_jade: number | null;
+    oneiric_shards: number | null;
+    recon_relics: number | null;
+  } | null;
 };
 
-export function receiveRelics(
+export type AccountImport = {
+  characters_applied: number;
+  characters_preserved: number;
+  characters_skipped: number;
+  light_cones_added: number;
+  light_cones_updated: number;
+  light_cones_equipped: number;
+  light_cones_skipped: number;
+  relics: { added: number; equipped: number };
+  relics_updated: number;
+};
+
+export type ExportOrigin = 'live' | 'file';
+
+export async function openArchiver(reselect: boolean) {
+  try {
+    return await invoke<'opened' | 'already_open' | 'canceled'>(
+      'archiver_open',
+      { reselect },
+    );
+  } catch (cause) {
+    if (cause === 'already_open') {
+      throw new Error('请先关闭模拟器打开的 Archiver，再更换程序。', { cause });
+    }
+    if (cause === 'invalid_program') {
+      throw new Error('请选择官方的 reliquary-archiver Windows 可执行文件。', {
+        cause,
+      });
+    }
+    if (cause === 'dialog_failed') {
+      throw new Error('选取程序失败，请重试。', { cause });
+    }
+    throw new Error('无法打开 Archiver。可手动启动后再开始接收。', { cause });
+  }
+}
+
+export function receiveAccount(
   signal: AbortSignal,
   onConnected: () => void,
 ): Promise<string> {
@@ -87,7 +133,7 @@ export function receiveRelics(
 
 export async function saveRelicExport(
   snapshot: string,
-  origin: 'live' | 'file',
+  origin: ExportOrigin,
 ): Promise<RelicExport> {
   try {
     return await invoke<RelicExport>('relic_export_save', { snapshot, origin });
@@ -100,9 +146,9 @@ export async function saveRelicExport(
       throw new Error(message, { cause });
     }
     if (cause === 'invalid_snapshot') {
-      throw new Error('收到的遗器库存格式不正确或超过 8 MB。', { cause });
+      throw new Error('收到的快照格式不正确或超过 8 MB。', { cause });
     }
-    throw new Error('写入本地遗器文件失败，请重试。', { cause });
+    throw new Error('写入本地快照失败，请重试。', { cause });
   }
 }
 
@@ -113,6 +159,44 @@ export async function readRelicExportFile(file: File): Promise<string> {
   return file.text();
 }
 
-export async function saveRelicExportFile(file: File): Promise<RelicExport> {
-  return saveRelicExport(await readRelicExportFile(file), 'file');
+export async function importAccount(
+  snapshot: string,
+  origin: ExportOrigin,
+): Promise<AccountImport> {
+  try {
+    return await invoke<AccountImport>('archiver_import', { snapshot, origin });
+  } catch (cause) {
+    const code =
+      typeof cause === 'object' && cause !== null && 'code' in cause
+        ? cause.code
+        : undefined;
+    switch (code) {
+      case 'archiver_account_mismatch':
+        throw new Error(
+          '此存档已绑定其他游戏 UID。请选择同一账号的导出文件。',
+          { cause },
+        );
+      case 'catalog_missing':
+        throw new Error('请先在「角色」页载入正式服数据，再重试导入。', {
+          cause,
+        });
+      case 'catalog_mismatch':
+        throw new Error('当前存档需要原来的游戏数据版本。', { cause });
+      case 'invalid_relic_snapshot':
+      case 'unsupported_relic_snapshot':
+        throw new Error('快照内容不完整或格式不受支持。请重新导出。', {
+          cause,
+        });
+      case 'invalid_relic':
+      case 'invalid_eidolon':
+      case 'invalid_light_cone':
+      case 'invalid_profile':
+        throw new Error(
+          '快照中的部分养成或装备数值与当前图鉴不匹配，导入已回滚。',
+          { cause },
+        );
+      default:
+        throw new Error('写入存档失败，请重试。', { cause });
+    }
+  }
 }

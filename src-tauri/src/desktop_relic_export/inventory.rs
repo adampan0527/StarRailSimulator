@@ -14,9 +14,15 @@ pub(crate) fn inventory_snapshot(
     catalog: &Catalog,
 ) -> Result<Vec<ImportedRelic>, ArchiveError> {
     let export = parse_snapshot(snapshot, ExportOrigin::File)?;
+    convert_relics(export.relics, catalog)
+}
+
+pub(super) fn convert_relics(
+    relics: Vec<Relic>,
+    catalog: &Catalog,
+) -> Result<Vec<ImportedRelic>, ArchiveError> {
     let mut seen = BTreeSet::new();
-    export
-        .relics
+    relics
         .into_iter()
         .map(|relic| {
             if relic._uid.trim().is_empty() || !seen.insert(relic._uid.clone()) {

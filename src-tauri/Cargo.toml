@@ -18,3 +18,6 @@ star-rail-battle-core = { path = "../crates/battle-core" }
 star-rail-profiles = { path = "../crates/profiles" }
 tauri = { version = "=2.12.5", features = [] }
 thiserror = "=2.0.21"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = ["Win32_UI_Controls_Dialogs"] }

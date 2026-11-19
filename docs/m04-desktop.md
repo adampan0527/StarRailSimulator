@@ -111,6 +111,14 @@ Windows x64 Release 可执行文件 SHA-256 为 `36e9e5fc901b1d957482da46794e073
 - 2026-11-17 修复 Archiver 第 4 版遗器使用 `set_id` 时的解析错误。实时和文件入口保留套装 ID `set_id`，也兼容原先接受的 `id` 字段。Windows x64 Release 从 4.7 账号的本机 Archiver 实时接收并保存了 1146 件遗器，其中 169 件已穿戴，977 件未穿戴。与同一次扫描的原始 JSON 逐字段核对，套装 ID、实例标识、穿戴位置及副词条数值一致。原生界面验证复制文件链接。Rust 工作区 30 项测试、Clippy 和前端检查通过。[解析回归测试](../src-tauri/src/desktop_relic_export.rs)
 - 2026-11-17 文件入口支持重新打开模拟器保存的第 1 版遗器快照，按 `source_version` 校验来源版本。Windows x64 Release 使用原生文件选择器重新打开 1146 件遗器的既有快照，保存后两份 JSON 的 SHA-256 一致。Rust 工作区 32 项测试、Clippy 和前端检查通过。[文件格式回归测试](../src-tauri/src/desktop_relic_export.rs)
 - 2026-11-17 「遗器」页增加「导入 JSON」。支持 Archiver 第 4 版库存和模拟器第 1 版快照。套装、槽位和星级匹配到图鉴遗器，副词条根据图鉴成长值及原始档数计算为百万分之一单位。SQLite 存档从第 3 版迁移到第 4 版，用来源实例 ID 和规范化词条识别已导入的记录，在一次事务内新增遗器。游戏中的穿戴情况可从源 JSON 查看，模拟器的穿戴关系在「角色」页设置。
+
+## Archiver 账号导入
+
+- 「账号导入」页可选择并打开本机的 Reliquary Archiver，成功启动后记住所选路径。Windows 文件对话框使用已有锁定版本的 `windows-sys`。模拟器通过固定的本机 WebSocket 读取实时首包，也可读取第 4 版原始 JSON 和第 1 版遗器快照。[Windows 4.7 对应版本](https://github.com/IceDynamix/reliquary-archiver/releases/tag/v0.20.0)
+- 完整快照沿用 Archiver 原始 JSON 结构，在本地保留角色、光锥、遗器、UID、材料、货币和活动字段。账号预览显示 UID、开拓者、记录数和货币余额。点击「导入角色与装备」后，角色养成与两种装备库存一起写入 SQLite。材料、货币和「奇库寻遗」记录保存在 JSON 快照中。
+- 第 6 版存档记录账号 UID、已应用的角色养成和装备来源实例。第一次导入可填补空装备槽，旧存档的遗器匹配后沿用现有库存 ID。重复导入同一 UID 可更新尚未被本地改动的角色养成和装备数值，手动调整的养成与穿戴继续保留。其他 UID 的完整快照仍可保存，写入当前库存时会明确提示 UID 冲突。
+- 2026-11-19 Rust 工作区回归覆盖完整快照字段保留、第 5 版存档迁移、装备关联、同一扫描重复导入、强化更新、保留本地改动、UID 冲突与失败回滚。正式服账号的全量联调待验收。[账号导入测试](../src-tauri/src/character_archive_tests.rs) · [快照测试](../src-tauri/src/desktop_relic_export.rs)
+- 2026-11-19 在 Windows WebView2 的独立测试存档中验证原生程序选择与取消、已打开进程复用、本机实时首包、保存与重开 JSON、穿戴恢复、重复导入、UID 冲突提示和 360 CSS px 布局。实时数据来自模拟导出器。
 - 2026-11-17 Windows x64 Release 用原生文件选择器导入真实快照，库存页显示新增 1146 件。读回 SQLite 核对 1146 个来源实例和 266 条速度副词条，原有角色档案与配队仍可读取。应用层回归覆盖第 3 版库存迁移、相同词条的不同实例、重复导入及无效词条的整批回滚。Rust 工作区 33 项测试、Clippy 和前端检查通过。[库存导入回归测试](../src-tauri/src/character_archive_tests.rs)
 
 ### 导入穿戴与副词条

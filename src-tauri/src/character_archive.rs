@@ -2,11 +2,12 @@ use std::{collections::BTreeMap, fs, io, path::Path};
 
 use serde::{Deserialize, Serialize};
 use star_rail_profiles::{
-    Archive, Catalog, CharacterStats, Eidolon, InventoryLightCone, InventoryRelic, LightCone,
-    LightConeEquipment, Relic, RelicImportSummary, RelicSlot, SavedTeam, TeamSlots,
+    AccountImportSummary, Archive, Catalog, CharacterStats, Eidolon, InventoryLightCone,
+    InventoryRelic, LightCone, LightConeEquipment, Relic, RelicImportSummary, RelicSlot, SavedTeam,
+    TeamSlots,
 };
 
-use crate::desktop_relic_export::{ExportError, inventory_snapshot};
+use crate::desktop_relic_export::{ExportError, ExportOrigin, account, inventory_snapshot};
 
 const MAX_CATALOG_BYTES: usize = 8 * 1024 * 1024;
 const CATALOG_FILE: &str = "catalog.json";
@@ -278,6 +279,15 @@ impl CharacterArchive {
     pub fn import_relics(&mut self, snapshot: &str) -> Result<RelicImportSummary, Error> {
         let relics = inventory_snapshot(snapshot, self.0.catalog())?;
         Ok(self.0.import_inventory_relics(&relics)?)
+    }
+
+    pub fn import_account(
+        &mut self,
+        snapshot: &str,
+        origin: ExportOrigin,
+    ) -> Result<AccountImportSummary, Error> {
+        let inventory = account::convert_snapshot(snapshot, origin, self.0.catalog())?;
+        Ok(self.0.import_account(&inventory)?)
     }
 
     pub fn light_cone_inventory(&self) -> Result<Vec<InventoryLightCone>, Error> {

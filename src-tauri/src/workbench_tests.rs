@@ -45,9 +45,13 @@ pub(crate) struct TestData(PathBuf);
 
 impl TestData {
     pub(crate) fn new() -> Self {
+        Self::in_directory(&std::env::temp_dir())
+    }
+
+    pub(crate) fn in_directory(parent: &Path) -> Self {
         let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let sequence = NEXT_TEMP.fetch_add(1, Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!(
+        let dir = parent.join(format!(
             "star-rail-m04-{}-{}-{sequence}",
             std::process::id(),
             time.as_nanos()
