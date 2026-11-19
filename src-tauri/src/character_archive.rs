@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fs, io, path::Path};
 use serde::{Deserialize, Serialize};
 use star_rail_profiles::{
     Archive, Catalog, CharacterStats, Eidolon, InventoryLightCone, InventoryRelic, LightCone,
-    LightConeEquipment, Relic, RelicSlot, SavedTeam, TeamSlots,
+    LightConeEquipment, Relic, RelicImportSummary, RelicSlot, SavedTeam, TeamSlots,
 };
 
 use crate::desktop_relic_export::{ExportError, inventory_snapshot};
@@ -275,7 +275,7 @@ impl CharacterArchive {
         Ok(self.0.inventory()?)
     }
 
-    pub fn import_relics(&mut self, snapshot: &str) -> Result<usize, Error> {
+    pub fn import_relics(&mut self, snapshot: &str) -> Result<RelicImportSummary, Error> {
         let relics = inventory_snapshot(snapshot, self.0.catalog())?;
         Ok(self.0.import_inventory_relics(&relics)?)
     }

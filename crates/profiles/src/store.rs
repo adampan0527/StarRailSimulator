@@ -11,10 +11,10 @@ use crate::{Catalog, Error, FrozenCharacter, FrozenTeam, Loadout, valid_id};
 
 mod inventory;
 mod light_cones;
-pub use inventory::InventoryRelic;
+pub use inventory::{ImportedRelic, InventoryRelic, RelicImportSummary, RelicRolls, RelicSource};
 pub use light_cones::{InventoryLightCone, LightConeEquipment};
 
-const SCHEMA_VERSION: u32 = 4;
+const SCHEMA_VERSION: u32 = 5;
 const INITIAL_PRESET: &str = "默认配装";
 
 const SCHEMA: &str = "
@@ -115,6 +115,9 @@ impl Archive {
         }
         if version < 4 {
             transaction.execute_batch(inventory::IMPORT_SCHEMA)?;
+        }
+        if version < 5 {
+            transaction.execute_batch(inventory::IMPORT_DETAILS_SCHEMA)?;
         }
         if version < SCHEMA_VERSION {
             transaction.pragma_update(None, "user_version", SCHEMA_VERSION)?;

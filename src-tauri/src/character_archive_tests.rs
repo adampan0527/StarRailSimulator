@@ -1,5 +1,7 @@
 use star_rail_battle_core::Session;
-use star_rail_profiles::{Archive, LightConeEquipment, Relic, RelicSlot, training_catalog};
+use star_rail_profiles::{
+    Affix, Archive, LightConeEquipment, Relic, RelicImportSummary, RelicSlot, training_catalog,
+};
 
 use crate::{
     character_archive::{CharacterArchive, Error},
@@ -47,16 +49,30 @@ fn imports_snapshot_relics_into_a_migrated_inventory_once() {
         "relics": [relic("first", 2.29999995), relic("second", 2.29999995)]
     });
     let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
-    assert_eq!(archive.import_relics(&snapshot.to_string()).unwrap(), 2);
+    assert_eq!(
+        archive.import_relics(&snapshot.to_string()).unwrap(),
+        RelicImportSummary {
+            added: 2,
+            equipped: 1
+        }
+    );
     let inventory = archive.inventory().unwrap();
     assert_eq!(inventory.len(), 3);
     assert_eq!(inventory[2].id, manual_id);
+    assert!(inventory[0].owner_id.is_none());
+    assert_eq!(
+        inventory[1].owner_id.as_deref(),
+        Some("march_7th.preservation")
+    );
     assert!(inventory.iter().all(|item| item.relic == expected));
     let ids: Vec<_> = inventory.iter().map(|item| item.id).collect();
     drop(archive);
 
     let mut archive = CharacterArchive::open(dir.path(), catalog).unwrap();
-    assert_eq!(archive.import_relics(&snapshot.to_string()).unwrap(), 0);
+    assert_eq!(
+        archive.import_relics(&snapshot.to_string()).unwrap(),
+        RelicImportSummary::default()
+    );
     snapshot["relics"] = serde_json::json!([relic("third", 2.3), relic("invalid", 5.0)]);
     assert!(archive.import_relics(&snapshot.to_string()).is_err());
     assert_eq!(
@@ -67,6 +83,150 @@ fn imports_snapshot_relics_into_a_migrated_inventory_once() {
             .map(|item| item.id)
             .collect::<Vec<_>>(),
         ids
+    );
+}
+
+#[test]
+fn backfills_v4_relic_details_and_preserves_local_equipment() {
+    let dir = TestData::new();
+    let template = Session::from_json(EXAMPLE).unwrap();
+    let mut catalog = training_catalog(&template);
+    let boots = catalog.relics.get_mut("fixture.training_boots").unwrap();
+    boots.rarity = 5;
+    boots.max_level = 15;
+    boots.initial_substats = [3, 4];
+    boots.set_id = "set.102".into();
+    let set = catalog.relic_sets.remove("fixture.training").unwrap();
+    catalog.relic_sets.insert("set.102".into(), set);
+    let group = catalog.sub_affixes.get_mut("sub.feet").unwrap();
+    for (key, base, step) in [
+        ("hp_flat", 33.87, 4.234),
+        ("crit_rate", 0.02592, 0.00324),
+        ("crit_damage", 0.05184, 0.00648),
+    ] {
+        group.insert(
+            key.into(),
+            Affix {
+                base,
+                step,
+                step_count: 2,
+            },
+        );
+    }
+
+    let fourth =
+        serde_json::json!({ "key": "CRIT DMG_", "value": 5.8320003, "count": 1, "step": 1 });
+    let mut preview = serde_json::json!({
+        "set_id": "102", "name": "Musketeer of Wild Wheat", "slot": "Feet",
+        "rarity": 5, "level": 0, "mainstat": "ATK_",
+        "substats": [
+            { "key": "SPD", "value": 2.3, "count": 1, "step": 1 },
+            { "key": "HP", "value": 33.87, "count": 1, "step": 0 },
+            { "key": "CRIT Rate_", "value": 2.592, "count": 1, "step": 0 }
+        ],
+        "location": "", "lock": false, "discard": false, "_uid": "preview"
+    });
+    let mut enhanced = preview.clone();
+    enhanced["level"] = 6.into();
+    enhanced["_uid"] = "enhanced".into();
+    enhanced["substats"][0] =
+        serde_json::json!({ "key": "SPD", "value": 4.3, "count": 2, "step": 1 });
+    enhanced["substats"]
+        .as_array_mut()
+        .unwrap()
+        .push(fourth.clone());
+    let snapshot = |a: &serde_json::Value, b: &serde_json::Value| {
+        serde_json::json!({
+            "source": "reliquary_archiver", "version": 4, "relics": [a, b]
+        })
+        .to_string()
+    };
+    let march = "march_7th.preservation";
+    let dan = "dan_heng.hunt";
+
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    archive
+        .import_relics(&snapshot(&preview, &enhanced))
+        .unwrap();
+    let inventory = archive.inventory().unwrap();
+    let enhanced_id = inventory[0].id;
+    let preview_id = inventory[1].id;
+    let mut edit = archive.profile(march).unwrap().edit;
+    edit.relics.insert(RelicSlot::Feet, enhanced_id);
+    archive.save(march, edit).unwrap();
+    drop(archive);
+    rusqlite::Connection::open(dir.path().join("profiles.sqlite"))
+        .unwrap()
+        .execute_batch(
+            "ALTER TABLE imported_relics DROP COLUMN source_details; PRAGMA user_version = 4;",
+        )
+        .unwrap();
+
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    assert!(
+        archive
+            .inventory()
+            .unwrap()
+            .iter()
+            .all(|item| item.source.is_none())
+    );
+    preview["location"] = "1001".into();
+    preview["preview_substats"] = serde_json::json!([fourth]);
+    enhanced["location"] = "1002".into();
+    assert_eq!(
+        archive
+            .import_relics(&snapshot(&preview, &enhanced))
+            .unwrap(),
+        RelicImportSummary::default()
+    );
+    drop(archive);
+
+    let mut archive = CharacterArchive::open(dir.path(), catalog).unwrap();
+    let inventory = archive.inventory().unwrap();
+    assert_eq!(inventory.len(), 2);
+    assert_eq!(inventory[0].id, enhanced_id);
+    assert_eq!(inventory[0].owner_id.as_deref(), Some(march));
+    let source = inventory[0].source.as_ref().unwrap();
+    assert_eq!(source.location, "1002");
+    assert_eq!(source.rolls["speed"].count, 2);
+    assert_eq!(source.rolls["speed"].step, 1);
+    assert!(archive.profile(dan).unwrap().edit.relics.is_empty());
+    assert_eq!(inventory[1].id, preview_id);
+    assert!(inventory[1].owner_id.is_none());
+    let source = inventory[1].source.as_ref().unwrap();
+    assert_eq!(source.location, "1001");
+    assert_eq!(
+        source.preview_substats.as_ref().unwrap()["crit_damage"],
+        58_320
+    );
+    assert!(!inventory[1].relic.substats.contains_key("crit_damage"));
+
+    let mut draft = inventory[0].relic.clone();
+    draft.substats.insert("speed".into(), 4_600_000);
+    archive.save_relic(Some(enhanced_id), &draft).unwrap();
+    let mut edit = archive.profile(march).unwrap().edit;
+    edit.relics.clear();
+    archive.save(march, edit).unwrap();
+    preview.as_object_mut().unwrap().remove("preview_substats");
+    assert_eq!(
+        archive
+            .import_relics(&snapshot(&preview, &enhanced))
+            .unwrap(),
+        RelicImportSummary::default()
+    );
+    let inventory = archive.inventory().unwrap();
+    assert!(inventory.iter().all(|item| item.owner_id.is_none()));
+    assert_eq!(inventory[0].relic, draft);
+    let source = inventory[0].source.as_ref().unwrap();
+    assert_eq!(source.location, "1002");
+    assert!(source.rolls.is_empty());
+    assert!(
+        inventory[1]
+            .source
+            .as_ref()
+            .unwrap()
+            .preview_substats
+            .is_some()
     );
 }
 

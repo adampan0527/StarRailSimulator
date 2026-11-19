@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
 
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use super::{Archive, light_cones, put_preset, read_profile};
-use crate::{Error, LightConeEquipment, Loadout, Relic, RelicSlot, Relics};
+use super::{
+    Archive, INITIAL_PRESET, insert_profile_if_missing, light_cones, put_preset, read_profile,
+};
+use crate::{Catalog, Error, LightConeEquipment, Loadout, Relic, RelicSlot, Relics};
 
 pub(super) const SCHEMA: &str = "
 CREATE TABLE relic_inventory (
@@ -31,6 +33,9 @@ CREATE TABLE imported_relics (
 ) STRICT;
 ";
 
+pub(super) const IMPORT_DETAILS_SCHEMA: &str =
+    "ALTER TABLE imported_relics ADD COLUMN source_details TEXT;";
+
 const SLOTS: [RelicSlot; 6] = [
     RelicSlot::Head,
     RelicSlot::Hands,
@@ -56,23 +61,69 @@ pub struct InventoryRelic {
     pub id: u32,
     pub relic: Relic,
     pub owner_id: Option<String>,
+    pub source: Option<RelicSource>,
+}
+
+pub struct ImportedRelic {
+    pub source_uid: String,
+    pub relic: Relic,
+    pub source: RelicSource,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct RelicSource {
+    pub location: String,
+    pub rolls: BTreeMap<String, RelicRolls>,
+    /// Unlocked by future enhancements. Values are in millionths.
+    pub preview_substats: Option<BTreeMap<String, u32>>,
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
+pub struct RelicRolls {
+    pub count: u32,
+    pub step: u32,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize)]
+pub struct RelicImportSummary {
+    pub added: usize,
+    pub equipped: usize,
 }
 
 impl Archive {
     pub fn inventory(&self) -> Result<Vec<InventoryRelic>, Error> {
         let mut query = self.db.prepare(
-            "SELECT i.id, i.relic, e.character_id FROM relic_inventory i
-             LEFT JOIN equipped_relics e ON i.id = e.relic_id ORDER BY i.id DESC",
+            "SELECT i.id, i.relic, e.character_id, s.source_details, i.relic = s.source_relic
+             FROM relic_inventory i
+             LEFT JOIN equipped_relics e ON i.id = e.relic_id
+             LEFT JOIN imported_relics s ON i.id = s.relic_id ORDER BY i.id DESC",
         )?;
         let rows = query.query_map([], |row| {
-            Ok((row.get(0)?, row.get::<_, String>(1)?, row.get(2)?))
+            Ok((
+                row.get(0)?,
+                row.get::<_, String>(1)?,
+                row.get(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<bool>>(4)?,
+            ))
         })?;
         rows.map(|row| {
-            let (id, json, owner_id) = row?;
+            let (id, json, owner_id, details, matches_source) = row?;
+            let source = details
+                .map(|details| serde_json::from_str::<RelicSource>(&details))
+                .transpose()?
+                .map(|mut source| {
+                    if matches_source == Some(false) {
+                        source.rolls.clear();
+                        source.preview_substats = None;
+                    }
+                    source
+                });
             Ok(InventoryRelic {
                 id,
                 relic: serde_json::from_str(&json)?,
                 owner_id,
+                source,
             })
         })
         .collect()
@@ -104,37 +155,91 @@ impl Archive {
         Ok(())
     }
 
-    /// Imports source instances together. An already imported instance with the same stats
-    /// keeps its local inventory ID and any subsequent local edits.
-    pub fn import_inventory_relics(&mut self, relics: &[(String, Relic)]) -> Result<usize, Error> {
+    /// Refreshes source details and fills empty equipment slots when first recording a source
+    /// snapshot. Matching instances retain their inventory IDs and local edits.
+    pub fn import_inventory_relics(
+        &mut self,
+        relics: &[ImportedRelic],
+    ) -> Result<RelicImportSummary, Error> {
+        let characters_by_source: BTreeMap<_, _> = self
+            .catalog
+            .characters
+            .iter()
+            .flat_map(|(id, character)| {
+                character
+                    .source_ids
+                    .iter()
+                    .map(move |source| (source.as_str(), id.as_str()))
+            })
+            .collect();
         let entries = relics
             .iter()
-            .map(|(uid, relic)| self.inventory_entry(relic).map(|entry| (uid, entry)))
+            .map(|item| self.inventory_entry(&item.relic).map(|entry| (item, entry)))
             .collect::<Result<Vec<_>, _>>()?;
         let transaction = self
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let mut added = 0;
+        let mut summary = RelicImportSummary::default();
         {
             let mut imported = transaction.prepare(
-                "SELECT 1 FROM imported_relics WHERE source_uid = ?1 AND source_relic = ?2",
+                "SELECT s.relic_id, s.source_details, i.relic = s.source_relic
+                 FROM imported_relics s JOIN relic_inventory i ON i.id = s.relic_id
+                 WHERE s.source_uid = ?1 AND s.source_relic = ?2",
             )?;
             let mut inventory =
                 transaction.prepare("INSERT INTO relic_inventory (slot, relic) VALUES (?1, ?2)")?;
             let mut source = transaction.prepare(
                 "INSERT INTO imported_relics (source_uid, source_relic, relic_id) VALUES (?1, ?2, ?3)",
             )?;
-            for (uid, (slot, json)) in entries {
-                if imported.exists(params![uid, json])? {
-                    continue;
+            let mut update_source = transaction
+                .prepare("UPDATE imported_relics SET source_details = ?2 WHERE relic_id = ?1")?;
+            for (item, (slot, json)) in entries {
+                let uid = &item.source_uid;
+                let row = imported
+                    .query_row(params![uid, json], |row| {
+                        Ok((
+                            row.get::<_, u32>(0)?,
+                            row.get::<_, Option<String>>(1)?,
+                            row.get::<_, bool>(2)?,
+                        ))
+                    })
+                    .optional()?;
+                let (id, previous, matches_source) = if let Some(row) = row {
+                    row
+                } else {
+                    inventory.execute(params![slot, json])?;
+                    let id = transaction.last_insert_rowid();
+                    source.execute(params![uid, json, id])?;
+                    summary.added += 1;
+                    (
+                        u32::try_from(id)
+                            .map_err(|_| Error::invalid("inventory.id", id.to_string()))?,
+                        None,
+                        true,
+                    )
+                };
+
+                if previous.is_none()
+                    && matches_source
+                    && let Some(&character_id) =
+                        characters_by_source.get(item.source.location.as_str())
+                {
+                    summary.equipped +=
+                        equip_imported_relic(&transaction, &self.catalog, character_id, slot, id)?;
                 }
-                inventory.execute(params![slot, json])?;
-                source.execute(params![uid, json, transaction.last_insert_rowid()])?;
-                added += 1;
+
+                let mut details = item.source.clone();
+                if details.preview_substats.is_none()
+                    && let Some(previous) = previous
+                {
+                    details.preview_substats =
+                        serde_json::from_str::<RelicSource>(&previous)?.preview_substats;
+                }
+                update_source.execute(params![id, serde_json::to_string(&details)?])?;
             }
         }
         transaction.commit()?;
-        Ok(added)
+        Ok(summary)
     }
 
     fn inventory_entry(&self, relic: &Relic) -> Result<(u8, String), Error> {
@@ -211,6 +316,39 @@ impl Archive {
         transaction.commit()?;
         Ok(())
     }
+}
+
+fn equip_imported_relic(
+    db: &Connection,
+    catalog: &Catalog,
+    character_id: &str,
+    slot: u8,
+    relic_id: u32,
+) -> Result<usize, Error> {
+    let current = db
+        .query_row(
+            "SELECT b.loadout FROM profiles p JOIN presets b
+         ON b.character_id = p.character_id AND b.name = p.current_preset
+         WHERE p.character_id = ?1",
+            [character_id],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()?;
+    let active = if let Some(current) = current {
+        serde_json::from_str::<Loadout>(&current)?
+    } else {
+        let default = catalog.default_loadout(character_id)?;
+        insert_profile_if_missing(db, character_id, INITIAL_PRESET, &default)?;
+        default
+    };
+    // Equipping an inventory item would replace all inline relics in a legacy preset.
+    if active.config.relics != Relics::default() {
+        return Ok(0);
+    }
+    Ok(db.execute(
+        "INSERT INTO equipped_relics VALUES (?1, ?2, ?3) ON CONFLICT DO NOTHING",
+        params![character_id, slot, relic_id],
+    )?)
 }
 
 fn owner(db: &Connection, id: u32) -> Result<Option<String>, Error> {

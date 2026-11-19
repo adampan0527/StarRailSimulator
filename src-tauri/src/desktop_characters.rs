@@ -2,8 +2,8 @@ use std::{path::Path, sync::Mutex};
 
 use serde::Serialize;
 use star_rail_profiles::{
-    Error as ProfileError, InventoryLightCone, InventoryRelic, LightCone, Relic, SavedTeam,
-    TeamSlots,
+    Error as ProfileError, InventoryLightCone, InventoryRelic, LightCone, Relic,
+    RelicImportSummary, SavedTeam, TeamSlots,
 };
 use tauri::{AppHandle, Manager};
 
@@ -185,10 +185,10 @@ pub async fn relic_inventory(app: AppHandle) -> Result<Vec<InventoryRelic>, Comm
 pub async fn relic_inventory_import(
     app: AppHandle,
     snapshot: String,
-) -> Result<(usize, Vec<InventoryRelic>), CommandError> {
+) -> Result<(RelicImportSummary, Vec<InventoryRelic>), CommandError> {
     with_archive(app, move |archive| {
-        let added = archive.import_relics(&snapshot)?;
-        Ok((added, archive.inventory()?))
+        let summary = archive.import_relics(&snapshot)?;
+        Ok((summary, archive.inventory()?))
     })
     .await
 }

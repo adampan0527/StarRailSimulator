@@ -280,8 +280,7 @@
   color: var(--success);
 }
 
-.relic-slot,
-.relic-choice {
+.relic-slot {
   display: grid;
   gap: 0.15rem;
 }
@@ -293,12 +292,6 @@
   margin-bottom: 0;
   padding: 0.25rem;
   list-style: none;
-}
-
-.relic-choice {
-  height: 100%;
-  align-content: start;
-  font-weight: 400;
 }
 
 .relic-inventory-count {
@@ -466,7 +459,7 @@
   width: 100%;
   height: 100%;
   padding: 0.38rem;
-  border: 1px solid light-dark(#d2b67d, #76603d);
+  border: 1px solid var(--relic-card-border, var(--line));
   border-radius: 0.75rem;
   background: var(--surface);
   color: var(--text);
@@ -477,18 +470,35 @@
   border-color: var(--accent);
 }
 
+.relic-card[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.relic-card-equipped {
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+
+.relic-card[data-rarity='5'] {
+  --relic-card-border: light-dark(#d2b67d, #76603d);
+  --relic-artwork-background: linear-gradient(
+    160deg,
+    light-dark(#ffe8b5, #614823),
+    light-dark(#f0d299, #3e301f)
+  );
+  --relic-artwork-text: light-dark(#654715, #ffe0a5);
+  --relic-level-background: light-dark(#fff5dc, #231b12);
+}
+
 .relic-card-artwork {
   position: relative;
   display: grid;
   min-height: 4.6rem;
   place-items: center;
   border-radius: 0.45rem;
-  background: linear-gradient(
-    160deg,
-    light-dark(#ffe8b5, #614823),
-    light-dark(#f0d299, #3e301f)
-  );
-  color: light-dark(#654715, #ffe0a5);
+  background: var(--relic-artwork-background, var(--field));
+  color: var(--relic-artwork-text, var(--text));
 }
 
 .relic-card-artwork img {
@@ -505,7 +515,7 @@
   bottom: 0.25rem;
   padding: 0 0.3rem;
   border-radius: 0.24rem;
-  background: light-dark(#fff5dc, #231b12);
+  background: var(--relic-level-background, var(--surface));
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
 }
@@ -554,8 +564,20 @@
   overflow-wrap: anywhere;
 }
 
-.relic-card-stat > :last-child {
+.relic-card-stat-value {
   color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.relic-card-stat-value > span {
+  color: var(--accent);
+}
+
+.relic-card-preview {
+  display: grid;
+  margin-top: 0.2rem;
+  padding-top: 0.2rem;
+  border-top: 1px dashed var(--line);
   font-variant-numeric: tabular-nums;
 }
 

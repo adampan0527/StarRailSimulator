@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { relicSlots, statName, statValue } from './client';
+import { relicSlots, statName } from './client';
+import { RelicCard } from './RelicCard';
 import type {
   Catalog,
   CharacterEdit,
@@ -215,43 +216,19 @@ function RelicPicker({
       {visible.length > 0 && (
         <ul className="relic-picker-results">
           {visible.map(({ item, data }) => {
-            const occupied =
-              item.owner_id !== null && item.owner_id !== characterId;
-            const owner = catalog.characters.find(
-              ({ id }) => id === item.owner_id,
-            )?.name;
-            const label = relicSlots.find(([id]) => id === data.slot)?.[1];
+            const otherOwner =
+              item.owner_id !== characterId ? item.owner_id : null;
             return (
               <li key={item.id}>
-                <button
-                  type="button"
-                  className="choice relic-choice"
-                  disabled={occupied}
-                  aria-pressed={equipment[data.slot] === item.id}
-                  onClick={() => choose(data.slot, item.id)}
-                >
-                  <span>
-                    <strong>{data.name}</strong>{' '}
-                    <span className="muted">
-                      #{item.id} · {data.rarity} 星 +{item.relic.level}
-                    </span>
-                  </span>
-                  <span className="muted">
-                    {label} · {setName(data.set_id)}
-                    {occupied && ` · ${owner ?? item.owner_id}已穿戴`}
-                  </span>
-                  <span>主词条 · {statLabel(item.relic.main_stat)}</span>
-                  {Object.keys(item.relic.substats).length > 0 && (
-                    <span className="muted">
-                      {Object.entries(item.relic.substats)
-                        .map(
-                          ([id, value]) =>
-                            `${statName(catalog, id)} +${statValue(id, value / 1_000_000)}`,
-                        )
-                        .join(' · ')}
-                    </span>
-                  )}
-                </button>
+                <RelicCard
+                  catalog={catalog}
+                  item={item}
+                  data={data}
+                  disabled={otherOwner !== null}
+                  action="equip"
+                  equipped={equipment[data.slot] === item.id}
+                  onSelect={() => choose(data.slot, item.id)}
+                />
               </li>
             );
           })}

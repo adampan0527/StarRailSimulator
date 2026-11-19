@@ -56,6 +56,7 @@
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>自选敌方提供五个可留空的固定站位。敌方卡片显示头像、名称、弱点及生命值、防御力和速度。宽窗口五个站位同排，窄窗口自动换行。</span></li>
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>使用 4.7 正式服账号和本机导出器，从「遗器导出」接收已穿戴与未穿戴遗器，复制文件链接并核对导出的库存和词条精度。</span></li>
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>从「遗器」页导入已保存的 JSON，显示实际库存。重复导入同一份快照不会重复新增实例。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>遗器导入保留游戏穿戴、词条强化次数和未解锁词条预览。已有库存可通过重新导入补齐信息，预览词条解锁前不计入属性。</span></li>
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>「遗器」页只展示五星遗器，每件一张带本地图标的卡片。卡片隐藏实例编号，可点击打开对应的编辑表单。</span></li>
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>五星遗器卡片展示副词条数值，库存支持翻页和跳页。主词条、副词条、套装与部位均可多选，四组取交集，副词条匹配门槛最多为已选项数。</span></li>
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>「遗器」页的四种筛选各有多选弹窗，主词条、副词条和套装选项有离线图标，部位可按外圈、内圈整组或按单个部位勾选。主词条和副词条按固定优先级排列。</span></li>
@@ -98,6 +99,7 @@
 <li>2026-11-18 「遗器」页的四组筛选改为多选弹窗。Edge 离线验证词条和套装图标、部位分组勾选、取消与应用、键盘焦点及窄窗布局。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
 <li>2026-11-18 为遗器主词条和副词条设置固定筛选顺序。Edge 核对 19 个主词条和 12 个副词条的完整显示顺序，Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
 <li>2026-11-19 遗器套装筛选按首次上线版本倒序，卡片先按强化等级降序，再按套装顺序。对账覆盖 4.7.0 的 64 套遗器。Edge 模拟 IPC 核对全部套装选项及 192 件卡片的分页、筛选和清除筛选。前端检查、Windows x64 Release 构建和启动检查通过。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
+<li>2026-11-19 遗器导入保留游戏穿戴角色、副词条强化次数和第 4 条预览。独立存档导入 1146 件 4.7 遗器，恢复 169 件穿戴，核对 384 件五星第 4 条预览。Rust 回归验证旧库补齐、重复导入与手动配装，Edge 模拟 IPC 检查两处遗器卡片与窄窗布局。<a href="../../../docs/m04-desktop.md#导入穿戴与副词条">验证记录</a></li>
 </ul>
       </section>
     </article>

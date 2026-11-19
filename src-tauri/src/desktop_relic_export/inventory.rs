@@ -1,6 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use star_rail_profiles::{Affix, Catalog, Error, Relic as InventoryRelic, RelicSlot};
+use star_rail_profiles::{
+    Affix, Catalog, Error, ImportedRelic, Relic as InventoryRelic, RelicRolls, RelicSlot,
+    RelicSource,
+};
 
 use crate::character_archive::Error as ArchiveError;
 
@@ -9,7 +12,7 @@ use super::{ExportOrigin, Relic, RelicIdentifier, Substat, parse_snapshot};
 pub(crate) fn inventory_snapshot(
     snapshot: &str,
     catalog: &Catalog,
-) -> Result<Vec<(String, InventoryRelic)>, ArchiveError> {
+) -> Result<Vec<ImportedRelic>, ArchiveError> {
     let export = parse_snapshot(snapshot, ExportOrigin::File)?;
     let mut seen = BTreeSet::new();
     export
@@ -19,13 +22,12 @@ pub(crate) fn inventory_snapshot(
             if relic._uid.trim().is_empty() || !seen.insert(relic._uid.clone()) {
                 return Err(invalid("missing or repeated source instance ID").into());
             }
-            let item = convert(&relic, catalog)?;
-            Ok((relic._uid, item))
+            Ok(convert(relic, catalog)?)
         })
         .collect()
 }
 
-fn convert(relic: &Relic, catalog: &Catalog) -> Result<InventoryRelic, Error> {
+fn convert(relic: Relic, catalog: &Catalog) -> Result<ImportedRelic, Error> {
     let slot = match relic.slot.as_str() {
         "Head" => RelicSlot::Head,
         "Hands" => RelicSlot::Hands,
@@ -66,22 +68,62 @@ fn convert(relic: &Relic, catalog: &Catalog) -> Result<InventoryRelic, Error> {
     };
     let group = &catalog.sub_affixes[&data.sub_group];
     let mut substats = BTreeMap::new();
+    let mut rolls = BTreeMap::new();
     for stat in &relic.substats {
-        let name = property(&stat.key).ok_or_else(|| invalid("unknown substat"))?;
-        let affix = group
-            .get(name)
-            .ok_or_else(|| invalid("unsupported substat"))?;
-        let value = substat_micros(stat, *affix)?;
+        let (name, value) = convert_substat(stat, group)?;
         if substats.insert(name.into(), value).is_some() {
             return Err(invalid("repeated substat"));
         }
+        rolls.insert(
+            name.into(),
+            RelicRolls {
+                count: stat.count,
+                step: stat.step,
+            },
+        );
     }
-    Ok(InventoryRelic {
-        data_id: id.clone(),
-        level,
-        main_stat: main.into(),
-        substats,
+    let preview_substats = relic
+        .preview_substats
+        .as_ref()
+        .map(|preview| {
+            let mut result = BTreeMap::new();
+            for stat in preview {
+                let (name, value) = convert_substat(stat, group)?;
+                if name == main
+                    || substats.contains_key(name)
+                    || result.insert(name.into(), value).is_some()
+                {
+                    return Err(invalid("repeated preview substat"));
+                }
+            }
+            Ok(result)
+        })
+        .transpose()?;
+    Ok(ImportedRelic {
+        source_uid: relic._uid,
+        relic: InventoryRelic {
+            data_id: id.clone(),
+            level,
+            main_stat: main.into(),
+            substats,
+        },
+        source: RelicSource {
+            location: relic.location,
+            rolls,
+            preview_substats,
+        },
     })
+}
+
+fn convert_substat(
+    stat: &Substat,
+    group: &BTreeMap<String, Affix>,
+) -> Result<(&'static str, u32), Error> {
+    let name = property(&stat.key).ok_or_else(|| invalid("unknown substat"))?;
+    let affix = group
+        .get(name)
+        .ok_or_else(|| invalid("unsupported substat"))?;
+    Ok((name, substat_micros(stat, *affix)?))
 }
 
 fn substat_micros(stat: &Substat, affix: Affix) -> Result<u32, Error> {

@@ -71,7 +71,13 @@ export type InventoryItem = {
   id: number;
   relic: Relic;
   owner_id: string | null;
+  source: {
+    location: string;
+    rolls: Record<string, { count: number; step: number }>;
+    preview_substats: Record<string, number> | null;
+  } | null;
 };
+type RelicImportSummary = { added: number; equipped: number };
 export type RelicOptions = {
   main_stats: Record<string, number>;
   substats: Record<string, number[]>;
@@ -113,7 +119,7 @@ export const characters = {
     invoke<SavedTeam>('character_save_team', { id, name, slots }),
   inventory: () => invoke<InventoryItem[]>('relic_inventory'),
   importRelics: async (file: File) =>
-    invoke<[number, InventoryItem[]]>('relic_inventory_import', {
+    invoke<[RelicImportSummary, InventoryItem[]]>('relic_inventory_import', {
       snapshot: await readRelicExportFile(file),
     }),
   lightConeInventory: () =>

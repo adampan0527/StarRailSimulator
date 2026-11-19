@@ -34,7 +34,6 @@ export function RelicPage({ catalog }: { catalog: Catalog }) {
   const importInput = useRef<HTMLInputElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const editTrigger = useRef<HTMLButtonElement>(null);
-  const owners = new Map(catalog.characters.map(({ id, name }) => [id, name]));
   const fiveStarItems = useMemo(() => {
     const relicData = new Map(catalog.relics.map((entry) => [entry.id, entry]));
     return (
@@ -81,10 +80,14 @@ export function RelicPage({ catalog }: { catalog: Catalog }) {
     setImportIssue('');
     setMessage('正在导入遗器库存…');
     try {
-      const [added, inventory] = await characters.importRelics(file);
+      const [{ added, equipped }, inventory] =
+        await characters.importRelics(file);
       setItems(inventory);
       setPage(0);
-      setMessage(`本次新增 ${added} 件遗器，库存共 ${inventory.length} 件。`);
+      const filled = equipped > 0 ? `已按游戏记录穿戴 ${equipped} 件。` : '';
+      setMessage(
+        `本次新增 ${added} 件遗器，库存共 ${inventory.length} 件。${filled}`,
+      );
     } catch (error) {
       setMessage('');
       setImportIssue(
@@ -249,9 +252,8 @@ export function RelicPage({ catalog }: { catalog: Catalog }) {
                 catalog={catalog}
                 item={item}
                 data={data}
-                owner={item.owner_id ? owners.get(item.owner_id) : undefined}
                 disabled={editing !== undefined || importing}
-                onEdit={(button) => {
+                onSelect={(button) => {
                   editTrigger.current = button;
                   setMessage('');
                   setEditing(item);
