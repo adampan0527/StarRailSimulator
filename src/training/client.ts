@@ -137,7 +137,7 @@ export type ReplaySummary = {
 };
 
 export type AnalysisRequest =
-  | { kind: 'dpr'; toughness: number[] }
+  | { kind: 'dpr' }
   | { kind: 'fastest_victory'; enemy_ids: string[] };
 
 type DamageCredit = { unit_id: string; amount: number };
@@ -222,8 +222,6 @@ export function describeError(error: unknown) {
       return '请检查队伍站位。角色不能重复上阵，开战至少需要一名角色。';
     case 'invalid_enemies':
       return '请选择至少一台训练靶机。';
-    case 'invalid_dpr_toughness':
-      return '请选择 1 至 5 台 DPR 靶机，并填写有效的最大韧性。';
     case 'random_analysis':
       return '最少行动值搜索需要确定性战场。多名角色上阵时，请只选择左侧靶机。';
     case 'replay_not_found':

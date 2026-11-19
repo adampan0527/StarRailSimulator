@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { TeamBoard } from '../team/TeamBoard';
 import { AnalysisResult } from './AnalysisResult';
-import { DprControls } from './Dpr';
 import { describeError, training } from './client';
 import type {
   AnalysisRequest,
@@ -153,6 +152,15 @@ export function TrainingSetup({
         <button
           type="button"
           className="secondary"
+          disabled={!teamReady || locked}
+          onClick={() => void analyze({ kind: 'dpr' })}
+          title="使用固定靶场计算前三轮伤害"
+        >
+          {running === 'dpr' ? '正在计算…' : '计算 DPR'}
+        </button>
+        <button
+          type="button"
+          className="secondary"
           disabled={!ready || locked}
           onClick={() =>
             void analyze({ kind: 'fastest_victory', enemy_ids: enemies })
@@ -164,13 +172,6 @@ export function TrainingSetup({
       {analysis?.kind === 'fastest_victory' && (
         <AnalysisResult analysis={analysis} />
       )}
-      <DprControls
-        disabled={locked}
-        teamReady={teamReady}
-        running={running === 'dpr'}
-        onChange={clearAnalysis}
-        onCalculate={(toughness) => void analyze({ kind: 'dpr', toughness })}
-      />
       {analysis?.kind === 'dpr' && <AnalysisResult analysis={analysis} />}
       {(saveIssue || issue) && <p role="alert">{saveIssue || issue}</p>}
       {analysisIssue && <p role="alert">{analysisIssue}</p>}

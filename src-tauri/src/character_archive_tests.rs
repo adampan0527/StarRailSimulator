@@ -11,6 +11,33 @@ use crate::{
 
 const EXAMPLE: &str = include_str!("../../contracts/battle-session.v1.example.json");
 
+#[test]
+fn dpr_checks_selected_saved_team_against_fixed_scenario() {
+    let dir = TestData::new();
+    let session = Session::from_json(EXAMPLE).unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), training_catalog(&session)).unwrap();
+    let slots = [
+        Some("dan_heng.hunt".into()),
+        None,
+        Some("march_7th.preservation".into()),
+        None,
+    ];
+    let selected = archive.save_team(None, "固定靶场", &slots).unwrap();
+    let empty = archive
+        .save_team(None, "空白配队", &[None, None, None, None])
+        .unwrap();
+
+    let checked = archive.dpr_readiness(&selected.id).unwrap();
+    assert_eq!(checked.scenario.cycles.get(), 3);
+    assert_eq!(checked.scenario.toughness, [30, 120, 30]);
+    assert_eq!(
+        checked.unsupported_characters,
+        ["丹恒 · 巡猎", "三月七 · 存护"]
+    );
+    assert!(archive.dpr_readiness(&empty.id).is_err());
+    assert!(archive.dpr_readiness("team.missing").is_err());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;

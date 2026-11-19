@@ -12,8 +12,8 @@ use crate::{
 };
 use analysis::DummyDamage;
 pub use analysis::{
-    DprCharacter, DprCredit, DprHit, DprResult, DprTarget, VictorySearch, VictorySolution,
-    calculate_dpr, search_fastest_victory,
+    DprCharacter, DprCredit, DprHit, DprResult, DprScenario, DprTarget, STANDARD_DPR_SCENARIO,
+    VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
 use setup::Kit;
 pub use setup::PreparedBattle;

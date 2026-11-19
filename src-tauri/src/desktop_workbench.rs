@@ -24,7 +24,6 @@ impl From<Error> for CommandError {
             Error::Loadout => "invalid_loadout",
             Error::Team => "invalid_team",
             Error::Enemies => "invalid_enemies",
-            Error::DprToughness => "invalid_dpr_toughness",
             Error::RandomAnalysis => "random_analysis",
             Error::ReplayNotFound(_) => "replay_not_found",
             Error::ReplayVersion(_)

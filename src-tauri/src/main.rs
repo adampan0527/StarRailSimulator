@@ -29,6 +29,7 @@ fn main() -> ExitCode {
             desktop_relic_export::relic_export_save,
             desktop_characters::archiver_import,
             desktop_characters::character_index,
+            desktop_characters::character_dpr_readiness,
             desktop_characters::character_roster,
             desktop_characters::character_import_catalog,
             desktop_characters::character_profile,

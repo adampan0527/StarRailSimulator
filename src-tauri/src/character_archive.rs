@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, fs, io, path::Path};
 
 use serde::{Deserialize, Serialize};
+use star_rail_battle_core::{DprScenario, STANDARD_DPR_SCENARIO};
 use star_rail_profiles::{
     AccountImportSummary, Archive, Catalog, CharacterStats, Eidolon, InventoryLightCone,
     InventoryRelic, LightCone, LightConeEquipment, Relic, RelicImportSummary, RelicSlot, SavedTeam,
@@ -106,6 +107,12 @@ pub struct CharacterProfile {
 
 pub struct CharacterArchive(Archive);
 
+#[derive(Serialize)]
+pub struct TeamDprReadiness {
+    pub scenario: DprScenario,
+    pub unsupported_characters: Vec<String>,
+}
+
 impl CharacterArchive {
     pub fn installed(path: &Path) -> Result<Self, Error> {
         let file = path.join(CATALOG_FILE);
@@ -130,6 +137,22 @@ impl CharacterArchive {
     pub fn open(path: &Path, catalog: Catalog) -> Result<Self, Error> {
         fs::create_dir_all(path)?;
         Ok(Self(Archive::open(path.join("profiles.sqlite"), catalog)?))
+    }
+
+    pub fn dpr_readiness(&self, team_id: &str) -> Result<TeamDprReadiness, Error> {
+        let team = self.0.freeze_team(team_id)?;
+        let catalog = self.0.catalog();
+        // Official profiles supply configuration data. Executable kits currently
+        // exist only for the fixtures in the separate training archive.
+        let unsupported_characters = team
+            .members
+            .iter()
+            .map(|member| Ok(catalog.character(&member.character_form_id)?.name.clone()))
+            .collect::<Result<_, star_rail_profiles::Error>>()?;
+        Ok(TeamDprReadiness {
+            scenario: STANDARD_DPR_SCENARIO,
+            unsupported_characters,
+        })
     }
 
     pub fn index(&self) -> Result<Index, Error> {

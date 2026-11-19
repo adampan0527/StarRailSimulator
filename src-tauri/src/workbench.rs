@@ -5,7 +5,8 @@ use std::{collections::BTreeSet, fs, num::NonZeroU32, path::Path};
 use serde::{Deserialize, Serialize};
 use star_rail_battle_core::{
     ActionOrderEntry, Battle, BattleError, Command, DprResult, Event, LogMode, PreparedBattle,
-    Session, Snapshot, VictorySearch, calculate_dpr, search_fastest_victory, training_attributes,
+    STANDARD_DPR_SCENARIO, Session, Snapshot, VictorySearch, calculate_dpr, search_fastest_victory,
+    training_attributes,
 };
 use star_rail_profiles::{
     Archive, Catalog, CharacterStats, Loadout, Profile, Relic, Team, TeamSlots, training_catalog,
@@ -18,7 +19,6 @@ const TEMPLATE: &str = include_str!("../../contracts/battle-session.v1.example.j
 const TRAINING_TEAM: &str = "training.team";
 const INITIAL_PRESET: &str = "初始训练配装";
 const SPEED_TIERS: [u32; 3] = [2_000_000, 2_300_000, 2_600_000];
-const DPR_CYCLES: NonZeroU32 = NonZeroU32::new(3).unwrap();
 const SEARCH_BUDGET: NonZeroU32 = NonZeroU32::new(20_000).unwrap();
 
 #[derive(Debug, thiserror::Error)]
@@ -39,8 +39,6 @@ pub enum Error {
     Team,
     #[error("invalid enemy selection")]
     Enemies,
-    #[error("DPR needs one to five dummies with positive toughness")]
-    DprToughness,
     #[error("fastest victory search requires a deterministic training encounter")]
     RandomAnalysis,
     #[error("replay {0} not found")]
@@ -103,7 +101,7 @@ pub struct BattleView {
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AnalysisRequest {
-    Dpr { toughness: Vec<u16> },
+    Dpr,
     FastestVictory { enemy_ids: Vec<String> },
 }
 
@@ -130,12 +128,9 @@ impl AnalysisInput {
     pub fn run(self) -> Result<TrainingAnalysis, Error> {
         let plan = PreparedBattle::new(&self.session.input)?;
         match self.request {
-            AnalysisRequest::Dpr { toughness } => {
-                let result =
-                    calculate_dpr(&plan, &toughness, DPR_CYCLES).map_err(|error| match error {
-                        BattleError::InvalidInput(_) => Error::DprToughness,
-                        error => error.into(),
-                    })?;
+            AnalysisRequest::Dpr => {
+                let scenario = STANDARD_DPR_SCENARIO;
+                let result = calculate_dpr(&plan, &scenario.toughness, scenario.cycles)?;
                 Ok(TrainingAnalysis::Dpr {
                     result,
                     names: self.names,
@@ -357,7 +352,7 @@ impl Workbench {
 
     pub fn analysis_input(&self, request: AnalysisRequest) -> Result<AnalysisInput, Error> {
         let (session, names) = match &request {
-            AnalysisRequest::Dpr { .. } => {
+            AnalysisRequest::Dpr => {
                 let session = self.encounter(None)?;
                 let names = ally_names(&session, self.archive.catalog()).collect();
                 (session, names)

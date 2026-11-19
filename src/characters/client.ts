@@ -58,6 +58,10 @@ export type InventoryLightCone = {
   owner_id: string | null;
 };
 export type SavedTeam = { id: string; name: string; slots: TeamSlots };
+export type TeamDprReadiness = {
+  scenario: { cycles: number; toughness: number[] };
+  unsupported_characters: string[];
+};
 export type Catalog = {
   game_version: string;
   teams: SavedTeam[];
@@ -117,6 +121,8 @@ export const characters = {
     ),
   saveTeam: (id: string | null, name: string, slots: TeamSlots) =>
     invoke<SavedTeam>('character_save_team', { id, name, slots }),
+  dprReadiness: (teamId: string) =>
+    invoke<TeamDprReadiness>('character_dpr_readiness', { teamId }),
   inventory: () => invoke<InventoryItem[]>('relic_inventory'),
   importRelics: async (file: File) =>
     invoke<[RelicImportSummary, InventoryItem[]]>('relic_inventory_import', {

@@ -1,10 +1,18 @@
 import { lazy, Suspense, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { catalogError, characters } from '../characters/client';
-import type { Catalog, SavedTeam } from '../characters/client';
+import type {
+  Catalog,
+  SavedTeam,
+  TeamDprReadiness,
+} from '../characters/client';
 import { TeamBoard } from './TeamBoard';
 
 type Draft = Pick<SavedTeam, 'name' | 'slots'>;
+type DprCheck =
+  | { kind: 'checking' }
+  | { kind: 'checked'; value: TeamDprReadiness }
+  | { kind: 'error'; message: string };
 
 const emptyTeam: Draft = { name: '', slots: [null, null, null, null] };
 const EnemyLineup = lazy(() => import('./EnemyLineup'));
@@ -60,20 +68,6 @@ export function TeamWorkspace({
         ) : (
           catalogStatus
         )}
-        <div className="form-actions" aria-describedby="team-compute-status">
-          <button type="button" disabled>
-            开始战斗
-          </button>
-          <button type="button" className="secondary" disabled>
-            计算 DPR
-          </button>
-          <button type="button" className="secondary" disabled>
-            计算最优解
-          </button>
-        </div>
-        <p id="team-compute-status" className="muted">
-          当前可预览正式服敌方阵容。开战和计算将在正式服战斗规则接入后开放。
-        </p>
       </div>
       <div className="team-field" hidden={!training}>
         {trainingContent}
@@ -96,6 +90,7 @@ function NamedTeam({
   const [saving, setSaving] = useState(false);
   const [issue, setIssue] = useState('');
   const [status, setStatus] = useState('');
+  const [dpr, setDpr] = useState<DprCheck>();
   const nameInput = useRef<HTMLInputElement>(null);
   const teamId = selected ?? catalog.teams[0]?.id ?? '';
   const saved = catalog.teams.find(({ id }) => id === teamId);
@@ -103,17 +98,32 @@ function NamedTeam({
   const dirty =
     name !== (saved?.name ?? '') ||
     slots.some((id, position) => id !== (saved?.slots[position] ?? null));
+  const locked = saving || dpr?.kind === 'checking';
+  const canCalculate = Boolean(saved && !dirty && slots.some(Boolean));
 
   function selectTeam(id: string) {
     setSelected(id);
     setIssue('');
     setStatus('');
+    setDpr(undefined);
   }
 
   function updateDraft(draft: Draft) {
     setDrafts((current) => new Map(current).set(teamId, draft));
     setIssue('');
     setStatus('');
+    setDpr(undefined);
+  }
+
+  async function checkDpr() {
+    if (!canCalculate || locked) return;
+    setDpr({ kind: 'checking' });
+    try {
+      const value = await characters.dprReadiness(teamId);
+      setDpr({ kind: 'checked', value });
+    } catch (error) {
+      setDpr({ kind: 'error', message: catalogError(error) });
+    }
   }
 
   async function saveTeam() {
@@ -150,7 +160,7 @@ function NamedTeam({
           aria-label="已保存配队"
           value={teamId}
           title={saved?.name}
-          disabled={saving || catalog.teams.length === 0}
+          disabled={locked || catalog.teams.length === 0}
           onChange={(event) => selectTeam(event.target.value)}
         >
           {(!teamId || drafts.has('')) && (
@@ -165,7 +175,7 @@ function NamedTeam({
         <button
           type="button"
           className="secondary"
-          disabled={saving || !teamId}
+          disabled={locked || !teamId}
           onClick={() => {
             selectTeam('');
             nameInput.current?.focus();
@@ -182,21 +192,21 @@ function NamedTeam({
           placeholder="输入配队名称"
           maxLength={48}
           required
-          disabled={saving}
+          disabled={locked}
           onChange={(event) => updateDraft({ name: event.target.value, slots })}
         />
       </label>
       <TeamBoard
         roster={catalog.characters}
         slots={slots}
-        disabled={saving}
+        disabled={locked}
         onChange={(slots) => updateDraft({ name, slots })}
       />
       <div className="form-actions">
         <button
           type="submit"
           className="secondary"
-          disabled={!dirty || saving || !name.trim()}
+          disabled={!dirty || locked || !name.trim()}
         >
           {saving ? '正在保存…' : '保存配队'}
         </button>
@@ -205,6 +215,38 @@ function NamedTeam({
         </span>
       </div>
       {(issue || rosterIssue) && <p role="alert">{issue || rosterIssue}</p>}
+      <div className="form-actions" aria-describedby="team-compute-status">
+        <button type="button" className="secondary" disabled>
+          开始战斗
+        </button>
+        <button
+          type="button"
+          disabled={!canCalculate || locked}
+          onClick={() => void checkDpr()}
+        >
+          {dpr?.kind === 'checking' ? '正在检查配队…' : '计算 DPR'}
+        </button>
+        <button type="button" className="secondary" disabled>
+          计算最优解
+        </button>
+      </div>
+      <p id="team-compute-status" className="muted">
+        DPR 使用固定靶场。开始战斗和计算最优解等待正式战斗规则接入。
+      </p>
+      {dpr?.kind === 'checked' && (
+        <section className="field-zone" aria-labelledby="team-dpr-title">
+          <h3 id="team-dpr-title">{saved?.name} · DPR</h3>
+          <p className="muted">
+            固定靶场 · 前 {dpr.value.scenario.cycles} 轮 · 靶机韧性{' '}
+            {dpr.value.scenario.toughness.join(' / ')}
+          </p>
+          <p role="status">
+            暂无 DPR 结果。{dpr.value.unsupported_characters.join('、')}
+            的实战技能尚未接入伤害计算。
+          </p>
+        </section>
+      )}
+      {dpr?.kind === 'error' && <p role="alert">{dpr.message}</p>}
     </form>
   );
 }

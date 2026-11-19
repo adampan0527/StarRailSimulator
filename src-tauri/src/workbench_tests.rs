@@ -43,13 +43,10 @@ fn training_analysis_uses_frozen_inputs_and_produces_replayable_commands() {
 }
 
 #[test]
-fn training_dpr_uses_requested_dummies_and_saved_character_names() {
+fn training_dpr_uses_fixed_dummies_and_saved_character_names() {
     let dir = TestData::new();
     let app = Workbench::open(dir.path()).unwrap();
-    let request = serde_json::from_value(serde_json::json!({
-        "kind": "dpr", "toughness": [30, 120, 30]
-    }))
-    .unwrap();
+    let request = serde_json::from_value(serde_json::json!({ "kind": "dpr" })).unwrap();
     let TrainingAnalysis::Dpr { result, names } =
         app.analysis_input(request).unwrap().run().unwrap()
     else {

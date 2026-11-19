@@ -10,6 +10,17 @@ use crate::{
 
 const AV_MICROS: u64 = 1_000_000;
 
+#[derive(Serialize)]
+pub struct DprScenario {
+    pub cycles: NonZeroU32,
+    pub toughness: [u16; 3],
+}
+
+pub const STANDARD_DPR_SCENARIO: DprScenario = DprScenario {
+    cycles: NonZeroU32::new(3).unwrap(),
+    toughness: [30, 120, 30],
+};
+
 #[derive(Debug, PartialEq, Serialize)]
 pub struct DprResult {
     pub cycles: u32,

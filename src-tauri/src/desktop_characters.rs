@@ -8,7 +8,8 @@ use star_rail_profiles::{
 use tauri::{AppHandle, Manager};
 
 use crate::character_archive::{
-    CharacterArchive, CharacterEdit, CharacterProfile, CharacterSummary, Error, Index, RelicOptions,
+    CharacterArchive, CharacterEdit, CharacterProfile, CharacterSummary, Error, Index,
+    RelicOptions, TeamDprReadiness,
 };
 use crate::desktop_relic_export::{ExportError, ExportOrigin};
 
@@ -117,6 +118,14 @@ async fn with_archive<T: Send + 'static>(
 #[tauri::command]
 pub async fn character_index(app: AppHandle) -> Result<Index, CommandError> {
     with_archive(app, |archive| archive.index()).await
+}
+
+#[tauri::command]
+pub async fn character_dpr_readiness(
+    app: AppHandle,
+    team_id: String,
+) -> Result<TeamDprReadiness, CommandError> {
+    with_archive(app, move |archive| archive.dpr_readiness(&team_id)).await
 }
 
 #[tauri::command]
