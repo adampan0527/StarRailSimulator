@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { innerRelicSlots, outerRelicSlots, relicStatName } from './client';
 import type { Catalog } from './client';
 import { relicIcon } from './relicIcons';
@@ -78,7 +79,7 @@ export function RelicInventoryFilters({
   catalog: Catalog;
   entries: RelicInventoryEntry[];
   filters: RelicFilters;
-  disabled: boolean;
+  disabled?: boolean;
   onChange: (filters: RelicFilters) => void;
 }) {
   const [active, setActive] = useState<FilterGroup>();
@@ -174,7 +175,7 @@ function RelicFilterDialog({
     );
   }
 
-  return (
+  return createPortal(
     <dialog
       ref={dialog}
       className="picker-dialog relic-filter-dialog"
@@ -185,6 +186,7 @@ function RelicFilterDialog({
         className="relic-filter-form"
         onSubmit={(event) => {
           event.preventDefault();
+          event.stopPropagation();
           onApply({ ...filters, [key]: selected, minimum });
           dialog.current?.close();
         }}
@@ -273,7 +275,8 @@ function RelicFilterDialog({
           <button type="submit">应用筛选</button>
         </div>
       </form>
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }
 

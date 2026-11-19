@@ -1,15 +1,16 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { relicSlots, statName } from './client';
-import { RelicCard } from './RelicCard';
+import { relicSlots } from './client';
 import type {
   Catalog,
   CharacterEdit,
   InventoryItem,
   RelicSlot,
-  RelicSummary,
 } from './client';
+import { RelicCard } from './RelicCard';
+import { RelicInventoryFilters } from './RelicInventoryFilters';
+import { emptyRelicFilters, filterRelics } from './relicInventory';
+import type { RelicFilters, RelicInventoryEntry } from './relicInventory';
 
-type Entry = { item: InventoryItem; data: RelicSummary };
 type Equipment = CharacterEdit['relics'];
 
 export function CharacterRelics({
@@ -26,6 +27,7 @@ export function CharacterRelics({
   onEquip: (slot: RelicSlot, id: number | null) => void;
 }) {
   const [openSlot, setOpenSlot] = useState<RelicSlot>();
+  const slots = useRef<HTMLUListElement>(null);
   const entries = useMemo(() => {
     const definitions = new Map(catalog.relics.map((data) => [data.id, data]));
     return items.flatMap((item) => {
@@ -40,28 +42,37 @@ export function CharacterRelics({
       {entries.length === 0 && (
         <p className="muted">库存为空，请先到「遗器」页录入。</p>
       )}
-      <div className="equipment-grid">
+      <ul ref={slots} className="equipped-relic-grid" role="list">
         {relicSlots.map(([slot, label]) => {
           const equipped = entries.find(
             ({ item }) => item.id === equipment[slot],
           );
           return (
-            <button
-              type="button"
-              key={slot}
-              className="choice relic-slot"
-              aria-haspopup="dialog"
-              aria-label={`${label} · ${equipped?.data.name ?? '空位'}，选择遗器`}
-              onClick={() => setOpenSlot(slot)}
-            >
-              <span className="muted">{label}</span>
-              {equipped
-                ? `${equipped.data.name} +${equipped.item.relic.level}`
-                : '空位'}
-            </button>
+            <li key={slot} data-slot={slot}>
+              {equipped ? (
+                <RelicCard
+                  catalog={catalog}
+                  item={equipped.item}
+                  data={equipped.data}
+                  action="change"
+                  onSelect={() => setOpenSlot(slot)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="choice relic-slot"
+                  aria-haspopup="dialog"
+                  aria-label={`${label} · 空位，选择遗器`}
+                  onClick={() => setOpenSlot(slot)}
+                >
+                  <span className="muted">{label}</span>
+                  空位
+                </button>
+              )}
+            </li>
           );
         })}
-      </div>
+      </ul>
       {openSlot && (
         <RelicPicker
           initialSlot={openSlot}
@@ -70,7 +81,14 @@ export function CharacterRelics({
           characterId={characterId}
           equipment={equipment}
           onEquip={onEquip}
-          onClose={() => setOpenSlot(undefined)}
+          onClose={() => {
+            setOpenSlot(undefined);
+            slots.current
+              ?.querySelector<HTMLButtonElement>(
+                `[data-slot="${openSlot}"] > button`,
+              )
+              ?.focus();
+          }}
         />
       )}
     </div>
@@ -88,7 +106,7 @@ function RelicPicker({
 }: {
   initialSlot: RelicSlot;
   catalog: Catalog;
-  entries: Entry[];
+  entries: RelicInventoryEntry[];
   characterId: string;
   equipment: Equipment;
   onEquip: (slot: RelicSlot, id: number | null) => void;
@@ -96,28 +114,14 @@ function RelicPicker({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useId();
-  const [slot, setSlot] = useState<RelicSlot | ''>(initialSlot);
-  const [set, setSet] = useState('');
-  const [main, setMain] = useState('');
-  const [sub, setSub] = useState('');
-  const slotLabel = relicSlots.find(([id]) => id === slot)?.[1];
-
-  const visible = entries.filter(
-    ({ item, data }) =>
-      (!slot || data.slot === slot) &&
-      (!set || data.set_id === set) &&
-      (!main || item.relic.main_stat === main) &&
-      (!sub || Object.hasOwn(item.relic.substats, sub)),
+  const [filters, setFilters] = useState<RelicFilters>({
+    ...emptyRelicFilters,
+    slots: [initialSlot],
+  });
+  const visible = filterRelics(entries, filters);
+  const removable = relicSlots.filter(
+    ([slot]) => filters.slots.includes(slot) && equipment[slot] !== undefined,
   );
-  const setName = (id: string) => catalog.sets[id]?.name ?? id;
-  const statLabel = (id: string) => {
-    const name = statName(catalog, id);
-    return ['hp_ratio', 'attack_ratio', 'defense_ratio'].includes(id)
-      ? `${name}%`
-      : name;
-  };
-  const sorted = (ids: string[], label: (id: string) => string) =>
-    [...new Set(ids)].sort((a, b) => label(a).localeCompare(label(b), 'zh-CN'));
 
   useEffect(() => {
     dialog.current?.showModal();
@@ -131,9 +135,11 @@ function RelicPicker({
   return (
     <dialog
       ref={dialog}
-      className="picker-dialog"
+      className="picker-dialog relic-picker-dialog"
       aria-labelledby={title}
-      onClose={onClose}
+      onClose={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
     >
       <div className="section-heading">
         <h2 id={title}>选择遗器</h2>
@@ -145,57 +151,15 @@ function RelicPicker({
           关闭
         </button>
       </div>
-      <div className="picker-filters">
-        <label>
-          部位
-          <select
-            value={slot}
-            onChange={(event) => {
-              setSlot(
-                relicSlots.find(([id]) => id === event.target.value)?.[0] ?? '',
-              );
-            }}
-          >
-            <option value="">全部部位</option>
-            {relicSlots.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <RelicFilter
-          label="套装"
-          value={set}
-          onChange={setSet}
-          options={sorted(
-            entries.map(({ data }) => data.set_id),
-            setName,
-          )}
-          name={setName}
+      {entries.length > 0 && (
+        <RelicInventoryFilters
+          catalog={catalog}
+          entries={entries}
+          filters={filters}
+          onChange={setFilters}
         />
-        <RelicFilter
-          label="主词条"
-          value={main}
-          onChange={setMain}
-          options={sorted(
-            entries.map(({ item }) => item.relic.main_stat),
-            statLabel,
-          )}
-          name={statLabel}
-        />
-        <RelicFilter
-          label="副词条"
-          value={sub}
-          onChange={setSub}
-          options={sorted(
-            entries.flatMap(({ item }) => Object.keys(item.relic.substats)),
-            statLabel,
-          )}
-          name={statLabel}
-        />
-      </div>
-      <div className="section-heading">
+      )}
+      <div className="section-heading relic-results-heading">
         <p className="muted" role="status">
           {entries.length === 0
             ? '库存为空，请先到「遗器」页录入。'
@@ -203,18 +167,23 @@ function RelicPicker({
               ? `找到 ${visible.length} 件遗器`
               : '没有符合筛选的遗器。'}
         </p>
-        {slot && equipment[slot] !== undefined && (
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => choose(slot, null)}
-          >
-            卸下{slotLabel}遗器
-          </button>
+        {removable.length > 0 && (
+          <div className="relic-picker-actions">
+            {removable.map(([slot, label]) => (
+              <button
+                key={slot}
+                type="button"
+                className="secondary"
+                onClick={() => choose(slot, null)}
+              >
+                卸下{label}遗器
+              </button>
+            ))}
+          </div>
         )}
       </div>
       {visible.length > 0 && (
-        <ul className="relic-picker-results">
+        <ul className="relic-inventory-grid" role="list">
           {visible.map(({ item, data }) => {
             const otherOwner =
               item.owner_id !== characterId ? item.owner_id : null;
@@ -235,33 +204,5 @@ function RelicPicker({
         </ul>
       )}
     </dialog>
-  );
-}
-
-function RelicFilter({
-  label,
-  value,
-  onChange,
-  options,
-  name,
-}: {
-  label: string;
-  value: string;
-  onChange: (id: string) => void;
-  options: string[];
-  name: (id: string) => string;
-}) {
-  return (
-    <label>
-      {label}
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">全部{label}</option>
-        {options.map((id) => (
-          <option key={id} value={id}>
-            {name(id)}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
