@@ -90,6 +90,7 @@ pub(crate) fn break_status(
     const LEVEL_80_BASE_X_BP: u128 = 37_675_533;
     let large_dummy = target.max_toughness >= 120;
     let base = match element {
+        Element::Imaginary => return 0, // Imprisonment deals no periodic damage.
         Element::Ice | Element::Fire => LEVEL_80_BASE_X_BP,
         Element::Thunder => 2 * LEVEL_80_BASE_X_BP,
         Element::Wind => {

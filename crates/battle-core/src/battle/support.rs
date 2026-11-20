@@ -49,6 +49,7 @@ pub(super) struct OffenseBuffs {
     pub attack_flat: u32,
     pub defense_bp: u32,
     pub damage_bp: u32,
+    pub crit_rate_bp: u32,
     pub crit_damage_bp: u32,
 }
 
@@ -66,6 +67,7 @@ impl OffenseBuffs {
         self.attack_flat = self.attack_flat.saturating_add(buff.attack_flat);
         self.defense_bp = self.defense_bp.saturating_add(buff.defense_bp);
         self.damage_bp = self.damage_bp.saturating_add(buff.damage_bp);
+        self.crit_rate_bp = self.crit_rate_bp.saturating_add(buff.crit_rate_bp);
         self.crit_damage_bp = self.crit_damage_bp.saturating_add(buff.crit_damage_bp);
     }
 }
@@ -157,6 +159,10 @@ impl Battle<'_> {
                 .attack_bp
                 .saturating_add(mechanics.ally_attack_bonus_bp(self, source, target));
             bonuses.attack_flat = mechanics.ally_attack_bonus_flat(self, source, target);
+            bonuses.crit_rate_bp = mechanics.ally_crit_rate_bonus_bp(self, source, target);
+            bonuses.crit_damage_bp = bonuses
+                .crit_damage_bp
+                .saturating_add(mechanics.ally_crit_damage_bonus_bp(self, source, target));
             bonuses.damage_bp = bonuses
                 .damage_bp
                 .saturating_add(mechanics.ally_damage_bonus_bp(self, source, target, element));
@@ -190,10 +196,18 @@ impl Battle<'_> {
     }
 
     pub(super) fn effective_crit_damage_bp(&self, actor: usize) -> u32 {
-        self.plan.units[actor]
-            .stats
-            .crit_damage_bp
-            .saturating_add(self.ally_buff_total(actor, AllyBuffKind::CritDamage))
+        self.plan.units[actor].stats.crit_damage_bp.saturating_add(
+            self.offense_buffs(
+                OffenseContext {
+                    actor,
+                    enemy: None,
+                    element: Element::Physical,
+                    kind: DamageKind::Direct,
+                },
+                |_| true,
+            )
+            .crit_damage_bp,
+        )
     }
 
     pub(super) fn effective_attack(&self, actor: usize) -> u32 {

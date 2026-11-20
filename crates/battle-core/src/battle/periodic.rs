@@ -66,7 +66,11 @@ impl Battle<'_> {
         target: usize,
         dot: SkillDot,
     ) -> bool {
-        if self.hp(target).0 == 0 || dot.turns == 0 || dot.max_stacks == 0 {
+        if self.hp(target).0 == 0
+            || dot.turns == 0
+            || dot.max_stacks == 0
+            || self.resists_debuff(target)
+        {
             return false;
         }
         let existing = self.units[target]

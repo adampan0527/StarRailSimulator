@@ -56,11 +56,11 @@ impl Battle<'_> {
         kind: DebuffKind,
         bp: u32,
         turns: u32,
-    ) {
-        let state = &mut self.units[target];
-        if state.hp == 0 {
-            return;
+    ) -> bool {
+        if self.units[target].hp == 0 || self.resists_debuff(target) {
+            return false;
         }
+        let state = &mut self.units[target];
         let updated = Debuff {
             source,
             kind,
@@ -81,6 +81,11 @@ impl Battle<'_> {
             Some(source),
             Some(target),
         );
+        true
+    }
+
+    pub(super) fn apply_break_slow(&mut self, actor: usize, target: usize) -> bool {
+        self.apply_debuff(actor, target, DebuffKind::Slow, 1_000, 1)
     }
 
     pub(super) fn apply_speed_down(&mut self, actor: usize, target: usize, bp: u32, turns: u32) {
@@ -247,6 +252,9 @@ impl Battle<'_> {
         element: Element,
         origin: Action,
     ) {
+        if self.resists_debuff(target) {
+            return;
+        }
         let status = BreakDot {
             source,
             origin,

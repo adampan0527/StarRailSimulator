@@ -66,6 +66,9 @@ impl Battle<'_> {
     }
 
     fn apply_shock(&mut self, target: usize, shock: Shock) {
+        if self.resists_debuff(target) {
+            return;
+        }
         let shocks = &mut self.units[target].shocks;
         // Reapplication refreshes the same skill or break status. Skill and break
         // Shock coexist, even when the same attacker applied both.

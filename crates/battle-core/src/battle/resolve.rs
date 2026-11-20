@@ -27,11 +27,12 @@ struct DamageView {
     attack: u32,
     defense: u32,
     bonus: OffenseBuffs,
+    critical: bool,
 }
 
 struct DamageEvent {
     kind: DamageKind,
-    critical: bool,
+    crit_rate_bp: Option<u32>,
     origin: Option<Action>,
     assisted_by: Option<usize>,
     from_break: bool,
@@ -260,6 +261,11 @@ impl Battle<'_> {
     pub(super) fn add_crit_rate_stacks(&mut self, actor: usize, stack_bp: u32, max_stacks: u8) {
         let rate = &mut self.units[actor].crit_rate_bonus_bp;
         *rate = (*rate + stack_bp).min(stack_bp * u32::from(max_stacks));
+    }
+
+    pub(super) fn resists_debuff(&mut self, target: usize) -> bool {
+        self.mechanics(target)
+            .is_some_and(|mechanics| mechanics.prevent_debuff(self, target))
     }
 
     pub(super) fn roll_effect(&mut self, actor: usize, target: usize, base_chance_bp: u32) -> bool {
@@ -813,16 +819,13 @@ impl Battle<'_> {
         let crit_rate = source
             .crit_rate_bp
             .saturating_add(self.units[actor].crit_rate_bonus_bp);
-        let crit = kind != DamageKind::DamageOverTime
-            && crit_rate > 0
-            && self.rng.below(10_000) < u64::from(crit_rate);
-        self.resolve_damage(
+        let crit = self.resolve_damage(
             actor,
             target,
             element,
             DamageEvent {
                 kind,
-                critical: crit,
+                crit_rate_bp: (kind != DamageKind::DamageOverTime).then_some(crit_rate),
                 origin,
                 assisted_by,
                 from_break: false,
@@ -843,7 +846,7 @@ impl Battle<'_> {
                     multiplier_bp,
                 ) * u64::from(ratio_bp)
                     / 10_000;
-                damage::direct(adjusted, view.target, element, base_bp, crit)
+                damage::direct(adjusted, view.target, element, base_bp, view.critical)
             },
         );
 
@@ -860,7 +863,7 @@ impl Battle<'_> {
                     element,
                     DamageEvent {
                         kind: DamageKind::WeaknessBreak,
-                        critical: false,
+                        crit_rate_bp: None,
                         origin,
                         assisted_by: None,
                         from_break: true,
@@ -878,6 +881,9 @@ impl Battle<'_> {
                                 self.apply_break_freeze(actor, target, action);
                             }
                             Element::Thunder => self.apply_break_shock(actor, target, action),
+                            Element::Imaginary if self.roll_status(actor, target, 15_000, true) => {
+                                self.apply_imprisonment(actor, target, source.break_effect_bp);
+                            }
                             Element::Wind | Element::Physical | Element::Fire
                                 if self.roll_effect(actor, target, 15_000) =>
                             {
@@ -990,7 +996,7 @@ impl Battle<'_> {
             element,
             DamageEvent {
                 kind,
-                critical: false,
+                crit_rate_bp: None,
                 origin: Some(origin),
                 assisted_by: None,
                 from_break: true,
@@ -1006,10 +1012,10 @@ impl Battle<'_> {
         element: Element,
         event: DamageEvent,
         calculate: impl Fn(DamageView) -> u32,
-    ) {
+    ) -> bool {
         let DamageEvent {
             kind,
-            critical,
+            crit_rate_bp,
             origin,
             assisted_by,
             from_break,
@@ -1023,18 +1029,27 @@ impl Battle<'_> {
         let reduction_bp = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
         });
-        let damage_with = |allow: &dyn Fn(usize) -> bool| {
+        let applied_buffs = self.offense_buffs(offense, |_| true);
+        // Compare the same roll with each counterfactual crit rate during attribution.
+        let crit_roll = crit_rate_bp
+            .filter(|rate| rate.saturating_add(applied_buffs.crit_rate_bp) > 0)
+            .map(|rate| (rate, self.rng.below(10_000)));
+        let damage_with = |bonus: OffenseBuffs, allow: &dyn Fn(usize) -> bool| {
             let mut defender = self.damage_target(actor, target, element, &event, allow);
             defender.damage_reduction_bp = reduction_bp;
-            let bonus = self.offense_buffs(offense, allow);
-            calculate(DamageView {
+            let critical = crit_roll.is_some_and(|(rate, roll)| {
+                roll < u64::from(rate.saturating_add(bonus.crit_rate_bp))
+            });
+            let amount = calculate(DamageView {
                 target: defender,
                 bonus,
                 attack: self.attack_with_buffs(actor, bonus),
                 defense: self.defense_with_buff(actor, bonus.defense_bp),
-            })
+                critical,
+            });
+            (amount, critical)
         };
-        let amount = damage_with(&|_| true);
+        let (amount, critical) = damage_with(applied_buffs, &|_| true);
         if matches!(self.plan.units[target].kit, Kit::Dummy { .. }) {
             let state = &self.units[target];
             let assists: std::collections::BTreeSet<_> = state
@@ -1060,10 +1075,13 @@ impl Battle<'_> {
                 .collect();
             let mut credits = Vec::new();
             if !assists.is_empty() {
-                let mut damage = damage_with(&|source| !assists.contains(&source));
+                let damage_by = |allow: &dyn Fn(usize) -> bool| {
+                    damage_with(self.offense_buffs(offense, allow), allow).0
+                };
+                let mut damage = damage_by(&|source| !assists.contains(&source));
                 for &owner in &assists {
                     let adjusted =
-                        damage_with(&|source| source <= owner || !assists.contains(&source));
+                        damage_by(&|source| source <= owner || !assists.contains(&source));
                     if adjusted > damage {
                         credits.push((owner, adjusted - damage));
                     }
@@ -1108,6 +1126,7 @@ impl Battle<'_> {
                 }
             }
         }
+        critical
     }
 
     fn deal_damage(
@@ -1198,6 +1217,14 @@ impl Battle<'_> {
         );
     }
 
+    fn apply_imprisonment(&mut self, actor: usize, target: usize, break_effect_bp: u32) {
+        if self.apply_break_slow(actor, target) {
+            let extra_delay = gauge_for(3_000) / 10_000 * (10_000 + u64::from(break_effect_bp));
+            let delayed = self.units[target].gauge_quanta + extra_delay;
+            self.shift_gauge(actor, target, delayed, false);
+        }
+    }
+
     pub(super) fn set_toughness(&mut self, actor: usize, target: usize, after: u16) {
         let before = std::mem::replace(&mut self.units[target].toughness, after);
         self.emit(
@@ -1215,6 +1242,9 @@ impl Battle<'_> {
         magnitude: u32,
         turns: u32,
     ) {
+        if status == StatusKind::Vulnerability && self.resists_debuff(target) {
+            return;
+        }
         let state = &mut self.units[target];
         state.statuses[status.index()] = Some(Status {
             source: actor,
@@ -1281,6 +1311,16 @@ impl Battle<'_> {
                 Some(actor),
                 Some(target),
             );
+            let cap = self.plan.units[target].kit.max_energy_milli();
+            if target < self.plan.ally_count && before_milli < cap && after_milli == cap {
+                for owner in self.allies() {
+                    if self.units[owner].hp > 0
+                        && let Some(mechanics) = self.mechanics(owner)
+                    {
+                        mechanics.on_ally_energy_full(self, owner, target);
+                    }
+                }
+            }
         }
     }
 
