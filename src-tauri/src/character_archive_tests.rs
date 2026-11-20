@@ -363,6 +363,79 @@ fn saved_detonation_team_records_the_original_sources_and_support_credits() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_break_support_team_runs_enhanced_basic_and_credits_direct_buffs() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [gallagher, hanya, yukong, himeko] = [
+        "character.1301",
+        "character.1215",
+        "character.1207",
+        "character.1003",
+    ];
+    let mut gallagher_edit = archive.profile(gallagher).unwrap().edit;
+    gallagher_edit.eidolon = 1;
+    archive.save(gallagher, gallagher_edit).unwrap();
+    let saved = archive
+        .save_team(
+            None,
+            "击破与战技点支援",
+            &[gallagher, hanya, yukong, himeko].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&saved.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    assert!(result.characters.iter().all(|actor| actor.own_damage > 0));
+    assert!(result.targets.iter().any(|target| {
+        target.hits.iter().enumerate().any(|(index, hit)| {
+            hit.source_id == gallagher
+                && hit.action == Action::Ultimate
+                && hit.kind == DamageKind::WeaknessBreak
+                && target.hits[index + 1..]
+                    .iter()
+                    .take_while(|next| next.av_micros == hit.av_micros)
+                    .any(|next| {
+                        next.source_id == gallagher
+                            && next.action == Action::Basic
+                            && next.kind == DamageKind::Direct
+                    })
+        })
+    }));
+    for source in [hanya, yukong] {
+        assert!(
+            result
+                .targets
+                .iter()
+                .flat_map(|target| &target.hits)
+                .any(|hit| {
+                    hit.source_id != source
+                        && hit.kind == DamageKind::Direct
+                        && hit
+                            .credits
+                            .iter()
+                            .any(|credit| credit.unit_id == source && credit.amount > 0)
+                }),
+            "{source}"
+        );
+    }
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
