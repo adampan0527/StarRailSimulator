@@ -23,7 +23,8 @@ pub use analysis::{
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
 use official::{
-    GallagherState, HanyaState, Mechanics, SkillPoints, SushangState, YanqingState, YukongState,
+    BailuState, GallagherState, HanyaState, Invigoration, Mechanics, SkillPoints, SushangState,
+    YanqingState, YukongState,
 };
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
@@ -59,6 +60,8 @@ struct UnitState {
     counter_state: CounterState,
     debuffs: Vec<Debuff>,
     heals_over_time: Vec<HealOverTime>,
+    invigoration: Option<Invigoration>,
+    bailu_state: BailuState,
     break_dots: Vec<BreakDot>,
     skill_dots: Vec<ActiveSkillDot>,
     charged_skill: bool,
@@ -139,6 +142,8 @@ impl<'a> Battle<'a> {
                     counter_state: CounterState::default(),
                     debuffs: Vec::new(),
                     heals_over_time: Vec::new(),
+                    invigoration: None,
+                    bailu_state: BailuState::default(),
                     break_dots: Vec::new(),
                     skill_dots: Vec::new(),
                     charged_skill: false,

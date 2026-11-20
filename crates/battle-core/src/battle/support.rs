@@ -144,6 +144,14 @@ impl Battle<'_> {
         self.units[actor].hp = self.units[actor].hp.min(self.effective_max_hp(actor));
     }
 
+    pub(super) fn ally_buff_value(&self, source: usize, target: usize, kind: AllyBuffKind) -> u32 {
+        self.units[target]
+            .ally_buffs
+            .iter()
+            .find(|buff| buff.source == source && buff.kind == kind)
+            .map_or(0, |buff| buff.value)
+    }
+
     pub(super) fn apply_max_hp_increase(
         &mut self,
         source: usize,

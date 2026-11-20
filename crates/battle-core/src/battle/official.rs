@@ -1,5 +1,6 @@
 mod arlan;
 mod asta;
+mod bailu;
 mod bronya;
 mod clara;
 mod dan_heng;
@@ -7,6 +8,7 @@ mod gallagher;
 mod gepard;
 mod guinaifen;
 mod hanya;
+mod healing;
 mod herta;
 mod himeko;
 mod hook;
@@ -23,7 +25,12 @@ mod tingyun;
 mod yanqing;
 mod yukong;
 
-pub(super) use {hanya::HanyaState, jiaoqiu::Field as JiaoqiuField, yukong::YukongState};
+pub(super) use {
+    bailu::{BailuState, Invigoration},
+    hanya::HanyaState,
+    jiaoqiu::Field as JiaoqiuField,
+    yukong::YukongState,
+};
 
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -373,6 +380,10 @@ pub(super) trait Mechanics: Send + Sync {
         false
     }
 
+    fn prevent_ally_defeat(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) -> bool {
+        false
+    }
+
     fn incoming_damage_reduction_bp(
         &self,
         _battle: &Battle<'_>,
@@ -614,6 +625,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1206" => Some(sushang::build),
         "character.1207" => Some(yukong::build),
         "character.1210" => Some(guinaifen::build),
+        "character.1211" => Some(bailu::build),
         "character.1215" => Some(hanya::build),
         "character.1218" => Some(jiaoqiu::build),
         "character.1301" => Some(gallagher::build),
