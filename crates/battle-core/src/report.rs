@@ -29,9 +29,12 @@ pub enum StatusKind {
     Frozen,
     DotVulnerability,
     EffectResistanceDown,
+    Besotted,
+    AttackDown,
 }
 
 impl StatusKind {
+    pub(crate) const COUNT: usize = Self::AttackDown.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -45,6 +48,8 @@ impl StatusKind {
             Self::Frozen => 6,
             Self::DotVulnerability => 7,
             Self::EffectResistanceDown => 8,
+            Self::Besotted => 9,
+            Self::AttackDown => 10,
         }
     }
 }

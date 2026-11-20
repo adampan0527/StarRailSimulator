@@ -9,6 +9,8 @@ pub(super) enum DebuffKind {
     Vulnerability,
     DotVulnerability,
     EffectResistanceDown,
+    Besotted,
+    AttackDown,
     ResistanceDown(Element),
 }
 
@@ -20,6 +22,8 @@ impl DebuffKind {
             Self::Vulnerability => StatusKind::Vulnerability,
             Self::DotVulnerability => StatusKind::DotVulnerability,
             Self::EffectResistanceDown => StatusKind::EffectResistanceDown,
+            Self::Besotted => StatusKind::Besotted,
+            Self::AttackDown => StatusKind::AttackDown,
             Self::ResistanceDown(_) => StatusKind::ResistanceDown,
         }
     }
@@ -49,7 +53,7 @@ pub(super) struct BreakDot {
 }
 
 impl Battle<'_> {
-    fn apply_debuff(
+    pub(super) fn apply_debuff(
         &mut self,
         source: usize,
         target: usize,
@@ -92,6 +96,22 @@ impl Battle<'_> {
             .debuffs
             .iter()
             .any(|status| status.kind == DebuffKind::Slow)
+    }
+
+    pub(super) fn has_besotted_from(&self, target: usize, source: usize) -> bool {
+        self.units[target]
+            .debuffs
+            .iter()
+            .any(|status| status.kind == DebuffKind::Besotted && status.source == source)
+    }
+
+    pub(super) fn attack_down_bp(&self, unit: usize) -> u32 {
+        self.units[unit]
+            .debuffs
+            .iter()
+            .filter(|status| status.kind == DebuffKind::AttackDown)
+            .map(|status| status.bp)
+            .fold(0, u32::saturating_add)
     }
 
     pub(super) fn apply_defense_down(&mut self, actor: usize, target: usize, bp: u32, turns: u32) {

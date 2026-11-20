@@ -31,6 +31,8 @@ const statusNames = {
   resistance_down: '减抗',
   dot_vulnerability: '持续伤害易伤',
   effect_resistance_down: '效果抵抗降低',
+  besotted: '酩酊',
+  attack_down: '攻击力降低',
   frozen: '冻结',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });

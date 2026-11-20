@@ -3,6 +3,7 @@ mod asta;
 mod bronya;
 mod clara;
 mod dan_heng;
+mod gallagher;
 mod gepard;
 mod guinaifen;
 mod hanya;
@@ -30,6 +31,7 @@ use crate::{
     Action, BattleError, DamageKind,
     fixture::{Ability, Effect, Element, Stats, Target},
 };
+pub(super) use gallagher::GallagherState;
 
 /// Static stats resolved by the profile layer before a fixed-target simulation.
 pub struct OfficialStats {
@@ -395,6 +397,8 @@ pub(super) trait Mechanics: Send + Sync {
     ) {
     }
 
+    fn on_attack_target(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
+
     fn after_follow_up_hit(
         &self,
         _battle: &mut Battle<'_>,
@@ -587,6 +591,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1210" => Some(guinaifen::build),
         "character.1215" => Some(hanya::build),
         "character.1218" => Some(jiaoqiu::build),
+        "character.1301" => Some(gallagher::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),

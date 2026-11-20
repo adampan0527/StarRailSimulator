@@ -307,6 +307,7 @@ impl Battle<'_> {
             .effect_resistance_bp
             .saturating_add(resist_aura_bp)
             .saturating_add(personal_resistance)
+            .saturating_add(self.support_effect_resistance(target))
             .saturating_sub(resistance_down);
         let control_resistance = if control {
             self.mechanics(target)
@@ -541,6 +542,9 @@ impl Battle<'_> {
         let mut vulnerability = legacy_vulnerability.saturating_add(sum(DebuffKind::Vulnerability));
         if event.kind == DamageKind::DamageOverTime {
             vulnerability = vulnerability.saturating_add(sum(DebuffKind::DotVulnerability));
+        }
+        if event.kind == DamageKind::WeaknessBreak {
+            vulnerability = vulnerability.saturating_add(sum(DebuffKind::Besotted));
         }
         let mut field_resistance_down = 0_u32;
         for owner in self.allies().filter(|&owner| allow_source(owner)) {
@@ -784,6 +788,13 @@ impl Battle<'_> {
             && !self.attack_targets.contains(&target)
         {
             self.attack_targets.push(target);
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.on_attack_target(self, owner, target);
+                }
+            }
         }
         let mut source = self.plan.units[actor].stats;
         if element == Element::Thunder
@@ -1047,6 +1058,8 @@ impl Battle<'_> {
                     ) || status.kind == DebuffKind::ResistanceDown(element)
                         || (status.kind == DebuffKind::DotVulnerability
                             && kind == DamageKind::DamageOverTime)
+                        || (status.kind == DebuffKind::Besotted
+                            && kind == DamageKind::WeaknessBreak)
                 })
                 .map(|status| status.source)
                 .chain(
@@ -1167,7 +1180,7 @@ impl Battle<'_> {
                     }
                 }
             }
-            self.units[target].statuses = [None; 9];
+            self.units[target].statuses.fill(None);
             self.units[target].shields.clear();
             self.units[target].shocks.clear();
             self.units[target].frozen = None;

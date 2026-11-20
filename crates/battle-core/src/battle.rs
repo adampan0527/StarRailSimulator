@@ -22,7 +22,7 @@ pub use analysis::{
     VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
-use official::{HanyaState, Mechanics, SkillPoints, SushangState, YanqingState};
+use official::{GallagherState, HanyaState, Mechanics, SkillPoints, SushangState, YanqingState};
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
 };
@@ -48,7 +48,7 @@ struct UnitState {
     gauge_quanta: u64,
     normal_turns: u32,
     advanced_to_front: bool,
-    statuses: [Option<Status>; 9],
+    statuses: [Option<Status>; StatusKind::COUNT],
     attack_bonus: Option<(u32, u32)>,
     crit_rate_bonus_bp: u32,
     frozen: Option<Freeze>,
@@ -70,6 +70,7 @@ struct UnitState {
     asta_state: AstaState,
     bronya_state: BronyaState,
     tingyun_state: TingyunState,
+    gallagher_state: GallagherState,
     hanya_state: HanyaState,
     jiaoqiu_field: official::JiaoqiuField,
     survival_triggered: bool,
@@ -126,7 +127,7 @@ impl<'a> Battle<'a> {
                     gauge_quanta: GAUGE_FULL,
                     normal_turns: 0,
                     advanced_to_front: false,
-                    statuses: [None; 9],
+                    statuses: [None; StatusKind::COUNT],
                     attack_bonus: None,
                     crit_rate_bonus_bp: 0,
                     frozen: None,
@@ -148,6 +149,7 @@ impl<'a> Battle<'a> {
                     asta_state: AstaState::default(),
                     bronya_state: BronyaState::default(),
                     tingyun_state: TingyunState::default(),
+                    gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
                     jiaoqiu_field: official::JiaoqiuField::default(),
                     survival_triggered: false,
