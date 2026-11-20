@@ -176,10 +176,11 @@ impl Battle<'_> {
     }
 
     pub(super) fn thaw(&mut self, target: usize) -> bool {
-        let Some(mut freeze) = self.units[target].frozen.take() else {
+        let Some(mut freeze) = self.units[target].frozen else {
             return false;
         };
         let source = freeze.source;
+        // The target is still frozen while its turn-start damage resolves.
         match freeze.damage {
             FreezeDamage::Break => self.break_status_hit(
                 source,
@@ -197,6 +198,7 @@ impl Battle<'_> {
                 freeze.origin,
             ),
         }
+        self.units[target].frozen = None;
         if self.units[target].hp == 0 {
             return true;
         }

@@ -23,8 +23,8 @@ pub use analysis::{
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
 use official::{
-    BailuState, GallagherState, HanyaState, Invigoration, Mechanics, SkillPoints, SushangState,
-    YanqingState, YukongState,
+    BailuState, GallagherState, HanyaState, Invigoration, Mechanics, MishaState, SkillPoints,
+    SushangState, YanqingState, YukongState,
 };
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
@@ -77,6 +77,7 @@ struct UnitState {
     tingyun_state: TingyunState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
+    misha_state: MishaState,
     yukong_state: YukongState,
     jiaoqiu_field: official::JiaoqiuField,
     survival_triggered: bool,
@@ -159,6 +160,7 @@ impl<'a> Battle<'a> {
                     tingyun_state: TingyunState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
+                    misha_state: MishaState::default(),
                     yukong_state: YukongState::default(),
                     jiaoqiu_field: official::JiaoqiuField::default(),
                     survival_triggered: false,
@@ -272,7 +274,7 @@ impl<'a> Battle<'a> {
             SkillPoints::Generate => {
                 self.set_skill_points(actor, (self.skill_points + 1).min(SKILL_POINT_CAP))
             }
-            SkillPoints::Spend => self.set_skill_points(actor, self.skill_points - 1),
+            SkillPoints::Spend => self.spend_skill_points(actor, 1),
             SkillPoints::Unchanged => {}
         }
         let ordinary = command.action != Action::Ultimate;
@@ -707,6 +709,17 @@ impl<'a> Battle<'a> {
         let before = std::mem::replace(&mut self.skill_points, after);
         if before != after {
             self.emit(EventKind::SkillPoints { before, after }, Some(actor), None);
+        }
+    }
+
+    fn spend_skill_points(&mut self, actor: usize, points: u8) {
+        self.set_skill_points(actor, self.skill_points - points);
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.on_ally_skill_points_spent(self, owner, points);
+            }
         }
     }
 
