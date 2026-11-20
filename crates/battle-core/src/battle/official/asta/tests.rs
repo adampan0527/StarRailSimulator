@@ -149,13 +149,17 @@ fn hits_on_three_fire_weak_targets_cap_charging_at_five_and_raise_defense_from_b
 #[test]
 fn ultimate_accelerates_each_ally_and_e2_preserves_only_the_next_asta_turn() {
     for (rank, first_remaining, second_remaining) in [(0, 2, 1), (2, 5, 2), (6, 5, 3)] {
-        let mut plan = PreparedBattle::official_dpr(&[asta(rank, &[]), himeko()], 42, 3).unwrap();
+        let mut input = asta(rank, &[]);
+        input
+            .skill_parameters
+            .insert(ULTIMATE.into(), vec![37.4, 2.0]);
+        let mut plan = PreparedBattle::official_dpr(&[input, himeko()], 42, 3).unwrap();
         plan.units[0].starting_energy_milli = 120_000;
         let mut battle = Battle::start(&plan, LogMode::Detailed);
         battle.units[0].asta_state.charge_stacks = 5;
         act(&mut battle, ASTA, Action::Ultimate, None);
-        assert_eq!(battle.snapshot().units[0].speed_micros, 236_000_000);
-        assert_eq!(battle.snapshot().units[1].speed_micros, 236_000_000);
+        assert_eq!(battle.snapshot().units[0].speed_micros, 237_400_000);
+        assert_eq!(battle.snapshot().units[1].speed_micros, 237_400_000);
         assert_eq!(
             battle.units[0].energy_milli,
             if rank >= 4 { 5_750 } else { 5_000 }
@@ -243,7 +247,11 @@ fn team_fire_and_non_fire_damage_credits_both_auras_to_the_living_asta() {
 
 #[test]
 fn automatic_dpr_uses_the_available_support_ultimate_and_replays() {
-    let mut plan = PreparedBattle::official_dpr(&[asta(0, &[])], 42, 3).unwrap();
+    let mut input = asta(0, &[]);
+    input
+        .skill_parameters
+        .insert(ULTIMATE.into(), vec![37.4, 2.0]);
+    let mut plan = PreparedBattle::official_dpr(&[input], 42, 3).unwrap();
     plan.units[0].starting_energy_milli = 120_000;
     let calculate = || calculate_dpr(&plan, &[1_000], NonZeroU32::new(1).unwrap()).unwrap();
     let first = calculate();
@@ -255,6 +263,6 @@ fn automatic_dpr_uses_the_available_support_ultimate_and_replays() {
         .collect();
     attack_times.dedup();
     assert_eq!(attack_times[0], 50_000_000);
-    assert!(attack_times[1] < 100_000_000);
+    assert_eq!(attack_times[1], 92_123_000);
     assert_eq!(first, calculate());
 }

@@ -36,7 +36,7 @@ struct Asta {
     constellation: bool,
     burn_multiplier_bp: u16,
     attack_per_charge_bp: u16,
-    ultimate_speed_points: u32,
+    ultimate_speed_micros: u32,
 }
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
@@ -48,7 +48,6 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
     let ultimate = input.parameters(ULTIMATE, 2)?;
     let talent = input.parameters(TALENT, 3)?;
     if !(1.0..=100.0).contains(&ultimate[0])
-        || ultimate[0].fract() != 0.0
         || ultimate[1] != f64::from(SPEED_BUFF_TURNS)
         || talent[1] != f64::from(MAX_CHARGE_STACKS)
         || talent[2] != f64::from(CHARGES_LOST_PER_TURN)
@@ -101,7 +100,7 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
             constellation: has_trace(CONSTELLATION),
             burn_multiplier_bp: basic.div_ceil(2),
             attack_per_charge_bp: to_basis_points(TALENT, talent[0])?,
-            ultimate_speed_points: ultimate[0] as u32,
+            ultimate_speed_micros: (ultimate[0] * 1_000_000.0).round() as u32,
         }),
     })
 }
@@ -196,7 +195,7 @@ impl Mechanics for Asta {
                     actor,
                     ally,
                     AllyBuffKind::SpeedFlat,
-                    self.ultimate_speed_points,
+                    self.ultimate_speed_micros,
                     SPEED_BUFF_TURNS,
                 );
             }
