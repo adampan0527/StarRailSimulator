@@ -24,7 +24,7 @@ pub use analysis::{
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
     BailuState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse, Mechanics,
-    MishaState, SkillPoints, SushangState, YanqingState, YukongState,
+    MishaState, SkillPoints, SushangState, XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
@@ -71,6 +71,7 @@ struct UnitState {
     kafka_follow_up_charges: u8,
     luka_state: LukaState,
     himeko_charge: u8,
+    xueyi_state: XueyiState,
     sushang_state: SushangState,
     yanqing_state: YanqingState,
     ally_buffs: Vec<AllyBuff>,
@@ -157,6 +158,7 @@ impl<'a> Battle<'a> {
                     kafka_follow_up_charges: 0,
                     luka_state: LukaState::default(),
                     himeko_charge: 0,
+                    xueyi_state: XueyiState::default(),
                     sushang_state: SushangState::default(),
                     yanqing_state: YanqingState::default(),
                     ally_buffs: Vec::new(),

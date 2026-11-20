@@ -104,9 +104,16 @@ pub(super) struct FollowUpAttack {
 #[derive(Clone)]
 pub(super) struct FollowUp {
     actor: usize,
-    target: Option<usize>,
+    targets: FollowUpTargets,
     origin: Action,
     attack: FollowUpAttack,
+}
+
+#[derive(Clone, Copy)]
+enum FollowUpTargets {
+    All,
+    Single(usize),
+    Random { hit_count: u8 },
 }
 
 impl Battle<'_> {
@@ -184,14 +191,9 @@ impl Battle<'_> {
                     mechanics.random_hit_count(self, actor, count)
                 });
                 for _ in 0..count {
-                    let live: Vec<_> = self
-                        .enemies()
-                        .filter(|&unit| self.units[unit].hp > 0)
-                        .collect();
-                    if live.is_empty() {
+                    let Some(selected) = self.random_living_enemy() else {
                         break;
-                    }
-                    let selected = live[self.random_index(live.len())];
+                    };
                     self.attack_hit(actor, selected, element, multiplier_bp, toughness);
                 }
             }
@@ -426,6 +428,15 @@ impl Battle<'_> {
         }
     }
 
+    fn random_living_enemy(&mut self) -> Option<usize> {
+        let live: Vec<_> = self
+            .enemies()
+            .filter(|&unit| self.units[unit].hp > 0)
+            .collect();
+        let index = self.random_index(live.len());
+        live.get(index).copied()
+    }
+
     pub(super) fn follow_up(
         &mut self,
         actor: usize,
@@ -437,7 +448,7 @@ impl Battle<'_> {
     ) {
         self.pending_follow_ups.push_back(FollowUp {
             actor,
-            target: None,
+            targets: FollowUpTargets::All,
             origin,
             attack: FollowUpAttack {
                 element,
@@ -458,7 +469,23 @@ impl Battle<'_> {
     ) {
         self.pending_follow_ups.push_back(FollowUp {
             actor,
-            target: Some(target),
+            targets: FollowUpTargets::Single(target),
+            origin,
+            attack,
+        });
+    }
+
+    /// Each hit draws a living enemy and grants the specified energy for that hit.
+    pub(super) fn follow_up_random(
+        &mut self,
+        actor: usize,
+        origin: Action,
+        hit_count: u8,
+        attack: FollowUpAttack,
+    ) {
+        self.pending_follow_ups.push_back(FollowUp {
+            actor,
+            targets: FollowUpTargets::Random { hit_count },
             origin,
             attack,
         });
@@ -469,52 +496,98 @@ impl Battle<'_> {
         while let Some(follow_up) = self.pending_follow_ups.pop_front() {
             let FollowUp {
                 actor,
-                target,
+                targets,
                 origin,
                 attack,
             } = follow_up;
-            let targets = target.map_or_else(|| self.enemies(), |target| target..target + 1);
-            if self.units[actor].hp == 0 || !targets.clone().any(|unit| self.units[unit].hp > 0) {
+            let single = match targets {
+                FollowUpTargets::Single(unit) => Some(unit),
+                FollowUpTargets::All | FollowUpTargets::Random { .. } => None,
+            };
+            let candidates = single.map_or_else(|| self.enemies(), |unit| unit..unit + 1);
+            if self.units[actor].hp == 0 || !candidates.clone().any(|unit| self.units[unit].hp > 0)
+            {
                 continue;
             }
             let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
             self.attack_targets.clear();
             let mechanics = self.mechanics(actor);
-            self.emit(EventKind::FollowUp, Some(actor), target);
-            for target in targets {
-                if self.units[target].hp == 0 {
-                    continue;
+            self.emit(EventKind::FollowUp, Some(actor), single);
+            if let FollowUpTargets::Random { hit_count } = targets {
+                for _ in 0..hit_count {
+                    let Some(target) = self.random_living_enemy() else {
+                        break;
+                    };
+                    self.follow_up_hit(
+                        actor,
+                        target,
+                        origin,
+                        attack.element,
+                        attack.multiplier_bp,
+                        attack.toughness,
+                    );
+                    if let Some(mechanics) = &mechanics {
+                        mechanics.after_follow_up_hit(self, actor, target, origin);
+                    }
+                    self.gain_energy(actor, actor, attack.energy_milli);
                 }
+            } else {
                 let (first_bp, first_toughness) = attack.first_hit.unwrap_or_default();
                 let remaining = (
                     attack.multiplier_bp.saturating_sub(first_bp),
                     attack.toughness.saturating_sub(first_toughness),
                 );
-                for (multiplier_bp, toughness) in attack.first_hit.into_iter().chain([remaining]) {
-                    self.strike(
-                        actor,
-                        target,
-                        DamageKind::FollowUp,
-                        Hit {
-                            element: attack.element,
+                for target in candidates {
+                    if self.units[target].hp == 0 {
+                        continue;
+                    }
+                    for (multiplier_bp, toughness) in
+                        attack.first_hit.into_iter().chain([remaining])
+                    {
+                        self.follow_up_hit(
+                            actor,
+                            target,
+                            origin,
+                            attack.element,
                             multiplier_bp,
                             toughness,
-                            origin: Some(origin),
-                            scale: DamageScale::Attack,
-                        },
-                    );
+                        );
+                    }
+                    if let Some(mechanics) = &mechanics {
+                        mechanics.after_follow_up_hit(self, actor, target, origin);
+                    }
                 }
-                if let Some(mechanics) = &mechanics {
-                    mechanics.after_follow_up_hit(self, actor, target, origin);
-                }
+                self.gain_energy(actor, actor, attack.energy_milli);
             }
-            self.gain_energy(actor, actor, attack.energy_milli);
             if let Some(mechanics) = mechanics {
                 mechanics.after_follow_up(self, actor, origin);
             }
             self.notify_attack(actor, origin);
             self.resolving_follow_up = was_follow_up;
         }
+    }
+
+    fn follow_up_hit(
+        &mut self,
+        actor: usize,
+        target: usize,
+        origin: Action,
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+    ) {
+        self.strike(
+            actor,
+            target,
+            DamageKind::FollowUp,
+            Hit {
+                element,
+                multiplier_bp,
+                toughness,
+                origin: Some(origin),
+                scale: DamageScale::Attack,
+            },
+        );
     }
 
     fn notify_attack(&mut self, actor: usize, origin: Action) {
@@ -896,7 +969,9 @@ impl Battle<'_> {
         source.element_damage_bp = source
             .element_damage_bp
             .saturating_add(self.units[actor].active_attack_bonus_bp);
+        let mut ignores_weakness = false;
         if let Some(mechanics) = self.mechanics(actor) {
+            ignores_weakness = mechanics.ignores_weakness(origin, kind);
             source.element_damage_bp = source
                 .element_damage_bp
                 .saturating_add(mechanics.damage_bonus_bp(self, actor, target, origin, kind));
@@ -946,11 +1021,23 @@ impl Battle<'_> {
             },
         );
 
-        let hit_weakness = self.has_weakness(target, element);
+        let hit_weakness = ignores_weakness || self.has_weakness(target, element);
         let before = self.units[target].toughness;
         if self.units[target].hp > 0 && hit_weakness && before > 0 && toughness > 0 {
             let after = before.saturating_sub(toughness);
             self.set_toughness(actor, target, after);
+            if origin.is_some()
+                && self.allies().contains(&actor)
+                && self.enemies().contains(&target)
+            {
+                for owner in self.allies() {
+                    if self.units[owner].hp > 0
+                        && let Some(mechanics) = self.mechanics(owner)
+                    {
+                        mechanics.on_toughness_reduced(self, owner, actor, before - after);
+                    }
+                }
+            }
             if after == 0 {
                 self.emit(EventKind::WeaknessBroken, Some(actor), Some(target));
                 self.resolve_damage(
