@@ -27,27 +27,57 @@ pub(crate) fn direct(
     critical: bool,
 ) -> u32 {
     let defense_points = defense_points(source.level);
-    let crit = if critical { 15_000 } else { BP };
+    let crit = if critical {
+        BP + u128::from(source.crit_damage_bp)
+    } else {
+        BP
+    };
     let toughness = if target.toughness > 0 { 9_000 } else { BP };
     let numerator = u128::from(source.attack)
         * u128::from(multiplier_bp)
+        * (BP + u128::from(source.element_damage_bp))
         * crit
         * defense_points
         * resist_factor(target.stats, element)
         * (BP + u128::from(target.vulnerability_bp))
         * toughness;
-    let denominator = BP.pow(5) * (defense_points + u128::from(target.stats.defense));
-    (numerator / denominator) as u32
+    let denominator = BP.pow(6) * (defense_points + u128::from(target.stats.defense));
+    u32::try_from(numerator / denominator).unwrap_or(u32::MAX)
 }
 
 pub(crate) fn weakness_break(source: Stats, target: DamageTarget, element: Element) -> u32 {
     let defense_points = defense_points(source.level);
-    let numerator = u128::from(BREAK_BASE_AT_LEVEL_30)
+    let base = if source.level == 80 {
+        37_675_533
+    } else {
+        u128::from(BREAK_BASE_AT_LEVEL_30) * BP
+    };
+    let numerator = base
         * u128::from(element.break_multiplier_bp())
         * (20 + u128::from(target.max_toughness))
         * defense_points
         * resist_factor(target.stats, element)
-        * (BP + u128::from(target.vulnerability_bp));
-    let denominator = BP.pow(3) * 40 * (defense_points + u128::from(target.stats.defense));
-    (numerator / denominator) as u32
+        * (BP + u128::from(target.vulnerability_bp))
+        * (BP + u128::from(source.break_effect_bp));
+    let denominator = BP.pow(5) * 40 * (defense_points + u128::from(target.stats.defense));
+    u32::try_from(numerator / denominator).unwrap_or(u32::MAX)
+}
+
+pub(crate) fn break_status(source: Stats, target: DamageTarget, element: Element) -> u32 {
+    let defense = defense_points(source.level);
+    let toughness = if target.toughness > 0 { 9_000 } else { BP };
+    let multiplier = if matches!(element, Element::Thunder) {
+        2
+    } else {
+        1
+    };
+    let numerator = 37_675_533
+        * multiplier
+        * (BP + u128::from(source.break_effect_bp))
+        * defense
+        * resist_factor(target.stats, element)
+        * (BP + u128::from(target.vulnerability_bp))
+        * toughness;
+    let denominator = BP.pow(5) * (defense + u128::from(target.stats.defense));
+    u32::try_from(numerator / denominator).unwrap_or(u32::MAX)
 }

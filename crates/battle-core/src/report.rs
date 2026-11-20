@@ -42,6 +42,9 @@ impl StatusKind {
 pub enum DamageKind {
     Direct,
     WeaknessBreak,
+    DamageOverTime,
+    Additional,
+    FollowUp,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -50,6 +53,7 @@ pub enum EventKind {
     WaveStarted,
     TurnStarted,
     Action(Action),
+    FollowUp,
     EnemyAttack,
     SkillPoints {
         before: u8,
@@ -68,6 +72,21 @@ pub enum EventKind {
     },
     Heal {
         amount: u32,
+    },
+    HpSpent {
+        amount: u32,
+    },
+    ShockApplied {
+        origin: Action,
+        from_break: bool,
+        turns: u32,
+    },
+    ShockExtended {
+        extra_turns: u32,
+    },
+    ShockExpired {
+        origin: Action,
+        from_break: bool,
     },
     Toughness {
         before: u16,

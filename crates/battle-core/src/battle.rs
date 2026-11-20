@@ -1,6 +1,8 @@
 mod analysis;
+mod official;
 mod resolve;
 mod setup;
+mod shock;
 
 use std::ops::Range;
 
@@ -15,8 +17,11 @@ pub use analysis::{
     DprCharacter, DprCredit, DprHit, DprResult, DprScenario, DprTarget, STANDARD_DPR_SCENARIO,
     VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
+use official::{Mechanics, SkillPoints};
+pub use official::{OfficialCharacter, OfficialStats, supports_official_dpr};
 use setup::Kit;
 pub use setup::PreparedBattle;
+use std::sync::Arc;
 
 #[derive(Clone, Copy)]
 struct Status {
@@ -34,6 +39,10 @@ struct UnitState {
     normal_turns: u32,
     advanced_to_front: bool,
     statuses: [Option<Status>; 3],
+    attack_bonus: Option<(u32, u32)>,
+    crit_rate_bonus_bp: u32,
+    frozen: Option<(usize, Action)>,
+    shocks: Vec<shock::Shock>,
 }
 
 impl UnitState {
@@ -58,6 +67,9 @@ pub struct Battle<'a> {
     rng: Rng,
     log: Option<Vec<Event>>,
     dummy_damage: Vec<DummyDamage>,
+    crossed_half: Vec<usize>,
+    action: Option<Action>,
+    pending_follow_ups: std::collections::VecDeque<resolve::FollowUp>,
 }
 
 impl<'a> Battle<'a> {
@@ -76,6 +88,10 @@ impl<'a> Battle<'a> {
                     normal_turns: 0,
                     advanced_to_front: false,
                     statuses: [None; 3],
+                    attack_bonus: None,
+                    crit_rate_bonus_bp: 0,
+                    frozen: None,
+                    shocks: Vec::new(),
                 })
                 .collect(),
             outcome: Outcome::Ongoing,
@@ -92,8 +108,16 @@ impl<'a> Battle<'a> {
                 LogMode::Off => None,
             },
             dummy_damage: Vec::new(),
+            crossed_half: Vec::new(),
+            action: None,
+            pending_follow_ups: std::collections::VecDeque::new(),
         };
         battle.emit(EventKind::WaveStarted, None, None);
+        for actor in battle.allies() {
+            if let Some(mechanics) = battle.mechanics(actor) {
+                mechanics.on_battle_start(&mut battle, actor);
+            }
+        }
         battle.advance_to_decision();
         battle
     }
@@ -151,7 +175,7 @@ impl<'a> Battle<'a> {
             .allies()
             .find(|&unit| self.plan.units[unit].id == command.actor_id)
             .ok_or(BattleError::InvalidActor)?;
-        let ability = self.check_action(actor, command.action)?;
+        let (ability, skill_points) = self.check_action(actor, command.action)?;
         let target = match (ability.target, command.target_id.as_deref()) {
             (Target::Ally, Some(id)) => self.find_target(self.allies(), id)?,
             (Target::Enemy, Some(id)) => self.find_target(self.enemies(), id)?,
@@ -160,20 +184,32 @@ impl<'a> Battle<'a> {
         };
 
         self.decision_index += 1;
+        self.action = Some(command.action);
         self.emit(EventKind::Action(command.action), Some(actor), target);
-        match command.action {
-            Action::Basic => {
+        match skill_points {
+            SkillPoints::Generate => {
                 self.set_skill_points(actor, (self.skill_points + 1).min(SKILL_POINT_CAP))
             }
-            Action::Skill => self.set_skill_points(actor, self.skill_points - 1),
-            Action::Ultimate => self.set_energy(actor, actor, 0),
+            SkillPoints::Spend => self.set_skill_points(actor, self.skill_points - 1),
+            SkillPoints::Unchanged => {}
         }
         let ordinary = command.action != Action::Ultimate;
         if ordinary {
             self.reset_gauge(actor);
+        } else {
+            self.set_energy(actor, actor, 0);
+        }
+        let mechanics = self.mechanics(actor);
+        if let Some(mechanics) = &mechanics {
+            mechanics.before_action(self, actor, command.action, target);
         }
         self.resolve_ability(actor, target, ability);
         self.gain_energy(actor, actor, ability.energy_milli);
+        if let Some(mechanics) = &mechanics {
+            mechanics.after_action(self, actor, command.action, target);
+        }
+        self.finish_attack(actor, command.action);
+        self.action = None;
         if ordinary {
             self.finish_turn(actor);
             self.ordinary_actor = None;
@@ -240,30 +276,44 @@ impl<'a> Battle<'a> {
             .collect()
     }
 
-    fn check_action(&self, actor: usize, action: Action) -> Result<Ability, BattleError> {
-        let Kit::Ally(kit) = self.plan.units[actor].kit else {
-            return Err(BattleError::InvalidActor);
+    fn check_action(
+        &self,
+        actor: usize,
+        action: Action,
+    ) -> Result<(Ability<'a>, SkillPoints), BattleError> {
+        let kit = &self.plan.units[actor].kit;
+        let (ability, skill_points) = match kit {
+            Kit::Ally(kit) => (
+                kit.ability(action),
+                match action {
+                    Action::Basic => SkillPoints::Generate,
+                    Action::Skill => SkillPoints::Spend,
+                    Action::Ultimate => SkillPoints::Unchanged,
+                },
+            ),
+            Kit::Official(kit) => kit.ability(action),
+            Kit::Enemy(_) | Kit::Dummy { .. } => return Err(BattleError::InvalidActor),
         };
         if self.units[actor].hp == 0 {
             return Err(BattleError::InvalidActor);
         }
         if action == Action::Ultimate {
-            if self.units[actor].energy_milli < kit.max_energy_milli {
+            if self.units[actor].energy_milli < kit.max_energy_milli() {
                 return Err(BattleError::InsufficientEnergy);
             }
         } else {
             if self.ordinary_actor != Some(actor) {
                 return Err(BattleError::IllegalTiming);
             }
-            if action == Action::Skill && self.skill_points == 0 {
+            if skill_points == SkillPoints::Spend && self.skill_points == 0 {
                 return Err(BattleError::InsufficientSkillPoints);
             }
         }
-        Ok(kit.ability(action))
+        Ok((ability, skill_points))
     }
 
     fn list_actions(&self, actor: usize, action: Action, actions: &mut Vec<Command>) {
-        let Ok(ability) = self.check_action(actor, action) else {
+        let Ok((ability, _)) = self.check_action(actor, action) else {
             return;
         };
         let mut add = |target: Option<usize>| {
@@ -297,6 +347,21 @@ impl<'a> Battle<'a> {
 
     fn allies(&self) -> Range<usize> {
         0..self.plan.ally_count
+    }
+
+    fn mechanics(&self, unit: usize) -> Option<Arc<dyn Mechanics>> {
+        match &self.plan.units[unit].kit {
+            Kit::Official(kit) => Some(Arc::clone(&kit.mechanics)),
+            _ => None,
+        }
+    }
+
+    fn hp(&self, unit: usize) -> (u32, u32) {
+        (self.units[unit].hp, self.plan.units[unit].stats.hp)
+    }
+
+    fn is_frozen(&self, unit: usize) -> bool {
+        self.units[unit].frozen.is_some()
     }
 
     fn enemies(&self) -> Range<usize> {
@@ -359,13 +424,23 @@ impl<'a> Battle<'a> {
             self.units[actor].advanced_to_front = false;
             self.emit(EventKind::TurnStarted, Some(actor), None);
 
-            let kit = self.plan.units[actor].kit;
+            let kit = &self.plan.units[actor].kit;
             match kit {
-                Kit::Ally(_) => {
+                Kit::Ally(_) | Kit::Official(_) => {
                     self.ordinary_actor = Some(actor);
                     return;
                 }
                 Kit::Enemy(_) | Kit::Dummy { .. } => {
+                    self.tick_shocks(actor);
+                    if self.units[actor].hp == 0 {
+                        self.resolve_wave_or_end();
+                        continue;
+                    }
+                    if self.thaw(actor) {
+                        self.finish_turn(actor);
+                        self.resolve_wave_or_end();
+                        continue;
+                    }
                     if self.units[actor].toughness == 0 {
                         self.set_toughness(actor, actor, kit.max_toughness());
                     }

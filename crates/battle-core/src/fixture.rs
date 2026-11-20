@@ -20,6 +20,7 @@ pub(crate) enum Element {
     Physical,
     Wind,
     Ice,
+    Thunder,
 }
 
 impl Element {
@@ -28,6 +29,7 @@ impl Element {
             Self::Physical => 0,
             Self::Wind => 1,
             Self::Ice => 2,
+            Self::Thunder => 3,
         }
     }
 
@@ -36,6 +38,7 @@ impl Element {
             Self::Physical => 20_000,
             Self::Wind => 15_000,
             Self::Ice => 10_000,
+            Self::Thunder => 10_000,
         }
     }
 }
@@ -45,11 +48,17 @@ pub(crate) struct Stats {
     pub level: u16,
     pub hp: u32,
     pub attack: u32,
+    pub base_attack: u32,
     pub defense: u32,
     pub base_speed_micros: u64,
     pub flat_speed_micros: u64,
-    pub resist_bp: [u16; 3],
-    pub crit_rate_bp: u16,
+    pub resist_bp: [u16; 4],
+    pub crit_rate_bp: u32,
+    pub crit_damage_bp: u32,
+    pub element_damage_bp: u32,
+    pub break_effect_bp: u32,
+    pub effect_hit_rate_bp: u32,
+    pub energy_regeneration_bp: u32,
 }
 
 /// Initial training attributes before any effects are applied in combat.
@@ -85,6 +94,11 @@ pub(crate) enum Effect {
         multiplier_bp: u16,
         toughness: u16,
     },
+    BlastAdjacent {
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+    },
     Shield {
         amount: u32,
         turns: u32,
@@ -103,22 +117,22 @@ pub(crate) enum Effect {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) struct Ability {
+pub(crate) struct Ability<'a> {
     pub target: Target,
     pub energy_milli: u32,
-    pub effects: &'static [Effect],
+    pub effects: &'a [Effect],
 }
 
 pub(crate) struct AllyKit {
     pub stats: Stats,
     pub max_energy_milli: u32,
-    basic: Ability,
-    skill: Ability,
-    ultimate: Ability,
+    basic: Ability<'static>,
+    skill: Ability<'static>,
+    ultimate: Ability<'static>,
 }
 
 impl AllyKit {
-    pub const fn ability(&self, action: Action) -> Ability {
+    pub const fn ability(&self, action: Action) -> Ability<'static> {
         match action {
             Action::Basic => self.basic,
             Action::Skill => self.skill,
@@ -136,7 +150,7 @@ pub(crate) enum EnemyTarget {
 pub(crate) struct EnemyKit {
     pub stats: Stats,
     pub max_toughness: u16,
-    pub weakness: [bool; 3],
+    pub weakness: [bool; 4],
     pub target: EnemyTarget,
     pub hit_energy_milli: u32,
 }
@@ -146,15 +160,21 @@ const fn ally_stats(attack: u32, speed: u64) -> Stats {
         level: 30,
         hp: 1_000,
         attack,
+        base_attack: attack,
         defense: 520,
         base_speed_micros: speed * 1_000_000,
         flat_speed_micros: 0,
-        resist_bp: [0, 0, 0],
+        resist_bp: [0; 4],
         crit_rate_bp: 0,
+        crit_damage_bp: 5_000,
+        element_damage_bp: 0,
+        break_effect_bp: 0,
+        effect_hit_rate_bp: 0,
+        energy_regeneration_bp: 10_000,
     }
 }
 
-const fn enemy_stats(hp: u32, resist_bp: [u16; 3]) -> Stats {
+const fn enemy_stats(hp: u32, resist_bp: [u16; 4]) -> Stats {
     Stats {
         level: 32,
         hp,
@@ -163,11 +183,11 @@ const fn enemy_stats(hp: u32, resist_bp: [u16; 3]) -> Stats {
         base_speed_micros: 100_000_000,
         flat_speed_micros: 0,
         resist_bp,
-        crit_rate_bp: 0,
+        ..ally_stats(200, 100)
     }
 }
 
-pub(crate) const DUMMY_STATS: Stats = enemy_stats(1, [0; 3]);
+pub(crate) const DUMMY_STATS: Stats = enemy_stats(1, [0; 4]);
 
 const fn hit(element: Element, multiplier_bp: u16, toughness: u16) -> Effect {
     Effect::Hit {
@@ -177,7 +197,7 @@ const fn hit(element: Element, multiplier_bp: u16, toughness: u16) -> Effect {
     }
 }
 
-const fn ability(target: Target, energy: u32, effects: &'static [Effect]) -> Ability {
+const fn ability(target: Target, energy: u32, effects: &'static [Effect]) -> Ability<'static> {
     Ability {
         target,
         energy_milli: energy * 1_000,
@@ -255,16 +275,16 @@ static SUPPORT: AllyKit = AllyKit {
 };
 
 static LEFT: EnemyKit = EnemyKit {
-    stats: enemy_stats(1_000, [0, 0, 2_000]),
+    stats: enemy_stats(1_000, [0, 0, 2_000, 0]),
     max_toughness: 20,
-    weakness: [true, true, false],
+    weakness: [true, true, false, false],
     target: EnemyTarget::FirstLiving,
     hit_energy_milli: 10_000,
 };
 static RIGHT: EnemyKit = EnemyKit {
-    stats: enemy_stats(950, [0, 2_000, 2_000]),
+    stats: enemy_stats(950, [0, 2_000, 2_000, 0]),
     max_toughness: 10,
-    weakness: [true, false, false],
+    weakness: [true, false, false, false],
     target: EnemyTarget::RandomLiving,
     hit_energy_milli: 10_000,
 };
