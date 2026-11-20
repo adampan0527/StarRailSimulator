@@ -228,6 +228,56 @@ fn saved_break_and_follow_up_team_runs_with_the_frozen_catalog() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn support_team_credits_actual_buff_damage_and_conserves_the_total() {
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let himeko = "character.1003";
+    let supports = ["character.1009", "character.1101", "character.1202"];
+    let team = archive
+        .save_team(
+            None,
+            "同谐归因",
+            &[
+                Some(himeko.into()),
+                Some(supports[0].into()),
+                Some(supports[1].into()),
+                Some(supports[2].into()),
+            ],
+        )
+        .unwrap();
+    let run = || archive.dpr_readiness(&team.id).unwrap().result.unwrap();
+    let result = run();
+    assert_eq!(result.characters.len(), 4);
+    assert!(result.characters[0].own_damage > 0);
+    for character in &result.characters[1..] {
+        assert!(character.assist_damage > 0, "{}", character.unit_id);
+    }
+    assert!(
+        result
+            .targets
+            .iter()
+            .flat_map(|target| &target.hits)
+            .any(|hit| {
+                hit.source_id == himeko
+                    && hit
+                        .credits
+                        .iter()
+                        .any(|credit| credit.unit_id == supports[2] && credit.amount > 0)
+            })
+    );
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|entry| entry.own_damage + entry.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
