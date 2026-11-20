@@ -21,8 +21,9 @@ mod serval;
 mod sushang;
 mod tingyun;
 mod yanqing;
+mod yukong;
 
-pub(super) use {hanya::HanyaState, jiaoqiu::Field as JiaoqiuField};
+pub(super) use {hanya::HanyaState, jiaoqiu::Field as JiaoqiuField, yukong::YukongState};
 
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -342,6 +343,10 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn prevent_debuff(&self, _battle: &mut Battle<'_>, _actor: usize) -> bool {
+        false
+    }
+
     fn control_resistance_bp(&self) -> u32 {
         0
     }
@@ -466,6 +471,19 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn ally_crit_rate_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
+    fn ally_crit_damage_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _target: usize,
+    ) -> u32 {
+        0
+    }
+
     fn ally_damage_bonus_bp(
         &self,
         _battle: &Battle<'_>,
@@ -485,6 +503,8 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn after_ordinary_turn(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
+
+    fn on_ally_energy_full(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
     fn before_ally_action(
         &self,
@@ -588,6 +608,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1111" => Some(luka::build),
         "character.1202" => Some(tingyun::build),
         "character.1206" => Some(sushang::build),
+        "character.1207" => Some(yukong::build),
         "character.1210" => Some(guinaifen::build),
         "character.1215" => Some(hanya::build),
         "character.1218" => Some(jiaoqiu::build),

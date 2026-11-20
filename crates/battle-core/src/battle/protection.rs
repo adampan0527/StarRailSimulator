@@ -159,17 +159,20 @@ impl Battle<'_> {
                 damage: FreezeDamage::Skill(multiplier_bp),
                 turns,
             },
-        );
-        true
+        )
     }
 
-    fn apply_freeze(&mut self, target: usize, status: Freeze) {
+    fn apply_freeze(&mut self, target: usize, status: Freeze) -> bool {
+        if self.resists_debuff(target) {
+            return false;
+        }
         self.units[target].frozen = Some(status);
         self.emit(
             EventKind::StatusApplied(StatusKind::Frozen),
             Some(status.source),
             Some(target),
         );
+        true
     }
 
     pub(super) fn thaw(&mut self, target: usize) -> bool {

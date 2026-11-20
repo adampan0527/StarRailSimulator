@@ -22,10 +22,11 @@ pub(crate) enum Element {
     Ice,
     Thunder,
     Fire,
+    Imaginary,
 }
 
 impl Element {
-    pub(crate) const COUNT: usize = 5;
+    pub(crate) const COUNT: usize = 6;
 
     pub const fn index(self) -> usize {
         match self {
@@ -34,6 +35,7 @@ impl Element {
             Self::Ice => 2,
             Self::Thunder => 3,
             Self::Fire => 4,
+            Self::Imaginary => 5,
         }
     }
 
@@ -43,6 +45,7 @@ impl Element {
             Self::Wind => 15_000,
             Self::Ice => 10_000,
             Self::Thunder => 10_000,
+            Self::Imaginary => 5_000,
         }
     }
 }
@@ -302,16 +305,16 @@ static SUPPORT: AllyKit = AllyKit {
 };
 
 static LEFT: EnemyKit = EnemyKit {
-    stats: enemy_stats(1_000, [0, 0, 2_000, 0, 0]),
+    stats: enemy_stats(1_000, [0, 0, 2_000, 0, 0, 0]),
     max_toughness: 20,
-    weakness: [true, true, false, false, false],
+    weakness: [true, true, false, false, false, false],
     target: EnemyTarget::FirstLiving,
     hit_energy_milli: 10_000,
 };
 static RIGHT: EnemyKit = EnemyKit {
-    stats: enemy_stats(950, [0, 2_000, 2_000, 0, 0]),
+    stats: enemy_stats(950, [0, 2_000, 2_000, 0, 0, 0]),
     max_toughness: 10,
-    weakness: [true, false, false, false, false],
+    weakness: [true, false, false, false, false, false],
     target: EnemyTarget::RandomLiving,
     hit_energy_milli: 10_000,
 };

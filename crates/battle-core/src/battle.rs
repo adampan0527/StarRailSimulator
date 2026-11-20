@@ -22,7 +22,9 @@ pub use analysis::{
     VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
-use official::{GallagherState, HanyaState, Mechanics, SkillPoints, SushangState, YanqingState};
+use official::{
+    GallagherState, HanyaState, Mechanics, SkillPoints, SushangState, YanqingState, YukongState,
+};
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
 };
@@ -72,6 +74,7 @@ struct UnitState {
     tingyun_state: TingyunState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
+    yukong_state: YukongState,
     jiaoqiu_field: official::JiaoqiuField,
     survival_triggered: bool,
     finished_turns: u32,
@@ -151,6 +154,7 @@ impl<'a> Battle<'a> {
                     tingyun_state: TingyunState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
+                    yukong_state: YukongState::default(),
                     jiaoqiu_field: official::JiaoqiuField::default(),
                     survival_triggered: false,
                     finished_turns: 0,
