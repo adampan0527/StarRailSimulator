@@ -33,6 +33,7 @@ const statusNames = {
   effect_resistance_down: '效果抵抗降低',
   besotted: '酩酊',
   attack_down: '攻击力降低',
+  entangled: '纠缠',
   frozen: '冻结',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });

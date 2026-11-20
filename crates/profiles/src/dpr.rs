@@ -40,6 +40,12 @@ impl Catalog {
                 skill.parameters[usize::from(level - 1)].clone(),
             );
         }
+        let base_aggro = character
+            .base_attributes(config.level, config.ascension)?
+            .get("taunt")
+            .copied()
+            .filter(|value| (1.0..=1_000.0).contains(value) && value.fract() == 0.0)
+            .ok_or_else(|| Error::invalid("character.taunt", id))? as u16;
         let panel = self.character_stats(id, loadout)?;
         let stat = |name, value: Option<ScaledStat>| value.ok_or_else(|| Error::invalid(name, id));
         let hp = stat("character.hp", panel.hp)?;
@@ -54,6 +60,7 @@ impl Catalog {
             base_attack: attack.base.round() as u32,
             defense: defense.total.round() as u32,
             base_defense: defense.base.round() as u32,
+            base_aggro,
             base_speed_micros: (speed.base * 1_000_000.0).round() as u64,
             speed_micros: (speed.total * 1_000_000.0).round() as u64,
             crit_rate_bp: ratio(panel.crit_rate),

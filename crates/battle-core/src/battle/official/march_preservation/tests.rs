@@ -20,6 +20,7 @@ fn march(eidolon: u8) -> OfficialCharacter {
             base_attack: 1_000,
             defense: 500,
             base_defense: 500,
+            base_aggro: 100,
             base_speed_micros: 200_000_000,
             speed_micros: 200_000_000,
             crit_rate_bp: 0,

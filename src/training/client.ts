@@ -81,6 +81,7 @@ type Status =
   | 'effect_resistance_down'
   | 'besotted'
   | 'attack_down'
+  | 'entangled'
   | 'frozen';
 type EventKind =
   | {

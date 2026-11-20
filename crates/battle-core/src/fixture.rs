@@ -23,10 +23,11 @@ pub(crate) enum Element {
     Thunder,
     Fire,
     Imaginary,
+    Quantum,
 }
 
 impl Element {
-    pub(crate) const COUNT: usize = 6;
+    pub(crate) const COUNT: usize = 7;
 
     pub const fn index(self) -> usize {
         match self {
@@ -36,6 +37,7 @@ impl Element {
             Self::Thunder => 3,
             Self::Fire => 4,
             Self::Imaginary => 5,
+            Self::Quantum => 6,
         }
     }
 
@@ -45,7 +47,7 @@ impl Element {
             Self::Wind => 15_000,
             Self::Ice => 10_000,
             Self::Thunder => 10_000,
-            Self::Imaginary => 5_000,
+            Self::Imaginary | Self::Quantum => 5_000,
         }
     }
 }
@@ -59,6 +61,7 @@ pub(crate) struct Stats {
     pub base_attack: u32,
     pub defense: u32,
     pub base_defense: u32,
+    pub base_aggro: u16,
     pub base_speed_micros: u64,
     pub flat_speed_micros: u64,
     pub resist_bp: [u16; Element::COUNT],
@@ -106,6 +109,11 @@ pub(crate) enum Effect {
         multiplier_bp: u16,
         toughness: u16,
     },
+    MaxHpHit {
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+    },
     BlastAdjacent {
         element: Element,
         multiplier_bp: u16,
@@ -138,7 +146,10 @@ impl Effect {
     pub(crate) const fn deals_damage(&self) -> bool {
         matches!(
             self,
-            Self::Hit { .. } | Self::BlastAdjacent { .. } | Self::RandomHits { .. }
+            Self::Hit { .. }
+                | Self::MaxHpHit { .. }
+                | Self::BlastAdjacent { .. }
+                | Self::RandomHits { .. }
         )
     }
 }
@@ -191,6 +202,7 @@ const fn ally_stats(attack: u32, speed: u64) -> Stats {
         base_attack: attack,
         defense: 520,
         base_defense: 520,
+        base_aggro: 100,
         base_speed_micros: speed * 1_000_000,
         flat_speed_micros: 0,
         resist_bp: [0; Element::COUNT],
@@ -213,6 +225,7 @@ const fn enemy_stats(hp: u32, resist_bp: [u16; Element::COUNT]) -> Stats {
         attack: 200,
         defense: 500,
         base_defense: 500,
+        base_aggro: 100,
         base_speed_micros: 100_000_000,
         flat_speed_micros: 0,
         resist_bp,
@@ -308,16 +321,16 @@ static SUPPORT: AllyKit = AllyKit {
 };
 
 static LEFT: EnemyKit = EnemyKit {
-    stats: enemy_stats(1_000, [0, 0, 2_000, 0, 0, 0]),
+    stats: enemy_stats(1_000, [0, 0, 2_000, 0, 0, 0, 0]),
     max_toughness: 20,
-    weakness: [true, true, false, false, false, false],
+    weakness: [true, true, false, false, false, false, false],
     target: EnemyTarget::FirstLiving,
     hit_energy_milli: 10_000,
 };
 static RIGHT: EnemyKit = EnemyKit {
-    stats: enemy_stats(950, [0, 2_000, 2_000, 0, 0, 0]),
+    stats: enemy_stats(950, [0, 2_000, 2_000, 0, 0, 0, 0]),
     max_toughness: 10,
-    weakness: [true, false, false, false, false, false],
+    weakness: [true, false, false, false, false, false, false],
     target: EnemyTarget::RandomLiving,
     hit_energy_milli: 10_000,
 };

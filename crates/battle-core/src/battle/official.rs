@@ -16,6 +16,7 @@ mod jiaoqiu;
 mod kafka;
 mod luka;
 mod luocha;
+mod lynx;
 mod march_preservation;
 mod natasha;
 mod pela;
@@ -40,7 +41,7 @@ use crate::{
     Action, BattleError, DamageKind,
     fixture::{Ability, Effect, Element, Stats, Target},
 };
-pub(super) use {gallagher::GallagherState, luocha::LuochaState};
+pub(super) use {gallagher::GallagherState, luocha::LuochaState, lynx::LynxResponse};
 
 /// Static stats resolved by the profile layer before a fixed-target simulation.
 pub struct OfficialStats {
@@ -50,6 +51,7 @@ pub struct OfficialStats {
     pub base_attack: u32,
     pub defense: u32,
     pub base_defense: u32,
+    pub base_aggro: u16,
     pub base_speed_micros: u64,
     pub speed_micros: u64,
     pub crit_rate_bp: u32,
@@ -105,6 +107,7 @@ impl OfficialCharacter {
             || stats.base_attack > 100_000
             || stats.defense > 100_000
             || stats.base_defense > 100_000
+            || !(1..=1_000).contains(&stats.base_aggro)
             || stats.base_speed_micros == 0
             || stats.speed_micros < stats.base_speed_micros
             || stats.speed_micros > 1_000_000_000
@@ -135,6 +138,7 @@ impl OfficialCharacter {
             base_attack: stats.base_attack,
             defense: stats.defense,
             base_defense: stats.base_defense,
+            base_aggro: stats.base_aggro,
             base_speed_micros: stats.base_speed_micros,
             flat_speed_micros: stats.speed_micros - stats.base_speed_micros,
             resist_bp: [0; Element::COUNT],
@@ -627,6 +631,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1107" => Some(clara::build),
         "character.1108" => Some(sampo::build),
         "character.1109" => Some(hook::build),
+        "character.1110" => Some(lynx::build),
         "character.1111" => Some(luka::build),
         "character.1202" => Some(tingyun::build),
         luocha::FORM => Some(luocha::build),

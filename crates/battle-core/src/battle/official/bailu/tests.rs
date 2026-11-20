@@ -14,6 +14,7 @@ fn bailu(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
         stats: OfficialStats {
             hp: 2_000,
             base_hp: 1_300,
+            base_aggro: 100,
             attack: 1_000,
             base_attack: 1_000,
             defense: 500,

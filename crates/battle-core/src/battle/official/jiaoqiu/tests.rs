@@ -24,6 +24,7 @@ fn jiaoqiu(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             base_attack: 1_000,
             defense: 500,
             base_defense: 500,
+            base_aggro: 100,
             base_speed_micros: 125_000_000,
             speed_micros: 125_000_000,
             crit_rate_bp: 0,

@@ -26,6 +26,7 @@ fn luka(eidolon: u8, idle_speed: u64, traces: &[&str]) -> OfficialCharacter {
             base_attack: 600,
             defense: 500,
             base_defense: 500,
+            base_aggro: 100,
             base_speed_micros: idle_speed,
             speed_micros: idle_speed,
             crit_rate_bp: 0,

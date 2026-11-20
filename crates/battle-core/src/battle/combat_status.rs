@@ -1,6 +1,6 @@
 use crate::{Action, DamageKind, EventKind, StatusKind, fixture::Element};
 
-use super::Battle;
+use super::{Battle, resolve::gauge_for};
 
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum DebuffKind {
@@ -51,6 +51,13 @@ pub(super) struct BreakDot {
     origin: Action,
     pub element: Element,
     turns: u32,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct Entanglement {
+    source: usize,
+    origin: Action,
+    stacks: u16,
 }
 
 impl Battle<'_> {
@@ -179,6 +186,7 @@ impl Battle<'_> {
             || state.magnitude(StatusKind::Vulnerability) > 0
             || self.is_frozen(target)
             || self.has_shock(target)
+            || state.entanglement.is_some()
             || !state.break_dots.is_empty()
             || !state.skill_dots.is_empty()
     }
@@ -199,7 +207,14 @@ impl Battle<'_> {
             && !self.clear_shock(target)
             && !self.clear_periodic_debuff(target)
         {
-            return;
+            let Some(status) = self.units[target].entanglement.take() else {
+                return;
+            };
+            self.emit(
+                EventKind::StatusExpired(StatusKind::Entangled),
+                Some(status.source),
+                Some(target),
+            );
         }
         self.emit(EventKind::StatusCleared, Some(actor), Some(target));
     }
@@ -255,6 +270,27 @@ impl Battle<'_> {
         turns: u32,
         origin: Action,
     ) {
+        self.refresh_heal_over_time(source, target, turns, origin, false);
+    }
+
+    pub(super) fn apply_shared_heal_over_time(
+        &mut self,
+        source: usize,
+        target: usize,
+        turns: u32,
+        origin: Action,
+    ) {
+        self.refresh_heal_over_time(source, target, turns, origin, true);
+    }
+
+    fn refresh_heal_over_time(
+        &mut self,
+        source: usize,
+        target: usize,
+        turns: u32,
+        origin: Action,
+        shared: bool,
+    ) {
         let heals = &mut self.units[target].heals_over_time;
         let status = HealOverTime {
             source,
@@ -263,7 +299,7 @@ impl Battle<'_> {
         };
         if let Some(existing) = heals
             .iter_mut()
-            .find(|heal| heal.source == source && heal.origin == origin)
+            .find(|heal| heal.source == source && (shared || heal.origin == origin))
         {
             *existing = status;
         } else if turns > 0 {
@@ -327,5 +363,59 @@ impl Battle<'_> {
             dot.turns = dot.turns.saturating_sub(1);
             dot.turns > 0
         });
+    }
+
+    pub(super) fn apply_entanglement(
+        &mut self,
+        source: usize,
+        target: usize,
+        origin: Action,
+        break_effect_bp: u32,
+    ) {
+        if self.resists_debuff(target) {
+            return;
+        }
+        self.units[target].entanglement = Some(Entanglement {
+            source,
+            origin,
+            stacks: 1,
+        });
+        self.emit(
+            EventKind::StatusApplied(StatusKind::Entangled),
+            Some(source),
+            Some(target),
+        );
+        let delay = gauge_for(2_000) / 10_000 * (10_000 + u64::from(break_effect_bp));
+        self.shift_gauge(
+            source,
+            target,
+            self.units[target].gauge_quanta + delay,
+            false,
+        );
+    }
+
+    pub(super) fn stack_entanglement(&mut self, target: usize) {
+        if let Some(status) = &mut self.units[target].entanglement {
+            status.stacks = (status.stacks + 1).min(5);
+        }
+    }
+
+    pub(super) fn tick_entanglement(&mut self, target: usize) {
+        let Some(status) = self.units[target].entanglement.take() else {
+            return;
+        };
+        self.break_status_hit_scaled(
+            status.source,
+            target,
+            Element::Quantum,
+            status.origin,
+            DamageKind::Additional,
+            6_000 * status.stacks,
+        );
+        self.emit(
+            EventKind::StatusExpired(StatusKind::Entangled),
+            Some(status.source),
+            Some(target),
+        );
     }
 }

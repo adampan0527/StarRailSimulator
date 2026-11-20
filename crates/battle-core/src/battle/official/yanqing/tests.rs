@@ -21,6 +21,7 @@ fn yanqing(eidolon: u8, follow_up_chance: f64) -> OfficialCharacter {
             base_attack: 1_000,
             defense: 500,
             base_defense: 500,
+            base_aggro: 100,
             base_speed_micros: 400_000_000,
             speed_micros: 400_000_000,
             crit_rate_bp: 0,

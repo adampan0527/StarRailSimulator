@@ -29,6 +29,8 @@ fn luocha(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
         level: 80,
         stats: OfficialStats {
             hp: 2_000,
+            base_hp: 2_000,
+            base_aggro: 100,
             attack: 1_000,
             base_attack: 1_000,
             defense: 500,

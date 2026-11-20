@@ -150,6 +150,18 @@ impl Battle<'_> {
                 multiplier_bp,
                 toughness,
             } => self.attack_hit(actor, target, element, multiplier_bp, toughness),
+            Effect::MaxHpHit {
+                element,
+                multiplier_bp,
+                toughness,
+            } => self.attack_hit_scaled(
+                actor,
+                target,
+                element,
+                multiplier_bp,
+                toughness,
+                DamageScale::MaxHp,
+            ),
             Effect::BlastAdjacent {
                 element,
                 multiplier_bp,
@@ -208,11 +220,41 @@ impl Battle<'_> {
         multiplier_bp: u16,
         toughness: u16,
     ) {
+        self.attack_hit_scaled(
+            actor,
+            target,
+            element,
+            multiplier_bp,
+            toughness,
+            DamageScale::Attack,
+        );
+    }
+
+    fn attack_hit_scaled(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+        scale: DamageScale,
+    ) {
         let hp_before = self.units[target].hp;
         if hp_before == 0 {
             return;
         }
-        let critical = self.hit(actor, target, element, multiplier_bp, toughness);
+        let critical = self.strike(
+            actor,
+            target,
+            DamageKind::Direct,
+            Hit {
+                element,
+                multiplier_bp,
+                toughness,
+                origin: self.action,
+                scale,
+            },
+        );
         if let Some(action) = self.action
             && let Some(mechanics) = self.mechanics(actor)
         {
@@ -278,8 +320,10 @@ impl Battle<'_> {
     }
 
     pub(super) fn resists_debuff(&mut self, target: usize) -> bool {
-        self.mechanics(target)
-            .is_some_and(|mechanics| mechanics.prevent_debuff(self, target))
+        self.use_survival_response_guard(target)
+            || self
+                .mechanics(target)
+                .is_some_and(|mechanics| mechanics.prevent_debuff(self, target))
     }
 
     pub(super) fn roll_effect(&mut self, actor: usize, target: usize, base_chance_bp: u32) -> bool {
@@ -486,22 +530,11 @@ impl Battle<'_> {
     }
 
     pub(super) fn resolve_enemy(&mut self, actor: usize, kit: &EnemyKit) {
-        let count = self
-            .allies()
-            .filter(|&unit| self.units[unit].hp > 0)
-            .count();
-        if count == 0 {
-            return;
-        }
-        let slot = match kit.target {
-            EnemyTarget::FirstLiving => 0,
-            EnemyTarget::RandomLiving => self.rng.below(count as u64) as usize,
+        let target = match kit.target {
+            EnemyTarget::FirstLiving => self.allies().find(|&unit| self.units[unit].hp > 0),
+            EnemyTarget::RandomLiving => self.random_enemy_target(),
         };
-        if let Some(target) = self
-            .allies()
-            .filter(|&unit| self.units[unit].hp > 0)
-            .nth(slot)
-        {
+        if let Some(target) = target {
             let was_shielded = self.shield_amount(target) > 0;
             self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
             self.hit(actor, target, Element::Physical, 10_000, 0);
@@ -519,6 +552,32 @@ impl Battle<'_> {
                 }
             }
         }
+    }
+
+    fn random_enemy_target(&mut self) -> Option<usize> {
+        let weighted = self
+            .allies()
+            .filter(|&unit| self.units[unit].hp > 0)
+            .map(|unit| {
+                let weight =
+                    u32::from(self.plan.units[unit].stats.base_aggro) + self.lynx_aggro_bonus(unit);
+                (unit, u64::from(weight))
+            })
+            .collect::<Vec<_>>();
+        let &(_, first_weight) = weighted.first()?;
+        if weighted.iter().all(|&(_, weight)| weight == first_weight) {
+            let slot = self.rng.below(weighted.len() as u64) as usize;
+            return Some(weighted[slot].0);
+        }
+        let total = weighted.iter().map(|&(_, weight)| weight).sum();
+        let mut roll = self.rng.below(total);
+        weighted.into_iter().find_map(|(unit, weight)| {
+            if roll < weight {
+                return Some(unit);
+            }
+            roll -= weight;
+            None
+        })
     }
 
     fn target_auras_from(&self, owner: usize, target: usize, event: &DamageEvent) -> (u32, u32) {
@@ -810,6 +869,7 @@ impl Battle<'_> {
             && !self.attack_targets.contains(&target)
         {
             self.attack_targets.push(target);
+            self.stack_entanglement(target);
             for owner in self.allies() {
                 if self.units[owner].hp > 0
                     && let Some(mechanics) = self.mechanics(owner)
@@ -908,6 +968,14 @@ impl Battle<'_> {
                                 self.apply_break_freeze(actor, target, action);
                             }
                             Element::Thunder => self.apply_break_shock(actor, target, action),
+                            Element::Quantum if self.roll_status(actor, target, 15_000, true) => {
+                                self.apply_entanglement(
+                                    actor,
+                                    target,
+                                    action,
+                                    source.break_effect_bp,
+                                );
+                            }
                             Element::Imaginary if self.roll_status(actor, target, 15_000, true) => {
                                 self.apply_imprisonment(actor, target, source.break_effect_bp);
                             }
@@ -999,7 +1067,7 @@ impl Battle<'_> {
         );
     }
 
-    fn break_status_hit_scaled(
+    pub(super) fn break_status_hit_scaled(
         &mut self,
         actor: usize,
         target: usize,
@@ -1248,6 +1316,8 @@ impl Battle<'_> {
             self.units[target].frozen = None;
             self.units[target].debuffs.clear();
             self.units[target].break_dots.clear();
+            self.units[target].entanglement = None;
+            self.units[target].lynx_response = None;
             self.units[target].skill_dots.clear();
             self.units[target].heals_over_time.clear();
             self.units[target].invigoration = None;
@@ -1269,7 +1339,7 @@ impl Battle<'_> {
         false
     }
 
-    fn shift_gauge(
+    pub(super) fn shift_gauge(
         &mut self,
         actor: usize,
         target: usize,
@@ -1330,6 +1400,7 @@ impl Battle<'_> {
         self.expire_shields(actor);
         self.expire_ally_buffs(actor);
         self.expire_invigoration(actor);
+        self.expire_survival_response(actor);
         let state = &mut self.units[actor];
         state.finished_turns = state.normal_turns;
         if state
@@ -1405,6 +1476,6 @@ fn saturating_stat(value: u64) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
 
-fn gauge_for(basis_points: u16) -> u64 {
+pub(super) fn gauge_for(basis_points: u16) -> u64 {
     GAUGE_FULL / 10_000 * u64::from(basis_points)
 }
