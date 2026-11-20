@@ -36,7 +36,7 @@ impl Battle<'_> {
         multiplier_bp: u16,
         turns: u32,
     ) {
-        if self.hp(target) > 0 && self.roll_effect(actor, target, chance_bp) {
+        if self.hp(target).0 > 0 && self.roll_effect(actor, target, chance_bp) {
             self.apply_shock(
                 target,
                 Shock {
@@ -52,7 +52,7 @@ impl Battle<'_> {
     pub(super) fn apply_break_shock(&mut self, actor: usize, target: usize, origin: Action) {
         const BREAK_SHOCK_CHANCE_BP: u32 = 15_000;
         const BREAK_SHOCK_TURNS: u32 = 2;
-        if self.hp(target) > 0 && self.roll_effect(actor, target, BREAK_SHOCK_CHANCE_BP) {
+        if self.hp(target).0 > 0 && self.roll_effect(actor, target, BREAK_SHOCK_CHANCE_BP) {
             self.apply_shock(
                 target,
                 Shock {
@@ -118,7 +118,7 @@ impl Battle<'_> {
                     self.break_shock_hit(shock.source, target, shock.origin)
                 }
             }
-            if self.hp(target) == 0 {
+            if self.hp(target).0 == 0 {
                 self.units[target].shocks.clear();
                 return;
             }
