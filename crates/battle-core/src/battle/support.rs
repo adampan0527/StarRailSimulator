@@ -8,6 +8,7 @@ pub(super) enum AllyBuffKind {
     CritDamage,
     Damage,
     DefensePercent,
+    /// Flat speed in millionths of one speed point.
     SpeedFlat,
     SpeedPercent,
 }
@@ -110,7 +111,7 @@ impl Battle<'_> {
 
     pub(super) fn support_speed(&self, actor: usize) -> (u64, u64) {
         (
-            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedFlat)) * 1_000_000,
+            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedFlat)),
             u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedPercent)),
         )
     }
