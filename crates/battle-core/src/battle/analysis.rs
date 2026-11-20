@@ -71,6 +71,7 @@ pub(super) struct DummyDamage {
     pub critical: bool,
     pub amount: u32,
     pub assist: Option<(usize, u32)>,
+    pub action: Action,
 }
 
 #[derive(Serialize)]
@@ -161,7 +162,7 @@ pub fn calculate_dpr(
             target.hits.push(DprHit {
                 av_micros: hit.av_micros,
                 source_id: plan.units[hit.actor].id.clone(),
-                action: command.action,
+                action: hit.action,
                 kind: hit.kind,
                 critical: hit.critical,
                 amount: hit.amount,
@@ -188,7 +189,7 @@ fn offensive_priority(battle: &Battle<'_>, command: &Command) -> u8 {
         .allies()
         .find(|&unit| battle.plan.units[unit].id == command.actor_id)
         .and_then(|unit| battle.check_action(unit, command.action).ok())
-        .is_some_and(|ability| {
+        .is_some_and(|(ability, _)| {
             ability
                 .effects
                 .iter()
@@ -206,12 +207,12 @@ fn offensive_priority(battle: &Battle<'_>, command: &Command) -> u8 {
 fn supports_fastest_victory(plan: &PreparedBattle) -> bool {
     plan.units.iter().all(|unit| {
         unit.stats.crit_rate_bp == 0
-            && match unit.kit {
+            && match &unit.kit {
                 Kit::Ally(_) => true,
                 Kit::Enemy(kit) => {
                     matches!(kit.target, EnemyTarget::FirstLiving) || plan.ally_count == 1
                 }
-                Kit::Dummy { .. } => false,
+                Kit::Dummy { .. } | Kit::Official(_) => false,
             }
     })
 }

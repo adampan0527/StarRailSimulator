@@ -1,36 +1,40 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
 use crate::{
     BattleError, InitialInput,
     fixture::{self, AllyKit, Element, EnemyKit, Stats},
 };
 
-#[derive(Clone, Copy)]
+use super::official::{self, OfficialCharacter, OfficialKit};
+
+#[derive(Clone)]
 pub(super) enum Kit {
     Ally(&'static AllyKit),
+    Official(Arc<OfficialKit>),
     Enemy(&'static EnemyKit),
     Dummy { max_toughness: u16 },
 }
 
 impl Kit {
-    pub fn max_energy_milli(self) -> u32 {
+    pub fn max_energy_milli(&self) -> u32 {
         match self {
             Self::Ally(kit) => kit.max_energy_milli,
+            Self::Official(kit) => kit.max_energy_milli,
             Self::Enemy(_) | Self::Dummy { .. } => 0,
         }
     }
 
-    pub fn max_toughness(self) -> u16 {
+    pub fn max_toughness(&self) -> u16 {
         match self {
-            Self::Ally(_) => 0,
+            Self::Ally(_) | Self::Official(_) => 0,
             Self::Enemy(kit) => kit.max_toughness,
-            Self::Dummy { max_toughness } => max_toughness,
+            Self::Dummy { max_toughness } => *max_toughness,
         }
     }
 
-    pub fn matches_weakness(self, element: Element) -> bool {
+    pub fn matches_weakness(&self, element: Element) -> bool {
         match self {
-            Self::Ally(_) => false,
+            Self::Ally(_) | Self::Official(_) => false,
             Self::Enemy(kit) => kit.weakness[element.index()],
             Self::Dummy { .. } => true,
         }
@@ -55,6 +59,49 @@ pub struct PreparedBattle {
 }
 
 impl PreparedBattle {
+    /// Creates the fixed DPR scenario without modifying the training/replay rules version.
+    pub fn official_dpr(
+        team: &[OfficialCharacter],
+        seed: u32,
+        starting_skill_points: u8,
+    ) -> Result<Self, BattleError> {
+        if !(1..=4).contains(&team.len()) || starting_skill_points > fixture::SKILL_POINT_CAP {
+            return Err(BattleError::InvalidInput(
+                "fixed DPR team size or skill points".into(),
+            ));
+        }
+        let mut ids = BTreeSet::new();
+        let mut forms = BTreeSet::new();
+        let mut units = Vec::with_capacity(team.len());
+        for character in team {
+            if !valid_id(&character.unit_id)
+                || !ids.insert(&character.unit_id)
+                || !forms.insert(&character.form_id)
+            {
+                return Err(BattleError::InvalidInput(
+                    "duplicate or invalid fixed DPR unit".into(),
+                ));
+            }
+            let stats = character.resolved_stats()?;
+            let kit = official::build(character)?;
+            let starting_energy_milli = kit.max_energy_milli / 2;
+            units.push(UnitPlan {
+                id: character.unit_id.clone(),
+                kit: Kit::Official(Arc::new(kit)),
+                stats,
+                starting_energy_milli,
+            });
+        }
+        let plan = Self {
+            units,
+            ally_count: team.len(),
+            wave_ends: Vec::new(),
+            seed,
+            starting_skill_points,
+        };
+        plan.with_dummies(&super::STANDARD_DPR_SCENARIO.toughness)
+    }
+
     pub fn new(input: &InitialInput) -> Result<Self, BattleError> {
         let actual = [
             &input.game_version,
