@@ -22,7 +22,7 @@ pub use analysis::{
     VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
-use official::{Mechanics, SkillPoints, SushangState, YanqingState};
+use official::{HanyaState, Mechanics, SkillPoints, SushangState, YanqingState};
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
 };
@@ -70,6 +70,7 @@ struct UnitState {
     asta_state: AstaState,
     bronya_state: BronyaState,
     tingyun_state: TingyunState,
+    hanya_state: HanyaState,
     jiaoqiu_field: official::JiaoqiuField,
     survival_triggered: bool,
     finished_turns: u32,
@@ -147,6 +148,7 @@ impl<'a> Battle<'a> {
                     asta_state: AstaState::default(),
                     bronya_state: BronyaState::default(),
                     tingyun_state: TingyunState::default(),
+                    hanya_state: HanyaState::default(),
                     jiaoqiu_field: official::JiaoqiuField::default(),
                     survival_triggered: false,
                     finished_turns: 0,
@@ -274,6 +276,7 @@ impl<'a> Battle<'a> {
         if let Some(mechanics) = &mechanics {
             mechanics.before_action(self, actor, command.action, target);
         }
+        self.notify_ally_action_started(actor, target, ability);
         self.resolve_ability(actor, target, ability);
         self.gain_energy(actor, actor, ability.energy_milli);
         if let Some(mechanics) = &mechanics {

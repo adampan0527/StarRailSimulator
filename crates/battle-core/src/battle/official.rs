@@ -5,6 +5,7 @@ mod clara;
 mod dan_heng;
 mod gepard;
 mod guinaifen;
+mod hanya;
 mod herta;
 mod himeko;
 mod hook;
@@ -20,7 +21,7 @@ mod sushang;
 mod tingyun;
 mod yanqing;
 
-pub(super) use jiaoqiu::Field as JiaoqiuField;
+pub(super) use {hanya::HanyaState, jiaoqiu::Field as JiaoqiuField};
 
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -481,6 +482,16 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn after_ordinary_turn(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
+    fn before_ally_action(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _target: Option<usize>,
+        _ability: Ability<'_>,
+    ) {
+    }
+
     fn on_ally_action_finished(
         &self,
         _battle: &mut Battle<'_>,
@@ -574,6 +585,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1202" => Some(tingyun::build),
         "character.1206" => Some(sushang::build),
         "character.1210" => Some(guinaifen::build),
+        "character.1215" => Some(hanya::build),
         "character.1218" => Some(jiaoqiu::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         "march_7th.preservation" => Some(march_preservation::build),
