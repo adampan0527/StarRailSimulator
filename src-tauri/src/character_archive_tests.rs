@@ -158,6 +158,47 @@ fn saved_team_with_preservation_characters_does_not_counter_idle_dummies() {
     );
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_periodic_damage_team_keeps_the_source_for_each_character() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let forms = ["character.1109", "character.1108", "character.1111"];
+    let saved = archive
+        .save_team(
+            None,
+            "持续伤害",
+            &[
+                Some(forms[0].into()),
+                Some(forms[1].into()),
+                Some(forms[2].into()),
+                None,
+            ],
+        )
+        .unwrap();
+    let result = archive.dpr_readiness(&saved.id).unwrap().result.unwrap();
+    for form in forms {
+        assert!(
+            result
+                .targets
+                .iter()
+                .flat_map(|target| &target.hits)
+                .any(|hit| hit.source_id == form && hit.kind == DamageKind::DamageOverTime),
+            "{form}"
+        );
+    }
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|entry| entry.own_damage + entry.assist_damage)
+            .sum::<u64>()
+    );
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
