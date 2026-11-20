@@ -33,6 +33,7 @@ use crate::{
 /// Static stats resolved by the profile layer before a fixed-target simulation.
 pub struct OfficialStats {
     pub hp: u32,
+    pub base_hp: u32,
     pub attack: u32,
     pub base_attack: u32,
     pub defense: u32,
@@ -84,6 +85,8 @@ impl OfficialCharacter {
             || self.energy_capacity > 999
             || stats.hp == 0
             || stats.hp > 100_000
+            || stats.base_hp == 0
+            || stats.base_hp > stats.hp
             || stats.attack == 0
             || stats.attack > 100_000
             || stats.base_attack == 0
@@ -115,6 +118,7 @@ impl OfficialCharacter {
         Ok(Stats {
             level: self.level,
             hp: stats.hp,
+            base_hp: stats.base_hp,
             attack: stats.attack,
             base_attack: stats.base_attack,
             defense: stats.defense,

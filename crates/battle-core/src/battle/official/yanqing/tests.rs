@@ -16,6 +16,7 @@ fn yanqing(eidolon: u8, follow_up_chance: f64) -> OfficialCharacter {
         level: 80,
         stats: OfficialStats {
             hp: 2_000,
+            base_hp: 2_000,
             attack: 1_000,
             base_attack: 1_000,
             defense: 500,

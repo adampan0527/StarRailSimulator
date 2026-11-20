@@ -315,7 +315,7 @@ impl<'a> Battle<'a> {
                         unit_id: self.plan.units[unit].id.clone(),
                         is_ally: unit < self.plan.ally_count,
                         hp: state.hp,
-                        max_hp: self.plan.units[unit].stats.hp,
+                        max_hp: self.effective_max_hp(unit),
                         energy_milli: state.energy_milli,
                         max_energy_milli: self.plan.units[unit].kit.max_energy_milli(),
                         toughness: state.toughness,
@@ -445,7 +445,7 @@ impl<'a> Battle<'a> {
     }
 
     fn hp(&self, unit: usize) -> (u32, u32) {
-        (self.units[unit].hp, self.plan.units[unit].stats.hp)
+        (self.units[unit].hp, self.effective_max_hp(unit))
     }
 
     fn defense(&self, unit: usize) -> u32 {
