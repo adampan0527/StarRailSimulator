@@ -7,6 +7,7 @@ mod gepard;
 mod herta;
 mod himeko;
 mod hook;
+mod kafka;
 mod luka;
 mod march_preservation;
 mod natasha;
@@ -554,6 +555,7 @@ type KitBuilder = fn(&OfficialCharacter) -> Result<OfficialKit, BattleError>;
 fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
         "character.1003" => Some(himeko::build),
+        "character.1005" => Some(kafka::build),
         "character.1008" => Some(arlan::build),
         "character.1009" => Some(asta::build),
         "character.1013" => Some(herta::build),
