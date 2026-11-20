@@ -238,6 +238,7 @@ mod tests {
                 effect_hit_rate_bp: 0,
                 energy_regeneration_bp: 10_000,
                 healing_bp: 0,
+                effect_resistance_bp: 0,
             },
             skill_parameters: [
                 ("skill.100801".into(), vec![0.5]),

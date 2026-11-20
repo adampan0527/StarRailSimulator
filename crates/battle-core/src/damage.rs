@@ -8,6 +8,7 @@ pub(crate) struct DamageTarget {
     pub vulnerability_bp: u32,
     pub defense_down_bp: u32,
     pub resistance_down_bp: u32,
+    pub damage_reduction_bp: u32,
     pub toughness: u16,
     pub max_toughness: u16,
 }
@@ -26,12 +27,20 @@ fn defense_factor(source_defense: u128, target: DamageTarget) -> u128 {
         + u128::from(target.stats.defense) * BP.saturating_sub(u128::from(target.defense_down_bp))
 }
 
+fn damage_after_reduction(numerator: u128, denominator: u128, target: DamageTarget) -> u32 {
+    let reduction = u128::from(target.damage_reduction_bp).min(BP);
+    let denominator = denominator * BP;
+    let factor = BP - reduction;
+    let amount = numerator / denominator * factor + numerator % denominator * factor / denominator;
+    u32::try_from(amount).unwrap_or(u32::MAX)
+}
+
 /// Keep every multiplier as a ratio and truncate once after multiplying.
 pub(crate) fn direct(
     source: Stats,
     target: DamageTarget,
     element: Element,
-    multiplier_bp: u16,
+    base_bp: u64,
     critical: bool,
 ) -> u32 {
     let defense_points = defense_points(source.level);
@@ -41,8 +50,7 @@ pub(crate) fn direct(
         BP
     };
     let toughness = if target.toughness > 0 { 9_000 } else { BP };
-    let numerator = u128::from(source.attack)
-        * u128::from(multiplier_bp)
+    let numerator = u128::from(base_bp)
         * (BP + u128::from(source.element_damage_bp))
         * crit
         * defense_points
@@ -50,7 +58,7 @@ pub(crate) fn direct(
         * (BP + u128::from(target.vulnerability_bp))
         * toughness;
     let denominator = BP.pow(5) * defense_factor(defense_points, target);
-    u32::try_from(numerator / denominator).unwrap_or(u32::MAX)
+    damage_after_reduction(numerator, denominator, target)
 }
 
 pub(crate) fn weakness_break(source: Stats, target: DamageTarget, element: Element) -> u32 {
@@ -68,7 +76,7 @@ pub(crate) fn weakness_break(source: Stats, target: DamageTarget, element: Eleme
         * (BP + u128::from(target.vulnerability_bp))
         * (BP + u128::from(source.break_effect_bp));
     let denominator = BP.pow(4) * 40 * defense_factor(defense_points, target);
-    u32::try_from(numerator / denominator).unwrap_or(u32::MAX)
+    damage_after_reduction(numerator, denominator, target)
 }
 
 pub(crate) fn break_status(source: Stats, target: DamageTarget, element: Element) -> u32 {
@@ -100,5 +108,5 @@ pub(crate) fn break_status(source: Stats, target: DamageTarget, element: Element
         * (BP + u128::from(target.vulnerability_bp))
         * toughness;
     let denominator = BP.pow(4) * defense_factor(defense, target);
-    u32::try_from(numerator / denominator).unwrap_or(u32::MAX)
+    damage_after_reduction(numerator, denominator, target)
 }

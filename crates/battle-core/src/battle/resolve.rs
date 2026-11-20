@@ -14,7 +14,22 @@ struct Hit {
     multiplier_bp: u16,
     toughness: u16,
     origin: Option<Action>,
-    scales_with_hp: bool,
+    scale: DamageScale,
+}
+
+enum DamageScale {
+    Attack,
+    MaxHp,
+    AttackAndDefense(u16),
+}
+
+pub(super) struct CounterAttack {
+    pub element: Element,
+    pub multiplier_bp: u16,
+    pub defense_multiplier_bp: u16,
+    pub toughness: u16,
+    pub splash: Option<(u16, u16)>,
+    pub energy_milli: u32,
 }
 
 #[derive(Clone)]
@@ -39,6 +54,7 @@ impl Battle<'_> {
                 self.apply_effect(actor, target, *effect);
             } else {
                 let targets = match ability.target {
+                    Target::SelfOnly => actor..actor + 1,
                     Target::AllAllies => self.allies(),
                     Target::AllEnemies => self.enemies(),
                     Target::Ally | Target::Enemy => continue,
@@ -143,23 +159,49 @@ impl Battle<'_> {
         *rate = (*rate + stack_bp).min(stack_bp * u32::from(max_stacks));
     }
 
-    pub(super) fn roll_effect(
+    pub(super) fn roll_effect(&mut self, actor: usize, target: usize, base_chance_bp: u32) -> bool {
+        self.roll_status(actor, target, base_chance_bp, false)
+    }
+
+    pub(super) fn roll_status(
         &mut self,
         actor: usize,
-        _target: usize,
+        target: usize,
         base_chance_bp: u32,
+        control: bool,
     ) -> bool {
-        let aura: u32 = self
-            .allies()
-            .filter(|&ally| self.units[ally].hp > 0)
-            .filter_map(|ally| self.mechanics(ally))
+        let battle = &*self;
+        let auras = |unit: usize| {
+            battle
+                .allies()
+                .filter(move |&ally| unit < battle.plan.ally_count && battle.units[ally].hp > 0)
+                .filter_map(|ally| battle.mechanics(ally))
+        };
+        let hit_aura_bp = auras(actor)
             .map(|mechanics| mechanics.effect_hit_rate_aura_bp())
+            .sum();
+        let resist_aura_bp = auras(target)
+            .map(|mechanics| mechanics.effect_resistance_aura_bp())
             .sum();
         let effect_hit_rate = self.plan.units[actor]
             .stats
             .effect_hit_rate_bp
-            .saturating_add(aura);
-        let chance = u64::from(base_chance_bp) * (10_000 + u64::from(effect_hit_rate)) / 10_000;
+            .saturating_add(hit_aura_bp);
+        let resistance = self.plan.units[target]
+            .stats
+            .effect_resistance_bp
+            .saturating_add(resist_aura_bp);
+        let control_resistance = if control {
+            self.mechanics(target)
+                .map_or(0, |mechanics| mechanics.control_resistance_bp())
+        } else {
+            0
+        };
+        let chance = u128::from(base_chance_bp)
+            * (10_000 + u128::from(effect_hit_rate))
+            * u128::from(10_000_u32.saturating_sub(resistance))
+            * u128::from(10_000_u32.saturating_sub(control_resistance))
+            / 10_000_u128.pow(3);
         self.roll_fixed(u32::try_from(chance).unwrap_or(u32::MAX))
     }
 
@@ -228,7 +270,7 @@ impl Battle<'_> {
                         multiplier_bp,
                         toughness,
                         origin: Some(origin),
-                        scales_with_hp: false,
+                        scale: DamageScale::Attack,
                     },
                 );
             }
@@ -270,12 +312,20 @@ impl Battle<'_> {
             .filter(|&unit| self.units[unit].hp > 0)
             .nth(slot)
         {
+            let was_shielded = self.shield_amount(target) > 0;
             self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
             self.hit(actor, target, Element::Physical, 10_000, 0);
             if self.units[target].hp > 0 {
                 self.gain_energy(actor, target, kit.hit_energy_milli);
                 if let Some(mechanics) = self.mechanics(target) {
                     mechanics.after_enemy_attack(self, target);
+                }
+            }
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.after_enemy_attack_seen(self, owner, actor, target, was_shielded);
                 }
             }
         }
@@ -303,6 +353,7 @@ impl Battle<'_> {
             .map_or(0, |status| status.magnitude);
         DamageTarget {
             stats: plan.stats,
+            damage_reduction_bp: 0,
             vulnerability_bp: vulnerability,
             defense_down_bp: sum(DebuffKind::DefenseDown),
             resistance_down_bp: sum(DebuffKind::ResistanceDown(element)).saturating_add(
@@ -334,7 +385,7 @@ impl Battle<'_> {
                 multiplier_bp,
                 toughness,
                 origin: self.action,
-                scales_with_hp: false,
+                scale: DamageScale::Attack,
             },
         )
     }
@@ -357,7 +408,7 @@ impl Battle<'_> {
                 multiplier_bp,
                 toughness: 0,
                 origin: Some(origin),
-                scales_with_hp: false,
+                scale: DamageScale::Attack,
             },
         );
     }
@@ -379,7 +430,7 @@ impl Battle<'_> {
                 multiplier_bp,
                 toughness: 0,
                 origin: Some(origin),
-                scales_with_hp: true,
+                scale: DamageScale::MaxHp,
             },
         );
     }
@@ -402,9 +453,45 @@ impl Battle<'_> {
                 multiplier_bp,
                 toughness,
                 origin: Some(origin),
-                scales_with_hp: false,
+                scale: DamageScale::Attack,
             },
         );
+    }
+
+    pub(super) fn counter_attack(&mut self, actor: usize, target: usize, counter: CounterAttack) {
+        if self.units[actor].hp == 0 || self.units[target].hp == 0 {
+            return;
+        }
+        let origin = Action::Basic;
+        self.emit(EventKind::FollowUp, Some(actor), Some(target));
+        let neighbors: Vec<_> = self.adjacent_enemies(target).collect();
+        let mut hit = |target, multiplier_bp, toughness, defense_multiplier_bp| {
+            self.strike(
+                actor,
+                target,
+                DamageKind::FollowUp,
+                Hit {
+                    element: counter.element,
+                    multiplier_bp,
+                    toughness,
+                    origin: Some(origin),
+                    scale: DamageScale::AttackAndDefense(defense_multiplier_bp),
+                },
+            );
+        };
+        hit(
+            target,
+            counter.multiplier_bp,
+            counter.toughness,
+            counter.defense_multiplier_bp,
+        );
+        if let Some((multiplier, toughness)) = counter.splash {
+            for neighbor in neighbors {
+                hit(neighbor, multiplier, toughness, 0);
+            }
+        }
+        self.gain_energy(actor, actor, counter.energy_milli);
+        self.finish_attack(actor, origin);
     }
 
     fn strike(&mut self, actor: usize, target: usize, kind: DamageKind, impact: Hit) -> bool {
@@ -413,7 +500,7 @@ impl Battle<'_> {
             mut multiplier_bp,
             toughness,
             origin,
-            scales_with_hp,
+            scale,
         } = impact;
         let hp_before = self.units[target].hp;
         if hp_before == 0 {
@@ -424,13 +511,13 @@ impl Battle<'_> {
             let boost = u64::from(source.base_attack) * u64::from(bp) / 10_000;
             source.attack = source.attack.saturating_add(saturating_stat(boost));
         }
-        if scales_with_hp {
-            source.attack = source.hp;
-        }
         source.element_damage_bp = source
             .element_damage_bp
             .saturating_add(self.units[actor].active_attack_bonus_bp);
         if let Some(mechanics) = self.mechanics(actor) {
+            source.attack = source
+                .attack
+                .saturating_add(mechanics.bonus_attack_flat(self, actor));
             source.element_damage_bp = source
                 .element_damage_bp
                 .saturating_add(mechanics.damage_bonus_bp(self, actor, target, origin, kind));
@@ -446,8 +533,16 @@ impl Battle<'_> {
         let crit = kind != DamageKind::DamageOverTime
             && crit_rate > 0
             && self.rng.below(10_000) < u64::from(crit_rate);
+        let base_bp = match scale {
+            DamageScale::Attack => u64::from(source.attack) * u64::from(multiplier_bp),
+            DamageScale::MaxHp => u64::from(source.hp) * u64::from(multiplier_bp),
+            DamageScale::AttackAndDefense(defense_bp) => {
+                u64::from(source.attack) * u64::from(multiplier_bp)
+                    + u64::from(source.defense) * u64::from(defense_bp)
+            }
+        };
         self.resolve_damage(actor, target, element, (kind, crit, origin), |defender| {
-            damage::direct(source, defender, element, multiplier_bp, crit)
+            damage::direct(source, defender, element, base_bp, crit)
         });
 
         let hit_weakness = self.plan.units[target].kit.matches_weakness(element);
@@ -471,8 +566,8 @@ impl Battle<'_> {
                         && let Some(action) = origin
                     {
                         match element {
-                            Element::Ice if self.roll_effect(actor, target, 15_000) => {
-                                self.units[target].frozen = Some((actor, action));
+                            Element::Ice if self.roll_status(actor, target, 15_000, true) => {
+                                self.apply_break_freeze(actor, target, action);
                             }
                             Element::Thunder => self.apply_break_shock(actor, target, action),
                             Element::Wind | Element::Physical
@@ -487,7 +582,8 @@ impl Battle<'_> {
             }
         }
         let (hp, max_hp) = self.hp(target);
-        if self.action.is_some()
+        if origin.is_some()
+            && (self.action.is_some() || kind == DamageKind::FollowUp)
             && kind != DamageKind::DamageOverTime
             && self.enemies().contains(&target)
             && hp_before > max_hp / 2
@@ -498,13 +594,13 @@ impl Battle<'_> {
         crit
     }
 
-    pub(super) fn thaw(&mut self, target: usize) -> bool {
-        let Some((actor, origin)) = self.units[target].frozen.take() else {
-            return false;
-        };
-        self.break_status_hit(actor, target, Element::Ice, origin, DamageKind::Additional);
-        self.shift_gauge(actor, target, GAUGE_FULL / 2, false);
-        true
+    pub(super) fn skip_frozen_turn(&mut self, actor: usize, target: usize, thawed: bool) {
+        self.shift_gauge(
+            actor,
+            target,
+            if thawed { GAUGE_FULL / 2 } else { GAUGE_FULL },
+            false,
+        );
     }
 
     pub(super) fn break_shock_hit(&mut self, actor: usize, target: usize, origin: Action) {
@@ -543,6 +639,13 @@ impl Battle<'_> {
         (kind, critical, origin): (DamageKind, bool, Option<Action>),
         calculate: impl Fn(DamageTarget) -> u32,
     ) {
+        let reduction_bp = self.mechanics(target).map_or(0, |mechanics| {
+            mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
+        });
+        let calculate = |mut defender: DamageTarget| {
+            defender.damage_reduction_bp = reduction_bp;
+            calculate(defender)
+        };
         let defender = self.damage_target(actor, target, element, |_| true);
         let amount = calculate(defender);
         if matches!(self.plan.units[target].kit, Kit::Dummy { .. }) {
@@ -600,18 +703,8 @@ impl Battle<'_> {
         amount: u32,
         critical: bool,
     ) {
+        let absorbed = self.shield_amount(target).min(amount);
         let state = &mut self.units[target];
-        let shield = &mut state.statuses[StatusKind::Shield.index()];
-        let mut absorbed = 0;
-        let mut shield_source = None;
-        if let Some(status) = shield {
-            absorbed = status.magnitude.min(amount);
-            status.magnitude -= absorbed;
-            if status.magnitude == 0 {
-                shield_source = Some(status.source);
-                *shield = None;
-            }
-        }
         let hp_loss = state.hp.min(amount - absorbed);
         state.hp -= hp_loss;
         if matches!(self.plan.units[target].kit, Kit::Enemy(_)) {
@@ -628,11 +721,18 @@ impl Battle<'_> {
             Some(actor),
             Some(target),
         );
-        if let Some(source) = shield_source {
-            self.emit(EventKind::ShieldDepleted, Some(source), Some(target));
+        if absorbed > 0 {
+            self.deplete_shields(target, amount);
         }
         if self.units[target].hp == 0 {
-            self.units[target].statuses = [None; 6];
+            if let Some(mechanics) = self.mechanics(target)
+                && mechanics.prevent_defeat(self, target)
+                && self.units[target].hp > 0
+            {
+                return;
+            }
+            self.units[target].statuses = [None; 7];
+            self.units[target].shields.clear();
             self.units[target].shocks.clear();
             self.units[target].frozen = None;
             self.units[target].debuffs.clear();
@@ -704,6 +804,7 @@ impl Battle<'_> {
 
     pub(super) fn finish_turn(&mut self, actor: usize) {
         self.expire_debuffs(actor);
+        self.expire_shields(actor);
         let state = &mut self.units[actor];
         state.finished_turns = state.normal_turns;
         if state
@@ -751,6 +852,10 @@ impl Battle<'_> {
                 Some(target),
             );
         }
+    }
+
+    pub(super) fn fill_energy(&mut self, actor: usize) {
+        self.set_energy(actor, actor, self.plan.units[actor].kit.max_energy_milli());
     }
 }
 

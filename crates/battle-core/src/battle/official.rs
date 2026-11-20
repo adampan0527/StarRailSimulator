@@ -28,6 +28,7 @@ pub struct OfficialStats {
     pub effect_hit_rate_bp: u32,
     pub energy_regeneration_bp: u32,
     pub healing_bp: u32,
+    pub effect_resistance_bp: u32,
 }
 
 /// Frozen effective character parameters from the supported game data version.
@@ -68,6 +69,7 @@ impl OfficialCharacter {
             || stats.attack > 100_000
             || stats.base_attack == 0
             || stats.base_attack > 100_000
+            || stats.defense > 100_000
             || stats.base_speed_micros == 0
             || stats.speed_micros < stats.base_speed_micros
             || stats.speed_micros > 1_000_000_000
@@ -79,6 +81,7 @@ impl OfficialCharacter {
                 stats.effect_hit_rate_bp,
                 stats.energy_regeneration_bp,
                 stats.healing_bp,
+                stats.effect_resistance_bp,
             ]
             .into_iter()
             .any(|ratio| ratio > 100_000)
@@ -102,6 +105,7 @@ impl OfficialCharacter {
             element_damage_bp: stats.element_damage_bp,
             break_effect_bp: stats.break_effect_bp,
             effect_hit_rate_bp: stats.effect_hit_rate_bp,
+            effect_resistance_bp: stats.effect_resistance_bp,
             energy_regeneration_bp: stats.energy_regeneration_bp,
         })
     }
@@ -273,6 +277,46 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn effect_hit_rate_aura_bp(&self) -> u32 {
+        0
+    }
+
+    fn effect_resistance_aura_bp(&self) -> u32 {
+        0
+    }
+
+    fn control_resistance_bp(&self) -> u32 {
+        0
+    }
+
+    fn on_turn_start(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
+
+    fn after_enemy_attack_seen(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _attacker: usize,
+        _target: usize,
+        _was_shielded: bool,
+    ) {
+    }
+
+    fn after_skill_freeze_ended(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
+
+    fn prevent_defeat(&self, _battle: &mut Battle<'_>, _owner: usize) -> bool {
+        false
+    }
+
+    fn incoming_damage_reduction_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _kind: DamageKind,
+    ) -> u32 {
+        0
+    }
+
+    fn bonus_attack_flat(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         0
     }
 }

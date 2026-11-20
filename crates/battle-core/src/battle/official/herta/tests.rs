@@ -39,6 +39,7 @@ fn character(eidolon: u8) -> OfficialCharacter {
             effect_hit_rate_bp: 0,
             energy_regeneration_bp: 10_000,
             healing_bp: 0,
+            effect_resistance_bp: 0,
         },
         skill_parameters: [
             (BASIC.into(), vec![0.5]),
@@ -199,7 +200,7 @@ fn icing_and_e6_apply_in_their_own_damage_windows() {
     let mut plan = finite_plan(herta, &[1_000, 2_500]);
     plan.units[0].starting_energy_milli = 110_000;
     let mut battle = Battle::start(&plan, LogMode::Detailed);
-    battle.units[2].frozen = Some((0, Action::Basic));
+    battle.apply_break_freeze(0, 2, Action::Basic);
     let ultimate = command(&battle, Action::Ultimate, None);
     battle.apply(&ultimate).unwrap();
 

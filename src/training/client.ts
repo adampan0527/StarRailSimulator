@@ -76,7 +76,8 @@ type Status =
   | 'speed_up'
   | 'slow'
   | 'defense_down'
-  | 'resistance_down';
+  | 'resistance_down'
+  | 'frozen';
 type EventKind =
   | {
       event:

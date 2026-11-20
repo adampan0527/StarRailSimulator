@@ -58,6 +58,7 @@ pub(crate) struct Stats {
     pub element_damage_bp: u32,
     pub break_effect_bp: u32,
     pub effect_hit_rate_bp: u32,
+    pub effect_resistance_bp: u32,
     pub energy_regeneration_bp: u32,
 }
 
@@ -81,6 +82,7 @@ pub fn training_attributes(id: &str, config: &Config) -> Result<TrainingAttribut
 
 #[derive(Clone, Copy)]
 pub(crate) enum Target {
+    SelfOnly,
     Enemy,
     Ally,
     AllEnemies,
@@ -170,6 +172,7 @@ const fn ally_stats(attack: u32, speed: u64) -> Stats {
         element_damage_bp: 0,
         break_effect_bp: 0,
         effect_hit_rate_bp: 0,
+        effect_resistance_bp: 0,
         energy_regeneration_bp: 10_000,
     }
 }

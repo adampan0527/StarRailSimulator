@@ -57,6 +57,7 @@ impl Catalog {
             crit_damage_bp: ratio(panel.crit_damage),
             element_damage_bp: ratio(panel.element_damage),
             effect_hit_rate_bp: ratio(panel.effect_hit_rate),
+            effect_resistance_bp: ratio(panel.effect_resistance),
             break_effect_bp: ratio(panel.break_effect),
             energy_regeneration_bp: ratio(panel.energy_regeneration),
             healing_bp: ratio(panel.healing_boost),

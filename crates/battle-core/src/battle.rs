@@ -1,6 +1,7 @@
 mod analysis;
 mod combat_status;
 mod official;
+mod protection;
 mod resolve;
 mod setup;
 mod shock;
@@ -21,6 +22,7 @@ pub use analysis::{
 use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
 use official::{Mechanics, SkillPoints};
 pub use official::{OfficialCharacter, OfficialStats, supports_official_dpr};
+use protection::{CounterState, Freeze, Shield};
 use setup::Kit;
 pub use setup::PreparedBattle;
 use std::sync::Arc;
@@ -40,11 +42,13 @@ struct UnitState {
     gauge_quanta: u64,
     normal_turns: u32,
     advanced_to_front: bool,
-    statuses: [Option<Status>; 6],
+    statuses: [Option<Status>; 7],
     attack_bonus: Option<(u32, u32)>,
     crit_rate_bonus_bp: u32,
-    frozen: Option<(usize, Action)>,
+    frozen: Option<Freeze>,
     shocks: Vec<shock::Shock>,
+    shields: Vec<Shield>,
+    counter_state: CounterState,
     debuffs: Vec<Debuff>,
     heals_over_time: Vec<HealOverTime>,
     break_dots: Vec<BreakDot>,
@@ -99,11 +103,13 @@ impl<'a> Battle<'a> {
                     gauge_quanta: GAUGE_FULL,
                     normal_turns: 0,
                     advanced_to_front: false,
-                    statuses: [None; 6],
+                    statuses: [None; 7],
                     attack_bonus: None,
                     crit_rate_bonus_bp: 0,
                     frozen: None,
                     shocks: Vec::new(),
+                    shields: Vec::new(),
+                    counter_state: CounterState::default(),
                     debuffs: Vec::new(),
                     heals_over_time: Vec::new(),
                     break_dots: Vec::new(),
@@ -201,7 +207,7 @@ impl<'a> Battle<'a> {
         let target = match (ability.target, command.target_id.as_deref()) {
             (Target::Ally, Some(id)) => self.find_target(self.allies(), id)?,
             (Target::Enemy, Some(id)) => self.find_target(self.enemies(), id)?,
-            (Target::AllAllies | Target::AllEnemies, None) => None,
+            (Target::SelfOnly | Target::AllAllies | Target::AllEnemies, None) => None,
             _ => return Err(BattleError::InvalidTarget),
         };
 
@@ -269,7 +275,7 @@ impl<'a> Battle<'a> {
                         max_energy_milli: self.plan.units[unit].kit.max_energy_milli(),
                         toughness: state.toughness,
                         max_toughness: self.plan.units[unit].kit.max_toughness(),
-                        shield: state.magnitude(StatusKind::Shield),
+                        shield: self.shield_amount(unit),
                         vulnerability_bp: state.magnitude(StatusKind::Vulnerability),
                         speed_micros: self.speed_micros(unit),
                         gauge_quanta: state.gauge_quanta,
@@ -351,7 +357,7 @@ impl<'a> Battle<'a> {
             })
         };
         match ability.target {
-            Target::AllAllies | Target::AllEnemies => add(None),
+            Target::SelfOnly | Target::AllAllies | Target::AllEnemies => add(None),
             Target::Ally | Target::Enemy => {
                 let range = match ability.target {
                     Target::Ally => self.allies(),
@@ -386,6 +392,10 @@ impl<'a> Battle<'a> {
         (self.units[unit].hp, self.plan.units[unit].stats.hp)
     }
 
+    fn defense(&self, unit: usize) -> u32 {
+        self.plan.units[unit].stats.defense
+    }
+
     fn is_frozen(&self, unit: usize) -> bool {
         self.units[unit].frozen.is_some()
     }
@@ -398,6 +408,7 @@ impl<'a> Battle<'a> {
         action: Action,
     ) {
         let targets = match (targeting, target) {
+            (Target::SelfOnly, None) => source..source + 1,
             (Target::Ally, Some(unit)) => unit..unit + 1,
             (Target::AllAllies, None) => self.allies(),
             _ => return,
@@ -513,6 +524,16 @@ impl<'a> Battle<'a> {
             match kit {
                 Kit::Ally(_) | Kit::Official(_) => {
                     self.tick_heals_over_time(actor);
+                    if self.thaw(actor) {
+                        self.finish_turn(actor);
+                        self.resolve_wave_or_end();
+                        continue;
+                    }
+                    for owner in self.allies() {
+                        if let Some(mechanics) = self.mechanics(owner) {
+                            mechanics.on_turn_start(self, owner, actor);
+                        }
+                    }
                     self.ordinary_actor = Some(actor);
                     return;
                 }

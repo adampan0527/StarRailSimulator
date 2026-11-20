@@ -26,6 +26,7 @@ pub enum StatusKind {
     Slow,
     DefenseDown,
     ResistanceDown,
+    Frozen,
 }
 
 impl StatusKind {
@@ -39,6 +40,7 @@ impl StatusKind {
             Self::Slow => 3,
             Self::DefenseDown => 4,
             Self::ResistanceDown => 5,
+            Self::Frozen => 6,
         }
     }
 }
