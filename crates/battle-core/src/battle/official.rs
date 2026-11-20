@@ -1,6 +1,7 @@
 mod arlan;
 mod dan_heng;
 mod herta;
+mod natasha;
 mod serval;
 
 use std::{collections::BTreeMap, sync::Arc};
@@ -293,6 +294,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1013" => Some(herta::build),
         "character.1103" => Some(serval::build),
         "dan_heng.hunt" => Some(dan_heng::build),
+        "natasha.abundance" => Some(natasha::build),
         _ => None,
     }
 }
