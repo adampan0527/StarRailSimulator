@@ -17,7 +17,7 @@ pub(super) struct Shock {
 }
 
 impl Shock {
-    fn from_break(self) -> bool {
+    fn is_break(self) -> bool {
         matches!(self.damage, ShockDamage::WeaknessBreak)
     }
 }
@@ -70,8 +70,8 @@ impl Battle<'_> {
         // Reapplication refreshes the same skill or break status. Skill and break
         // Shock coexist, even when the same attacker applied both.
         if let Some(existing) = shocks.iter_mut().find(|existing| {
-            existing.from_break() == shock.from_break()
-                && (shock.from_break() || existing.source == shock.source)
+            existing.is_break() == shock.is_break()
+                && (shock.is_break() || existing.source == shock.source)
         }) {
             *existing = shock;
         } else {
@@ -80,7 +80,7 @@ impl Battle<'_> {
         self.emit(
             EventKind::ShockApplied {
                 origin: shock.origin,
-                from_break: shock.from_break(),
+                from_break: shock.is_break(),
                 turns: shock.turns,
             },
             Some(shock.source),
@@ -127,7 +127,7 @@ impl Battle<'_> {
                 self.emit(
                     EventKind::ShockExpired {
                         origin: shock.origin,
-                        from_break: shock.from_break(),
+                        from_break: shock.is_break(),
                     },
                     Some(shock.source),
                     Some(target),
