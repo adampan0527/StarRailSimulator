@@ -16,6 +16,7 @@ mod jiaoqiu;
 mod kafka;
 mod luka;
 mod march_preservation;
+mod moze;
 mod natasha;
 mod pela;
 mod sampo;
@@ -29,6 +30,7 @@ pub(super) use {
     bailu::{BailuState, Invigoration},
     hanya::HanyaState,
     jiaoqiu::Field as JiaoqiuField,
+    moze::MozeState,
     yukong::YukongState,
 };
 
@@ -213,6 +215,10 @@ pub(super) struct YanqingState {
 }
 
 pub(super) trait Mechanics: Send + Sync {
+    fn can_use_skill(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
+        true
+    }
+
     fn ability_override(
         &self,
         _battle: &Battle<'_>,
@@ -293,6 +299,8 @@ pub(super) trait Mechanics: Send + Sync {
         _target: usize,
     ) {
     }
+
+    fn on_ally_defeat(&self, _battle: &mut Battle<'_>, _owner: usize) {}
 
     fn on_ally_targeted(
         &self,
@@ -571,6 +579,28 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn target_crit_damage_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _enemy: usize,
+    ) -> u32 {
+        0
+    }
+
+    fn ultimate_counts_as_follow_up(&self) -> bool {
+        false
+    }
+
+    fn follow_up_vulnerability_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _enemy: usize,
+    ) -> u32 {
+        0
+    }
+
     fn ultimate_vulnerability_bp(
         &self,
         _battle: &Battle<'_>,
@@ -628,6 +658,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1211" => Some(bailu::build),
         "character.1215" => Some(hanya::build),
         "character.1218" => Some(jiaoqiu::build),
+        "character.1223" => Some(moze::build),
         "character.1301" => Some(gallagher::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         "march_7th.preservation" => Some(march_preservation::build),

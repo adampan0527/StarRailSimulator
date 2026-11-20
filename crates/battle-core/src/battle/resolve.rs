@@ -104,9 +104,16 @@ pub(super) struct FollowUpAttack {
 #[derive(Clone)]
 pub(super) struct FollowUp {
     actor: usize,
-    target: Option<usize>,
+    target: FollowUpTarget,
     origin: Action,
     attack: FollowUpAttack,
+}
+
+#[derive(Clone, Copy)]
+enum FollowUpTarget {
+    AllEnemies,
+    Single(usize),
+    SingleOrRandom(usize),
 }
 
 impl Battle<'_> {
@@ -129,7 +136,9 @@ impl Battle<'_> {
                     Target::Ally | Target::Enemy => continue,
                 };
                 for target in targets {
-                    self.apply_effect(actor, target, *effect);
+                    if !matches!(ability.target, Target::AllAllies) || self.is_targetable(target) {
+                        self.apply_effect(actor, target, *effect);
+                    }
                 }
             }
         }
@@ -234,6 +243,10 @@ impl Battle<'_> {
     }
 
     pub(super) fn heal_unit(&mut self, actor: usize, target: usize, amount: u32) {
+        // A zero-HP target can be rescued, but a departed unit is off the field.
+        if self.units[target].departed {
+            return;
+        }
         let (hp, max_hp) = self.hp(target);
         let restored = amount.min(max_hp - hp);
         self.units[target].hp += restored;
@@ -370,7 +383,7 @@ impl Battle<'_> {
     ) {
         self.pending_follow_ups.push_back(FollowUp {
             actor,
-            target: None,
+            target: FollowUpTarget::AllEnemies,
             origin,
             attack: FollowUpAttack {
                 element,
@@ -391,7 +404,22 @@ impl Battle<'_> {
     ) {
         self.pending_follow_ups.push_back(FollowUp {
             actor,
-            target: Some(target),
+            target: FollowUpTarget::Single(target),
+            origin,
+            attack,
+        });
+    }
+
+    pub(super) fn follow_up_single_or_random(
+        &mut self,
+        actor: usize,
+        target: usize,
+        origin: Action,
+        attack: FollowUpAttack,
+    ) {
+        self.pending_follow_ups.push_back(FollowUp {
+            actor,
+            target: FollowUpTarget::SingleOrRandom(target),
             origin,
             attack,
         });
@@ -406,8 +434,28 @@ impl Battle<'_> {
                 origin,
                 attack,
             } = follow_up;
+            if self.units[actor].hp == 0 {
+                continue;
+            }
+            let target = match target {
+                FollowUpTarget::AllEnemies => None,
+                FollowUpTarget::Single(target) => Some(target),
+                FollowUpTarget::SingleOrRandom(target) if self.is_targetable(target) => {
+                    Some(target)
+                }
+                FollowUpTarget::SingleOrRandom(_) => {
+                    let living: Vec<_> = self
+                        .enemies()
+                        .filter(|&unit| self.is_targetable(unit))
+                        .collect();
+                    if living.is_empty() {
+                        continue;
+                    }
+                    Some(living[self.random_index(living.len())])
+                }
+            };
             let targets = target.map_or_else(|| self.enemies(), |target| target..target + 1);
-            if self.units[actor].hp == 0 || !targets.clone().any(|unit| self.units[unit].hp > 0) {
+            if !targets.clone().any(|unit| self.is_targetable(unit)) {
                 continue;
             }
             let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
@@ -474,7 +522,7 @@ impl Battle<'_> {
     pub(super) fn resolve_enemy(&mut self, actor: usize, kit: &EnemyKit) {
         let count = self
             .allies()
-            .filter(|&unit| self.units[unit].hp > 0)
+            .filter(|&unit| self.is_targetable(unit))
             .count();
         if count == 0 {
             return;
@@ -485,7 +533,7 @@ impl Battle<'_> {
         };
         if let Some(target) = self
             .allies()
-            .filter(|&unit| self.units[unit].hp > 0)
+            .filter(|&unit| self.is_targetable(unit))
             .nth(slot)
         {
             let was_shielded = self.shield_amount(target) > 0;
@@ -507,16 +555,31 @@ impl Battle<'_> {
         }
     }
 
-    fn target_auras_from(&self, owner: usize, target: usize, event: &DamageEvent) -> (u32, u32) {
+    fn target_auras_from(
+        &self,
+        owner: usize,
+        actor: usize,
+        target: usize,
+        event: &DamageEvent,
+    ) -> (u32, u32) {
         if self.units[owner].hp == 0 || !self.enemies().contains(&target) {
             return (0, 0);
         }
         self.mechanics(owner).map_or((0, 0), |mechanics| {
-            let vulnerability = if event.is_ultimate_hit() {
-                mechanics.ultimate_vulnerability_bp(self, owner, target)
-            } else {
-                0
-            };
+            let ultimate = event.is_ultimate_hit();
+            let follow_up = event.kind == DamageKind::FollowUp
+                || (ultimate
+                    && self
+                        .mechanics(actor)
+                        .is_some_and(|source| source.ultimate_counts_as_follow_up()));
+            let mut vulnerability = 0_u32;
+            if ultimate {
+                vulnerability = mechanics.ultimate_vulnerability_bp(self, owner, target);
+            }
+            if follow_up {
+                vulnerability = vulnerability
+                    .saturating_add(mechanics.follow_up_vulnerability_bp(self, owner, target));
+            }
             (
                 vulnerability,
                 mechanics.all_resistance_down_bp(self, owner, target),
@@ -554,9 +617,9 @@ impl Battle<'_> {
         }
         let mut field_resistance_down = 0_u32;
         for owner in self.allies().filter(|&owner| allow_source(owner)) {
-            let (ultimate_vulnerability, resistance_down) =
-                self.target_auras_from(owner, target, event);
-            vulnerability = vulnerability.saturating_add(ultimate_vulnerability);
+            let (source_vulnerability, resistance_down) =
+                self.target_auras_from(owner, actor, target, event);
+            vulnerability = vulnerability.saturating_add(source_vulnerability);
             field_resistance_down = field_resistance_down.saturating_add(resistance_down);
         }
         let personal_penetration = self.mechanics(actor).map_or(0, |mechanics| {
@@ -1086,7 +1149,7 @@ impl Battle<'_> {
                 )
                 .chain(self.allies().filter(|&owner| {
                     self.offense_buffs_from(owner, offense) != OffenseBuffs::default()
-                        || self.target_auras_from(owner, target, &event) != (0, 0)
+                        || self.target_auras_from(owner, actor, target, &event) != (0, 0)
                 }))
                 .filter(|&source| source != actor && source < self.plan.ally_count)
                 .collect();
@@ -1207,6 +1270,14 @@ impl Battle<'_> {
                         && let Some(mechanics) = self.mechanics(owner)
                     {
                         mechanics.on_enemy_defeat(self, owner, actor, target);
+                    }
+                }
+            } else if target < self.plan.ally_count {
+                for owner in self.allies() {
+                    if self.units[owner].hp > 0
+                        && let Some(mechanics) = self.mechanics(owner)
+                    {
+                        mechanics.on_ally_defeat(self, owner);
                     }
                 }
             }

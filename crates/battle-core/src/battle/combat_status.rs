@@ -235,6 +235,9 @@ impl Battle<'_> {
         turns: u32,
         origin: Action,
     ) {
+        if !self.is_targetable(target) {
+            return;
+        }
         let heals = &mut self.units[target].heals_over_time;
         let status = HealOverTime {
             source,

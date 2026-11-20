@@ -151,7 +151,7 @@ fn recipient(battle: &Battle<'_>, owner: usize) -> Option<usize> {
 fn preferred_recipient(battle: &Battle<'_>, owner: usize) -> usize {
     battle
         .allies()
-        .filter(|&unit| unit != owner && battle.hp(unit).0 > 0)
+        .filter(|&unit| unit != owner && battle.is_targetable(unit))
         .max_by_key(|&unit| (battle.plan.units[unit].stats.attack, Reverse(unit)))
         .unwrap_or(owner)
 }
@@ -321,16 +321,17 @@ impl Mechanics for Tingyun {
                 4
             }),
             Action::Ultimate => {
+                let ultimate_target = current
+                    .filter(|&unit| battle.is_targetable(unit))
+                    .unwrap_or(preferred);
                 let target_has_room = target == actor
                     || battle.units[target].energy_milli
                         < battle.plan.units[target].kit.max_energy_milli();
-                Some(
-                    if target == current.unwrap_or(preferred) && target_has_room {
-                        0
-                    } else {
-                        4
-                    },
-                )
+                Some(if target == ultimate_target && target_has_room {
+                    0
+                } else {
+                    4
+                })
             }
             Action::Basic => None,
         }
