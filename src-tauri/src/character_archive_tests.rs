@@ -126,6 +126,38 @@ fn fixed_dpr_for_saved_team_credits_pelas_debuff_damage() {
     );
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_with_preservation_characters_does_not_counter_idle_dummies() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let saved = archive
+        .save_team(
+            None,
+            "护盾与反击",
+            &[
+                Some("march_7th.preservation".into()),
+                Some("character.1104".into()),
+                Some("character.1107".into()),
+                None,
+            ],
+        )
+        .unwrap();
+    let checked = archive.dpr_readiness(&saved.id).unwrap();
+    assert!(checked.unsupported_characters.is_empty());
+    let result = checked.result.unwrap();
+    assert!(result.characters.iter().all(|actor| actor.own_damage > 0));
+    assert!(
+        !result
+            .targets
+            .iter()
+            .flat_map(|target| &target.hits)
+            .any(|hit| hit.kind == DamageKind::FollowUp)
+    );
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
