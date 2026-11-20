@@ -1,10 +1,12 @@
 mod arlan;
 mod asta;
+mod bailu;
 mod bronya;
 mod clara;
 mod dan_heng;
 mod gepard;
 mod guinaifen;
+mod healing;
 mod herta;
 mod himeko;
 mod hook;
@@ -20,6 +22,7 @@ mod sushang;
 mod tingyun;
 mod yanqing;
 
+pub(super) use bailu::{BailuState, Invigoration};
 pub(super) use jiaoqiu::Field as JiaoqiuField;
 
 use std::{collections::BTreeMap, sync::Arc};
@@ -365,6 +368,10 @@ pub(super) trait Mechanics: Send + Sync {
         false
     }
 
+    fn prevent_ally_defeat(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) -> bool {
+        false
+    }
+
     fn incoming_damage_reduction_bp(
         &self,
         _battle: &Battle<'_>,
@@ -578,6 +585,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1202" => Some(tingyun::build),
         "character.1206" => Some(sushang::build),
         "character.1210" => Some(guinaifen::build),
+        "character.1211" => Some(bailu::build),
         "character.1218" => Some(jiaoqiu::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         "march_7th.preservation" => Some(march_preservation::build),

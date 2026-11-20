@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use super::{
-    super::Battle, Mechanics, OfficialAbility, OfficialCharacter, OfficialKit, SkillPoints,
+    super::Battle,
+    Mechanics, OfficialAbility, OfficialCharacter, OfficialKit, SkillPoints,
+    healing::{Healing, MICROS, healing_micros},
 };
 use crate::{
     Action, BattleError,
@@ -16,7 +18,6 @@ const SKILL: &str = "skill.110502";
 const ULTIMATE: &str = "skill.110503";
 const TALENT: &str = "skill.110504";
 const BP: u32 = 10_000;
-const MICROS: u64 = 1_000_000;
 const EIDOLON_HP_THRESHOLD_BP: u32 = 3_000;
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
@@ -37,12 +38,12 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
     }
     let has_trace = |id: &str| input.enabled_trace_ids.iter().any(|trace| trace == id);
     let mechanics = Natasha {
-        skill: Healing::from_data(SKILL, skill[0], skill[3])?,
-        skill_hot: Healing::from_data(SKILL, skill[1], skill[4])?,
+        skill: Healing::from_data("Natasha", SKILL, skill[0], skill[3])?,
+        skill_hot: Healing::from_data("Natasha", SKILL, skill[1], skill[4])?,
         skill_hot_turns: skill[2] as u32 + u32::from(has_trace("trace.1105103")),
-        ultimate: Healing::from_data(ULTIMATE, ultimate[0], ultimate[1])?,
+        ultimate: Healing::from_data("Natasha", ULTIMATE, ultimate[0], ultimate[1])?,
         emergency_threshold_bp: (talent[0] * f64::from(BP)).round() as u32,
-        emergency_boost_micros: healing_micros(TALENT, talent[1], 10.0)?,
+        emergency_boost_micros: healing_micros("Natasha", TALENT, talent[1], 10.0)?,
         outgoing_boost_micros: u64::from(input.stats.healing_bp) * (MICROS / u64::from(BP))
             + if has_trace("trace.1105102") {
                 100_000
@@ -88,37 +89,6 @@ const E2_HOT: Healing = Healing {
     hp_ratio_micros: 60_000,
     flat_micros: 160 * MICROS,
 };
-
-#[derive(Clone, Copy)]
-struct Healing {
-    hp_ratio_micros: u64,
-    flat_micros: u64,
-}
-
-impl Healing {
-    fn from_data(skill: &str, hp_ratio: f64, flat: f64) -> Result<Self, BattleError> {
-        Ok(Self {
-            hp_ratio_micros: healing_micros(skill, hp_ratio, 10.0)?,
-            flat_micros: healing_micros(skill, flat, 1_000_000.0)?,
-        })
-    }
-
-    fn amount(self, caster_max_hp: u32, boost_micros: u64) -> u32 {
-        let raw = u128::from(caster_max_hp) * u128::from(self.hp_ratio_micros)
-            + u128::from(self.flat_micros);
-        let scaled = raw * (u128::from(MICROS) + u128::from(boost_micros));
-        u32::try_from(scaled / u128::from(MICROS).pow(2)).unwrap_or(u32::MAX)
-    }
-}
-
-fn healing_micros(skill: &str, value: f64, limit: f64) -> Result<u64, BattleError> {
-    if !(0.0..=limit).contains(&value) {
-        return Err(BattleError::InvalidInput(format!(
-            "Natasha {skill} heal coefficient"
-        )));
-    }
-    Ok((value * MICROS as f64).round() as u64)
-}
 
 fn low_hp(battle: &Battle<'_>, unit: usize, threshold_bp: u32) -> bool {
     let (hp, max_hp) = battle.hp(unit);

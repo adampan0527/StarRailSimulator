@@ -1024,6 +1024,9 @@ impl Battle<'_> {
         let reduction_bp = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
         });
+        let invigoration_bp = self.invigoration_damage_reduction_bp(target);
+        let reduction_bp =
+            10_000 - (10_000 - reduction_bp.min(10_000)) * (10_000 - invigoration_bp) / 10_000;
         let damage_with = |allow: &dyn Fn(usize) -> bool| {
             let mut defender = self.damage_target(actor, target, element, &event, allow);
             defender.damage_reduction_bp = reduction_bp;
@@ -1152,6 +1155,13 @@ impl Battle<'_> {
             {
                 return;
             }
+            if actor >= self.plan.ally_count
+                && target < self.plan.ally_count
+                && matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
+                && self.try_ally_rescue(target)
+            {
+                return;
+            }
             self.emit(EventKind::UnitDefeated, Some(actor), Some(target));
             if actor < self.plan.ally_count {
                 self.gain_energy(actor, actor, KILL_ENERGY_MILLI);
@@ -1176,8 +1186,23 @@ impl Battle<'_> {
             self.units[target].break_dots.clear();
             self.units[target].skill_dots.clear();
             self.units[target].heals_over_time.clear();
+            self.units[target].invigoration = None;
             self.units[target].ally_buffs.clear();
         }
+    }
+
+    fn try_ally_rescue(&mut self, target: usize) -> bool {
+        for owner in self.allies() {
+            if owner != target
+                && self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+                && mechanics.prevent_ally_defeat(self, owner, target)
+                && self.units[target].hp > 0
+            {
+                return true;
+            }
+        }
+        false
     }
 
     fn shift_gauge(
@@ -1229,6 +1254,7 @@ impl Battle<'_> {
         self.expire_debuffs(actor);
         self.expire_shields(actor);
         self.expire_ally_buffs(actor);
+        self.expire_invigoration(actor);
         let state = &mut self.units[actor];
         state.finished_turns = state.normal_turns;
         if state
