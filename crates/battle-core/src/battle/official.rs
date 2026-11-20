@@ -1,3 +1,5 @@
+mod arlan;
+
 use std::{collections::BTreeMap, sync::Arc};
 
 use super::Battle;
@@ -204,13 +206,16 @@ pub(super) trait Mechanics: Send + Sync {
 }
 
 // Register supported 4.7.0 character kits here after their acceptance review.
-pub const fn supports_official_dpr(_form_id: &str) -> bool {
-    false
+pub fn supports_official_dpr(form_id: &str) -> bool {
+    matches!(form_id, "character.1008")
 }
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
-    Err(BattleError::UnsupportedData(format!(
-        "character form {}",
-        input.form_id
-    )))
+    match input.form_id.as_str() {
+        "character.1008" => arlan::build(input),
+        _ => Err(BattleError::UnsupportedData(format!(
+            "character form {}",
+            input.form_id
+        ))),
+    }
 }
