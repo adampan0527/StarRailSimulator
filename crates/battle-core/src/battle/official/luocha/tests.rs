@@ -221,6 +221,28 @@ fn automatic_skill_reacts_to_hp_spending_and_is_blocked_while_controlled() {
 }
 
 #[test]
+fn auto_cleansing_during_shock_damage_keeps_other_shock_timers_consistent() {
+    let plan = finite_plan(&[luocha(0, &[CLEANSING_REVIVAL])]);
+    let mut battle = Battle::start(&plan, LogMode::Detailed);
+    battle.units[0].hp = 1_400;
+    battle.apply_skill_shock(1, 0, Action::Skill, 10_000, 5_000, 3);
+    battle.apply_skill_shock(2, 0, Action::Skill, 10_000, 5_000, 1);
+
+    battle.tick_shocks(0);
+
+    // Two 250 damage ticks, then the second tick invokes an automatic heal for 600.
+    assert_eq!(battle.hp(0).0, 1_500);
+    assert_eq!(heal_amounts(&battle, LUOCHA), [600]);
+    assert!(!battle.has_shock(0));
+    let cleared = battle
+        .events()
+        .iter()
+        .filter(|event| event.kind == EventKind::StatusCleared)
+        .count();
+    assert_eq!(cleared, 1);
+}
+
+#[test]
 fn e2_uses_target_hp_before_healing_and_shield_expires_after_two_turns() {
     let mut owner = luocha(2, &[]);
     owner.stats.healing_bp = 1_000;
@@ -329,7 +351,7 @@ fn e6_reduces_all_resistance_and_credits_teammate_damage_until_enemy_expiry() {
 }
 
 #[test]
-fn fixed_dpr_has_no_automatic_heal_and_conserves_all_damage_attribution() {
+fn fixed_dpr_uses_offensive_actions_and_conserves_all_damage_attribution() {
     let plan = PreparedBattle::official_dpr(&[luocha(6, &[]), arlan()], 42, 3).unwrap();
     let run = || {
         calculate_dpr(

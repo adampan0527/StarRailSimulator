@@ -20,6 +20,10 @@ impl Shock {
     fn is_break(self) -> bool {
         matches!(self.damage, ShockDamage::WeaknessBreak)
     }
+
+    fn same_slot(self, other: Self) -> bool {
+        self.is_break() == other.is_break() && (self.is_break() || self.source == other.source)
+    }
 }
 
 impl Battle<'_> {
@@ -89,10 +93,7 @@ impl Battle<'_> {
         let shocks = &mut self.units[target].shocks;
         // Reapplication refreshes the same skill or break status. Skill and break
         // Shock coexist, even when the same attacker applied both.
-        if let Some(existing) = shocks.iter_mut().find(|existing| {
-            existing.is_break() == shock.is_break()
-                && (shock.is_break() || existing.source == shock.source)
-        }) {
+        if let Some(existing) = shocks.iter_mut().find(|existing| existing.same_slot(shock)) {
             *existing = shock;
         } else {
             shocks.push(shock);
@@ -142,8 +143,21 @@ impl Battle<'_> {
                 self.units[target].shocks.clear();
                 return;
             }
-            if shock.turns == 1 {
-                self.units[target].shocks.remove(index);
+            let shocks = &mut self.units[target].shocks;
+            if !shocks
+                .get(index)
+                .is_some_and(|current| current.same_slot(shock))
+            {
+                // A reactive cleanse can remove this shock or shift it to another index.
+                let Some(current_index) =
+                    shocks.iter().position(|current| current.same_slot(shock))
+                else {
+                    continue;
+                };
+                index = current_index;
+            }
+            if shocks[index].turns == 1 {
+                shocks.remove(index);
                 self.emit(
                     EventKind::ShockExpired {
                         origin: shock.origin,
@@ -153,7 +167,7 @@ impl Battle<'_> {
                     Some(target),
                 );
             } else {
-                self.units[target].shocks[index].turns -= 1;
+                shocks[index].turns -= 1;
                 index += 1;
             }
         }
