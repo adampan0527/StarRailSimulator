@@ -1,4 +1,5 @@
 mod arlan;
+mod asta;
 mod bronya;
 mod clara;
 mod dan_heng;
@@ -511,6 +512,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
         "character.1003" => Some(himeko::build),
         "character.1008" => Some(arlan::build),
+        "character.1009" => Some(asta::build),
         "character.1013" => Some(herta::build),
         "character.1101" => Some(bronya::build),
         "character.1103" => Some(serval::build),
