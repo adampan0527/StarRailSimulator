@@ -12,6 +12,7 @@ mod pela;
 mod sampo;
 mod serval;
 mod sushang;
+mod yanqing;
 
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -467,6 +468,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "dan_heng.hunt" => Some(dan_heng::build),
         "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),
+        "character.1209" => Some(yanqing::build),
         _ => None,
     }
 }
