@@ -152,7 +152,7 @@ impl Bailu {
     fn skill(&self, battle: &mut Battle<'_>, actor: usize, target: usize) {
         let living: Vec<_> = battle
             .allies()
-            .filter(|&unit| battle.hp(unit).0 > 0)
+            .filter(|&unit| battle.is_targetable(unit))
             .collect();
         let mut recipient = target;
         let mut scale_micros = MICROS;
@@ -178,7 +178,7 @@ impl Bailu {
 
     fn ultimate(&self, battle: &mut Battle<'_>, actor: usize) {
         for ally in battle.allies() {
-            if battle.hp(ally).0 == 0 {
+            if !battle.is_targetable(ally) {
                 continue;
             }
             self.heal(battle, actor, ally, self.ultimate_heal, MICROS);
@@ -266,7 +266,7 @@ impl Mechanics for Bailu {
             Action::Skill if self.eidolon >= 4 => {
                 let preferred = battle
                     .allies()
-                    .filter(|&unit| unit != actor && battle.hp(unit).0 > 0)
+                    .filter(|&unit| unit != actor && battle.is_targetable(unit))
                     .max_by_key(|&unit| (battle.plan.units[unit].stats.attack, Reverse(unit)));
                 let can_buff = preferred.is_some_and(|unit| {
                     target == Some(unit)

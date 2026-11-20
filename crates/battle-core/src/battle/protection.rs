@@ -43,10 +43,10 @@ impl Battle<'_> {
         turns: u32,
         origin: Option<Action>,
     ) {
-        let state = &mut self.units[target];
-        if amount == 0 || turns == 0 || state.hp == 0 {
+        if amount == 0 || turns == 0 || !self.is_targetable(target) {
             return;
         }
+        let state = &mut self.units[target];
         let shield = Shield {
             source,
             origin,

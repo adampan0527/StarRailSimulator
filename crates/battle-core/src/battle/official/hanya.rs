@@ -296,7 +296,7 @@ impl Mechanics for Hanya {
             Action::Ultimate => {
                 let preferred = battle
                     .allies()
-                    .filter(|&unit| unit != actor && battle.hp(unit).0 > 0)
+                    .filter(|&unit| unit != actor && battle.is_targetable(unit))
                     .max_by_key(|&unit| (battle.plan.units[unit].stats.attack, Reverse(unit)))
                     .unwrap_or(actor);
                 Some(if target == Some(preferred) { 0 } else { 4 })

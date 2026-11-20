@@ -24,7 +24,7 @@ pub use analysis::{
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
     BailuState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse, Mechanics,
-    MishaState, SkillPoints, SushangState, XueyiState, YanqingState, YukongState,
+    MishaState, MozeState, SkillPoints, SushangState, XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
@@ -50,6 +50,7 @@ struct UnitState {
     toughness: u16,
     gauge_quanta: u64,
     normal_turns: u32,
+    departed: bool,
     advanced_to_front: bool,
     statuses: [Option<Status>; StatusKind::COUNT],
     attack_bonus: Option<(u32, u32)>,
@@ -71,6 +72,7 @@ struct UnitState {
     kafka_follow_up_charges: u8,
     luka_state: LukaState,
     himeko_charge: u8,
+    moze_state: MozeState,
     xueyi_state: XueyiState,
     sushang_state: SushangState,
     yanqing_state: YanqingState,
@@ -137,6 +139,7 @@ impl<'a> Battle<'a> {
                     toughness: unit.kit.max_toughness(),
                     gauge_quanta: GAUGE_FULL,
                     normal_turns: 0,
+                    departed: false,
                     advanced_to_front: false,
                     statuses: [None; StatusKind::COUNT],
                     attack_bonus: None,
@@ -158,6 +161,7 @@ impl<'a> Battle<'a> {
                     kafka_follow_up_charges: 0,
                     luka_state: LukaState::default(),
                     himeko_charge: 0,
+                    moze_state: MozeState::default(),
                     xueyi_state: XueyiState::default(),
                     sushang_state: SushangState::default(),
                     yanqing_state: YanqingState::default(),
@@ -414,7 +418,12 @@ impl<'a> Battle<'a> {
                 return Err(BattleError::InsufficientEnergy);
             }
         } else {
-            if self.ordinary_actor != Some(actor) {
+            if self.ordinary_actor != Some(actor)
+                || (action == Action::Skill
+                    && self
+                        .mechanics(actor)
+                        .is_some_and(|mechanics| !mechanics.can_use_skill(self, actor)))
+            {
                 return Err(BattleError::IllegalTiming);
             }
             if skill_points == SkillPoints::Spend && self.skill_points == 0 {
@@ -443,7 +452,7 @@ impl<'a> Battle<'a> {
                     Target::Ally => self.allies(),
                     _ => self.enemies(),
                 };
-                for unit in range.filter(|&unit| self.units[unit].hp > 0) {
+                for unit in range.filter(|&unit| self.is_targetable(unit)) {
                     add(Some(unit));
                 }
             }
@@ -452,13 +461,18 @@ impl<'a> Battle<'a> {
 
     fn find_target(&self, mut units: Range<usize>, id: &str) -> Result<Option<usize>, BattleError> {
         units
-            .find(|&unit| self.units[unit].hp > 0 && self.plan.units[unit].id == id)
+            .find(|&unit| self.is_targetable(unit) && self.plan.units[unit].id == id)
             .map(Some)
             .ok_or(BattleError::InvalidTarget)
     }
 
     fn allies(&self) -> Range<usize> {
         0..self.plan.ally_count
+    }
+
+    fn is_targetable(&self, unit: usize) -> bool {
+        let state = &self.units[unit];
+        state.hp > 0 && !state.departed
     }
 
     fn mechanics(&self, unit: usize) -> Option<Arc<dyn Mechanics>> {
@@ -506,7 +520,7 @@ impl<'a> Battle<'a> {
             _ => return,
         };
         for owner in targets {
-            if self.units[owner].hp > 0
+            if self.is_targetable(owner)
                 && let Some(mechanics) = self.mechanics(owner)
             {
                 mechanics.on_ally_targeted(self, owner, source, action);
@@ -587,7 +601,7 @@ impl<'a> Battle<'a> {
     fn turn_candidates(&self) -> impl Iterator<Item = usize> {
         self.allies()
             .chain(self.enemies())
-            .filter(|&unit| self.units[unit].hp > 0)
+            .filter(|&unit| self.is_targetable(unit))
     }
 
     fn turn_priority(&self, unit: usize) -> (u64, bool, usize) {
@@ -616,7 +630,7 @@ impl<'a> Battle<'a> {
 
             self.av_micros += delta;
             for unit in self.allies().chain(self.enemies()) {
-                if self.units[unit].hp > 0 {
+                if self.is_targetable(unit) {
                     let consumed = delta * self.speed_micros(unit);
                     self.units[unit].gauge_quanta =
                         self.units[unit].gauge_quanta.saturating_sub(consumed);

@@ -102,10 +102,14 @@ impl Battle<'_> {
         turns: u32,
         effect_id: Option<&'static str>,
     ) {
-        let state = &mut self.units[target];
-        if state.hp == 0 || value == 0 || turns == 0 {
+        if self.units[target].hp == 0
+            || (source != target && !self.is_targetable(target))
+            || value == 0
+            || turns == 0
+        {
             return;
         }
+        let state = &mut self.units[target];
         let buff = AllyBuff {
             source,
             kind,
@@ -251,6 +255,9 @@ impl Battle<'_> {
                 bonuses.damage_bp = bonuses.damage_bp.saturating_add(
                     mechanics.ally_target_damage_bonus_bp(self, source, target, enemy, kind),
                 );
+                bonuses.crit_damage_bp = bonuses
+                    .crit_damage_bp
+                    .saturating_add(mechanics.target_crit_damage_bonus_bp(self, source, enemy));
             }
         }
         bonuses

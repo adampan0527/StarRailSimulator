@@ -264,7 +264,7 @@ impl Mechanics for Bronya {
             Action::Skill => {
                 let preferred = battle
                     .allies()
-                    .filter(|&unit| unit != actor && battle.hp(unit).0 > 0)
+                    .filter(|&unit| unit != actor && battle.is_targetable(unit))
                     .max_by_key(|&unit| (battle.plan.units[unit].stats.attack, Reverse(unit)));
                 Some(if target.is_some() && target == preferred {
                     2
