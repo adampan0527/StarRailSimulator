@@ -8,6 +8,7 @@ pub(super) enum AllyBuffKind {
     CritDamage,
     Damage,
     DefensePercent,
+    EffectResistance,
     /// Flat speed in millionths of one speed point.
     SpeedFlat,
     SpeedPercent,
@@ -116,6 +117,10 @@ impl Battle<'_> {
         )
     }
 
+    pub(super) fn support_effect_resistance(&self, actor: usize) -> u32 {
+        self.ally_buff_total(actor, AllyBuffKind::EffectResistance)
+    }
+
     pub(super) fn offense_buffs_from(
         &self,
         source: usize,
@@ -133,7 +138,9 @@ impl Battle<'_> {
                 AllyBuffKind::CritDamage => &mut bonuses.crit_damage_bp,
                 AllyBuffKind::Damage => &mut bonuses.damage_bp,
                 AllyBuffKind::DefensePercent => &mut bonuses.defense_bp,
-                AllyBuffKind::SpeedFlat | AllyBuffKind::SpeedPercent => continue,
+                AllyBuffKind::SpeedFlat
+                | AllyBuffKind::SpeedPercent
+                | AllyBuffKind::EffectResistance => continue,
             };
             *total = total.saturating_add(buff.value);
         }
@@ -199,6 +206,7 @@ impl Battle<'_> {
             .saturating_add(percentage_of(defense, conversion_bp))
             .saturating_add(flat)
             .saturating_add(buffs.attack_flat)
+            .saturating_sub(percentage_of(stats.base_attack, self.attack_down_bp(actor)))
     }
 
     pub(super) fn defense_with_buff(&self, actor: usize, buff_bp: u32) -> u32 {
