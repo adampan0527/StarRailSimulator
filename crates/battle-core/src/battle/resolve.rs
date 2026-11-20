@@ -180,6 +180,9 @@ impl Battle<'_> {
                 toughness,
                 count,
             } => {
+                let count = self.mechanics(actor).map_or(count, |mechanics| {
+                    mechanics.random_hit_count(self, actor, count)
+                });
                 for _ in 0..count {
                     let live: Vec<_> = self
                         .enemies()
@@ -243,6 +246,10 @@ impl Battle<'_> {
         if hp_before == 0 {
             return;
         }
+        let mechanics = self.action.zip(self.mechanics(actor));
+        if let Some((action, mechanics)) = &mechanics {
+            mechanics.before_attack_hit(self, actor, target, *action);
+        }
         let critical = self.strike(
             actor,
             target,
@@ -255,9 +262,7 @@ impl Battle<'_> {
                 scale,
             },
         );
-        if let Some(action) = self.action
-            && let Some(mechanics) = self.mechanics(actor)
-        {
+        if let Some((action, mechanics)) = mechanics {
             if critical {
                 mechanics.after_critical_hit(self, actor, target, action);
             }
@@ -337,10 +342,14 @@ impl Battle<'_> {
             .filter_map(|ally| self.mechanics(ally))
             .map(|mechanics| mechanics.effect_hit_rate_aura_bp())
             .fold(0_u32, u32::saturating_add);
+        let personal = self.mechanics(actor).map_or(0, |mechanics| {
+            mechanics.effect_hit_rate_bonus_bp(self, actor)
+        });
         self.plan.units[actor]
             .stats
             .effect_hit_rate_bp
             .saturating_add(aura)
+            .saturating_add(personal)
     }
 
     pub(super) fn roll_status(

@@ -18,6 +18,7 @@ mod luka;
 mod luocha;
 mod lynx;
 mod march_preservation;
+mod misha;
 mod natasha;
 mod pela;
 mod sampo;
@@ -31,6 +32,7 @@ pub(super) use {
     bailu::{BailuState, Invigoration},
     hanya::HanyaState,
     jiaoqiu::Field as JiaoqiuField,
+    misha::MishaState,
     yukong::YukongState,
 };
 
@@ -247,6 +249,15 @@ pub(super) trait Mechanics: Send + Sync {
     ) {
     }
 
+    fn before_attack_hit(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _action: Action,
+    ) {
+    }
+
     fn after_attack_hit(
         &self,
         _battle: &mut Battle<'_>,
@@ -286,6 +297,10 @@ pub(super) trait Mechanics: Send + Sync {
         multiplier_bp: u16,
     ) -> u16 {
         multiplier_bp
+    }
+
+    fn random_hit_count(&self, _battle: &Battle<'_>, _actor: usize, base: u8) -> u8 {
+        base
     }
 
     fn after_defeat(&self, _battle: &mut Battle<'_>, _actor: usize, _target: usize) {}
@@ -352,6 +367,10 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn effect_hit_rate_aura_bp(&self) -> u32 {
+        0
+    }
+
+    fn effect_hit_rate_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         0
     }
 
@@ -528,6 +547,8 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_ally_energy_full(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
+    fn on_ally_skill_points_spent(&self, _battle: &mut Battle<'_>, _owner: usize, _points: u8) {}
+
     fn before_ally_action(
         &self,
         _battle: &mut Battle<'_>,
@@ -642,6 +663,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1215" => Some(hanya::build),
         "character.1218" => Some(jiaoqiu::build),
         "character.1301" => Some(gallagher::build),
+        "character.1312" => Some(misha::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),
