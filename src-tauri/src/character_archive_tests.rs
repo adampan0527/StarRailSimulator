@@ -438,19 +438,18 @@ fn saved_break_support_team_runs_enhanced_basic_and_credits_direct_buffs() {
 
 #[cfg(bundled_catalog)]
 #[test]
-fn saved_abundance_team_credits_bailus_eidolon_damage_bonus() {
+fn saved_abundance_team_credits_eidolon_damage_bonus_and_resistance_down() {
     let dir = TestData::new();
     let mut archive = CharacterArchive::installed(dir.path()).unwrap();
     let bailu = "character.1211";
-    let forms = [
-        bailu,
-        "natasha.abundance",
-        "character.1301",
-        "character.1003",
-    ];
-    let mut edit = archive.profile(bailu).unwrap().edit;
-    edit.eidolon = 4;
-    archive.save(bailu, edit).unwrap();
+    let luocha = "character.1203";
+    let lynx = "character.1110";
+    let forms = [bailu, luocha, lynx, "character.1003"];
+    for (form, eidolon) in [(bailu, 4), (luocha, 6)] {
+        let mut edit = archive.profile(form).unwrap().edit;
+        edit.eidolon = eidolon;
+        archive.save(form, edit).unwrap();
+    }
     let team = archive
         .save_team(None, "治疗与伤害支援", &forms.map(|id| Some(id.into())))
         .unwrap();
@@ -465,20 +464,23 @@ fn saved_abundance_team_credits_bailus_eidolon_damage_bonus() {
             .collect::<Vec<_>>(),
         forms
     );
-    assert!(result.characters[0].assist_damage > 0);
-    assert!(
-        result
-            .targets
-            .iter()
-            .flat_map(|target| &target.hits)
-            .any(|hit| {
-                hit.source_id != bailu
-                    && hit
-                        .credits
-                        .iter()
-                        .any(|credit| credit.unit_id == bailu && credit.amount > 0)
-            })
-    );
+    for source in [bailu, luocha] {
+        assert!(
+            result
+                .targets
+                .iter()
+                .flat_map(|target| &target.hits)
+                .any(|hit| {
+                    hit.source_id != source
+                        && hit
+                            .credits
+                            .iter()
+                            .any(|credit| credit.unit_id == source && credit.amount > 0)
+                }),
+            "{source}"
+        );
+    }
+    assert!(result.characters[2].own_damage > 0);
     assert_eq!(
         result.total_damage,
         result
