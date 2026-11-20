@@ -11,6 +11,7 @@ pub(super) enum DebuffKind {
     EffectResistanceDown,
     Besotted,
     AttackDown,
+    AllResistanceDown,
     ResistanceDown(Element),
 }
 
@@ -24,7 +25,7 @@ impl DebuffKind {
             Self::EffectResistanceDown => StatusKind::EffectResistanceDown,
             Self::Besotted => StatusKind::Besotted,
             Self::AttackDown => StatusKind::AttackDown,
-            Self::ResistanceDown(_) => StatusKind::ResistanceDown,
+            Self::AllResistanceDown | Self::ResistanceDown(_) => StatusKind::ResistanceDown,
         }
     }
 }
@@ -184,16 +185,35 @@ impl Battle<'_> {
 
     pub(super) fn cleanse_one(&mut self, actor: usize, target: usize) {
         let state = &mut self.units[target];
-        let (kind, source) = if let Some(status) = state.debuffs.first().copied() {
+        let expired = if let Some(status) = state.debuffs.first().copied() {
             state.debuffs.remove(0);
-            (status.kind.status(), status.source)
-        } else if let Some(status) = state.statuses[StatusKind::Vulnerability.index()].take() {
-            (StatusKind::Vulnerability, status.source)
+            Some((status.kind.status(), status.source))
         } else {
-            return;
+            state.statuses[StatusKind::Vulnerability.index()]
+                .take()
+                .map(|status| (StatusKind::Vulnerability, status.source))
         };
-        self.emit(EventKind::StatusExpired(kind), Some(source), Some(target));
+        if let Some((kind, source)) = expired {
+            self.emit(EventKind::StatusExpired(kind), Some(source), Some(target));
+        } else if !self.clear_freeze(target)
+            && !self.clear_shock(target)
+            && !self.clear_periodic_debuff(target)
+        {
+            return;
+        }
         self.emit(EventKind::StatusCleared, Some(actor), Some(target));
+    }
+
+    fn clear_periodic_debuff(&mut self, target: usize) -> bool {
+        let state = &mut self.units[target];
+        if !state.skill_dots.is_empty() {
+            state.skill_dots.remove(0);
+        } else if !state.break_dots.is_empty() {
+            state.break_dots.remove(0);
+        } else {
+            return false;
+        }
+        true
     }
 
     pub(super) fn dispel_one(&mut self, actor: usize, target: usize) -> bool {
