@@ -278,6 +278,91 @@ fn support_team_credits_actual_buff_damage_and_conserves_the_total() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_detonation_team_records_the_original_sources_and_support_credits() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [guinaifen, jiaoqiu, kafka, sampo] = [
+        "character.1210",
+        "character.1218",
+        "character.1005",
+        "character.1108",
+    ];
+    let team = archive
+        .save_team(
+            None,
+            "持续伤害引爆",
+            &[guinaifen, jiaoqiu, kafka, sampo].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    for source in [guinaifen, jiaoqiu, kafka, sampo] {
+        assert!(
+            hits().any(|hit| { hit.source_id == source && hit.kind == DamageKind::DamageOverTime }),
+            "{source}"
+        );
+    }
+    assert!(result.targets.iter().any(|target| {
+        target.hits.iter().enumerate().any(|(index, hit)| {
+            hit.source_id == kafka
+                && hit.action == Action::Ultimate
+                && hit.kind == DamageKind::Direct
+                && target.hits[index + 1..]
+                    .iter()
+                    .take_while(|next| next.av_micros == hit.av_micros)
+                    .any(|next| {
+                        next.source_id == sampo
+                            && next.action == Action::Ultimate
+                            && next.kind == DamageKind::DamageOverTime
+                    })
+        })
+    }));
+    for support in [guinaifen, jiaoqiu] {
+        assert!(
+            hits().any(|hit| {
+                hit.source_id != support
+                    && hit
+                        .credits
+                        .iter()
+                        .any(|credit| credit.unit_id == support && credit.amount > 0)
+            }),
+            "{support}"
+        );
+    }
+    for hit in hits() {
+        assert_eq!(
+            hit.amount,
+            hit.credits.iter().map(|credit| credit.amount).sum::<u32>()
+        );
+    }
+    assert_eq!(
+        result.total_damage,
+        result
+            .targets
+            .iter()
+            .map(|target| target.damage)
+            .sum::<u64>()
+    );
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;

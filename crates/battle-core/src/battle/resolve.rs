@@ -1093,16 +1093,11 @@ impl Battle<'_> {
         } else {
             self.deal_damage(actor, target, kind, amount, critical);
         }
-        if amount > 0
-            && kind == DamageKind::DamageOverTime
-            && offense.enemy.is_some()
-            && let Some(origin) = origin
-        {
+        if amount > 0 && kind == DamageKind::DamageOverTime && offense.enemy.is_some() {
             let dot = DotEvent {
                 source: actor,
                 target,
                 element,
-                origin,
                 from_break,
             };
             for owner in self.allies() {

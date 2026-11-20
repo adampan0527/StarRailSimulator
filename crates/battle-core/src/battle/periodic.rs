@@ -7,7 +7,6 @@ pub(super) struct DotEvent {
     pub source: usize,
     pub target: usize,
     pub element: Element,
-    pub origin: Action,
     pub from_break: bool,
 }
 
