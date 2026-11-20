@@ -1,4 +1,7 @@
-use crate::{Action, fixture::Element};
+use crate::{
+    Action,
+    fixture::{Ability, Element},
+};
 
 use super::Battle;
 
@@ -19,6 +22,7 @@ pub(super) struct AllyBuff {
     kind: AllyBuffKind,
     value: u32,
     expires_after_turn: u32,
+    effect_id: Option<&'static str>,
 }
 
 #[derive(Clone, Default)]
@@ -71,6 +75,18 @@ impl Battle<'_> {
         value: u32,
         turns: u32,
     ) {
+        self.apply_ally_buff_with_id(source, target, kind, value, turns, None);
+    }
+
+    pub(super) fn apply_ally_buff_with_id(
+        &mut self,
+        source: usize,
+        target: usize,
+        kind: AllyBuffKind,
+        value: u32,
+        turns: u32,
+        effect_id: Option<&'static str>,
+    ) {
         let state = &mut self.units[target];
         if state.hp == 0 || value == 0 || turns == 0 {
             return;
@@ -80,16 +96,29 @@ impl Battle<'_> {
             kind,
             value,
             expires_after_turn: state.normal_turns + turns,
+            effect_id,
         };
         if let Some(slot) = state
             .ally_buffs
             .iter_mut()
-            .find(|item| item.source == source && item.kind == kind)
+            .find(|item| item.source == source && item.kind == kind && item.effect_id == effect_id)
         {
             *slot = buff;
         } else {
             state.ally_buffs.push(buff);
         }
+    }
+
+    pub(super) fn has_ally_buff(
+        &self,
+        source: usize,
+        target: usize,
+        kind: AllyBuffKind,
+        effect_id: &'static str,
+    ) -> bool {
+        self.units[target].ally_buffs.iter().any(|buff| {
+            buff.source == source && buff.kind == kind && buff.effect_id == Some(effect_id)
+        })
     }
 
     pub(super) fn expire_ally_buffs(&mut self, actor: usize) {
@@ -226,6 +255,21 @@ impl Battle<'_> {
             .saturating_add(amount_milli)
             .min(cap);
         self.set_energy(source, target, energy);
+    }
+
+    pub(super) fn notify_ally_action_started(
+        &mut self,
+        actor: usize,
+        target: Option<usize>,
+        ability: Ability<'_>,
+    ) {
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(rules) = self.mechanics(owner)
+            {
+                rules.before_ally_action(self, owner, actor, target, ability);
+            }
+        }
     }
 
     pub(super) fn notify_ally_action_finished(&mut self, actor: usize, action: Action) {
