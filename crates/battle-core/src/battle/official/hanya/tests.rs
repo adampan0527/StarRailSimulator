@@ -29,6 +29,7 @@ fn hanya(eidolon: u8) -> OfficialCharacter {
         level: 80,
         stats: OfficialStats {
             hp: 1_000,
+            base_hp: 1_000,
             attack: 2_000,
             base_attack: 900,
             defense: 500,

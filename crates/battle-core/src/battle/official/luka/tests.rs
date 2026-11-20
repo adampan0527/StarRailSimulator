@@ -21,6 +21,7 @@ fn luka(eidolon: u8, idle_speed: u64, traces: &[&str]) -> OfficialCharacter {
         energy_capacity: 130,
         stats: OfficialStats {
             hp: 2_000,
+            base_hp: 2_000,
             attack: 1_000,
             base_attack: 600,
             defense: 500,

@@ -54,6 +54,7 @@ impl Element {
 pub(crate) struct Stats {
     pub level: u16,
     pub hp: u32,
+    pub base_hp: u32,
     pub attack: u32,
     pub base_attack: u32,
     pub defense: u32,
@@ -185,6 +186,7 @@ const fn ally_stats(attack: u32, speed: u64) -> Stats {
     Stats {
         level: 30,
         hp: 1_000,
+        base_hp: 1_000,
         attack,
         base_attack: attack,
         defense: 520,
@@ -207,6 +209,7 @@ const fn enemy_stats(hp: u32, resist_bp: [u16; Element::COUNT]) -> Stats {
     Stats {
         level: 32,
         hp,
+        base_hp: hp,
         attack: 200,
         defense: 500,
         base_defense: 500,

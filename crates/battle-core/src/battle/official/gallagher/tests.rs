@@ -25,6 +25,7 @@ fn gallagher(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
         energy_capacity: 110,
         stats: OfficialStats {
             hp: 5_000,
+            base_hp: 5_000,
             attack: 1_000,
             base_attack: 1_000,
             defense: 520,

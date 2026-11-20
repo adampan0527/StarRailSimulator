@@ -12,6 +12,7 @@ pub(super) enum AllyBuffKind {
     Damage,
     DefensePercent,
     EffectResistance,
+    MaxHpFlat,
     /// Flat speed in millionths of one speed point.
     SpeedFlat,
     SpeedPercent,
@@ -52,6 +53,7 @@ pub(super) struct TingyunState {
 pub(super) struct OffenseBuffs {
     pub attack_bp: u32,
     pub attack_flat: u32,
+    pub max_hp_flat: u32,
     pub defense_bp: u32,
     pub damage_bp: u32,
     pub crit_rate_bp: u32,
@@ -70,6 +72,7 @@ impl OffenseBuffs {
     fn add(&mut self, buff: Self) {
         self.attack_bp = self.attack_bp.saturating_add(buff.attack_bp);
         self.attack_flat = self.attack_flat.saturating_add(buff.attack_flat);
+        self.max_hp_flat = self.max_hp_flat.saturating_add(buff.max_hp_flat);
         self.defense_bp = self.defense_bp.saturating_add(buff.defense_bp);
         self.damage_bp = self.damage_bp.saturating_add(buff.damage_bp);
         self.crit_rate_bp = self.crit_rate_bp.saturating_add(buff.crit_rate_bp);
@@ -138,6 +141,30 @@ impl Battle<'_> {
         state
             .ally_buffs
             .retain(|buff| buff.expires_after_turn > completed);
+        self.units[actor].hp = self.units[actor].hp.min(self.effective_max_hp(actor));
+    }
+
+    pub(super) fn apply_max_hp_increase(
+        &mut self,
+        source: usize,
+        target: usize,
+        amount: u32,
+        turns: u32,
+    ) {
+        let before = self.effective_max_hp(target);
+        self.apply_ally_buff(source, target, AllyBuffKind::MaxHpFlat, amount, turns);
+        let after = self.effective_max_hp(target);
+        self.units[target].hp = self.units[target]
+            .hp
+            .saturating_add(after.saturating_sub(before))
+            .min(after);
+    }
+
+    pub(super) fn effective_max_hp(&self, actor: usize) -> u32 {
+        self.plan.units[actor]
+            .stats
+            .hp
+            .saturating_add(self.ally_buff_total(actor, AllyBuffKind::MaxHpFlat))
     }
 
     fn ally_buff_total(&self, actor: usize, kind: AllyBuffKind) -> u32 {
@@ -182,6 +209,7 @@ impl Battle<'_> {
                 AllyBuffKind::CritDamage => &mut bonuses.crit_damage_bp,
                 AllyBuffKind::Damage => &mut bonuses.damage_bp,
                 AllyBuffKind::DefensePercent => &mut bonuses.defense_bp,
+                AllyBuffKind::MaxHpFlat => &mut bonuses.max_hp_flat,
                 AllyBuffKind::SpeedFlat
                 | AllyBuffKind::SpeedPercent
                 | AllyBuffKind::EffectResistance => continue,

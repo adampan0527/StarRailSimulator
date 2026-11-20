@@ -563,6 +563,7 @@ impl Battle<'_> {
             mechanics.resistance_penetration_bp(self, actor, element)
         });
         let mut stats = plan.stats;
+        stats.hp = self.effective_max_hp(target);
         stats.defense = self.defense(target);
         DamageTarget {
             stats,
@@ -852,7 +853,7 @@ impl Battle<'_> {
                 let base_bp = scale.base_bp(
                     view.attack,
                     view.defense,
-                    source.hp,
+                    source.hp.saturating_add(view.bonus.max_hp_flat),
                     view.target.stats.hp,
                     multiplier_bp,
                 ) * u64::from(ratio_bp)

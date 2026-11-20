@@ -42,12 +42,14 @@ impl Catalog {
         }
         let panel = self.character_stats(id, loadout)?;
         let stat = |name, value: Option<ScaledStat>| value.ok_or_else(|| Error::invalid(name, id));
+        let hp = stat("character.hp", panel.hp)?;
         let attack = stat("character.attack", panel.attack)?;
         let defense = stat("character.defense", panel.defense)?;
         let speed = stat("character.speed", panel.speed)?;
         let ratio = |value: Option<f64>| (value.unwrap_or_default() * 10_000.0).round() as u32;
         let stats = OfficialStats {
-            hp: stat("character.hp", panel.hp)?.total.round() as u32,
+            hp: hp.total.round() as u32,
+            base_hp: hp.base.round() as u32,
             attack: attack.total.round() as u32,
             base_attack: attack.base.round() as u32,
             defense: defense.total.round() as u32,
