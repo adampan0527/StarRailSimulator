@@ -1,4 +1,4 @@
-use crate::{Action, fixture::Element};
+use crate::{Action, DamageKind, fixture::Element};
 
 use super::Battle;
 
@@ -50,6 +50,14 @@ pub(super) struct OffenseBuffs {
     pub defense_bp: u32,
     pub damage_bp: u32,
     pub crit_damage_bp: u32,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct OffenseContext {
+    pub actor: usize,
+    pub enemy: Option<usize>,
+    pub element: Element,
+    pub kind: DamageKind,
 }
 
 impl OffenseBuffs {
@@ -119,9 +127,14 @@ impl Battle<'_> {
     pub(super) fn offense_buffs_from(
         &self,
         source: usize,
-        target: usize,
-        element: Element,
+        context: OffenseContext,
     ) -> OffenseBuffs {
+        let OffenseContext {
+            actor: target,
+            enemy,
+            element,
+            kind,
+        } = context;
         let mut bonuses = OffenseBuffs::default();
         for buff in self.units[target]
             .ally_buffs
@@ -147,22 +160,31 @@ impl Battle<'_> {
             bonuses.damage_bp = bonuses
                 .damage_bp
                 .saturating_add(mechanics.ally_damage_bonus_bp(self, source, target, element));
+            if kind == DamageKind::DamageOverTime {
+                bonuses.damage_bp = bonuses
+                    .damage_bp
+                    .saturating_add(mechanics.ally_dot_damage_bonus_bp(self, source, target));
+            }
+            if let Some(enemy) = enemy {
+                bonuses.damage_bp = bonuses.damage_bp.saturating_add(
+                    mechanics.ally_target_damage_bonus_bp(self, source, target, enemy, kind),
+                );
+            }
         }
         bonuses
     }
 
     pub(super) fn offense_buffs(
         &self,
-        actor: usize,
-        element: Element,
+        context: OffenseContext,
         allow: impl Fn(usize) -> bool,
     ) -> OffenseBuffs {
-        if actor >= self.plan.ally_count {
+        if context.actor >= self.plan.ally_count {
             return OffenseBuffs::default();
         }
         let mut total = OffenseBuffs::default();
         for source in self.allies().filter(|&source| allow(source)) {
-            total.add(self.offense_buffs_from(source, actor, element));
+            total.add(self.offense_buffs_from(source, context));
         }
         total
     }
@@ -175,7 +197,15 @@ impl Battle<'_> {
     }
 
     pub(super) fn effective_attack(&self, actor: usize) -> u32 {
-        let buffs = self.offense_buffs(actor, Element::Physical, |_| true);
+        let buffs = self.offense_buffs(
+            OffenseContext {
+                actor,
+                enemy: None,
+                element: Element::Physical,
+                kind: DamageKind::Direct,
+            },
+            |_| true,
+        );
         self.attack_with_buffs(actor, buffs)
     }
 
@@ -190,7 +220,7 @@ impl Battle<'_> {
             .as_ref()
             .map_or(0, |rules| rules.attack_conversion_from_defense_bp());
         let defense = self.defense_with_buff(actor, buffs.defense_bp);
-        stats
+        let attack = stats
             .attack
             .saturating_add(percentage_of(
                 stats.base_attack,
@@ -198,7 +228,19 @@ impl Battle<'_> {
             ))
             .saturating_add(percentage_of(defense, conversion_bp))
             .saturating_add(flat)
-            .saturating_add(buffs.attack_flat)
+            .saturating_add(buffs.attack_flat);
+        if actor < self.plan.ally_count {
+            return attack;
+        }
+        let reduction = self
+            .allies()
+            .filter(|&owner| self.units[owner].hp > 0)
+            .filter_map(|owner| {
+                self.mechanics(owner)
+                    .map(|rules| rules.attack_reduction_bp(self, owner, actor))
+            })
+            .fold(0_u32, u32::saturating_add);
+        attack.saturating_sub(percentage_of(stats.base_attack, reduction))
     }
 
     pub(super) fn defense_with_buff(&self, actor: usize, buff_bp: u32) -> u32 {

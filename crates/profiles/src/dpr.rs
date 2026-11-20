@@ -1,4 +1,4 @@
-use star_rail_battle_core::{OfficialCharacter, OfficialStats, supports_official_dpr};
+use star_rail_battle_core::{OfficialCharacter, OfficialStats, supports_official_dpr_variant};
 
 use crate::{Catalog, Error, FrozenCharacter, ScaledStat};
 
@@ -15,9 +15,8 @@ impl Catalog {
         let loadout = &member.loadout;
         let config = &loadout.config;
         if self.data_version != DATA_VERSION
-            || !supports_official_dpr(id)
+            || !supports_official_dpr_variant(id, &loadout.variant_id)
             || config.level != 80
-            || loadout.variant_id != "base"
             || loadout.affinitive_eidolon
         {
             return Ok(None);

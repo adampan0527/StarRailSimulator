@@ -23,7 +23,9 @@ pub use analysis::{
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
 use official::{Mechanics, SkillPoints, SushangState, YanqingState};
-pub use official::{OfficialCharacter, OfficialStats, supports_official_dpr};
+pub use official::{
+    OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
+};
 use periodic::{ActiveSkillDot, LukaState};
 use protection::{CounterState, Freeze, Shield};
 use setup::Kit;
@@ -46,7 +48,7 @@ struct UnitState {
     gauge_quanta: u64,
     normal_turns: u32,
     advanced_to_front: bool,
-    statuses: [Option<Status>; 8],
+    statuses: [Option<Status>; 9],
     attack_bonus: Option<(u32, u32)>,
     crit_rate_bonus_bp: u32,
     frozen: Option<Freeze>,
@@ -121,7 +123,7 @@ impl<'a> Battle<'a> {
                     gauge_quanta: GAUGE_FULL,
                     normal_turns: 0,
                     advanced_to_front: false,
-                    statuses: [None; 8],
+                    statuses: [None; 9],
                     attack_bonus: None,
                     crit_rate_bonus_bp: 0,
                     frozen: None,
@@ -178,6 +180,7 @@ impl<'a> Battle<'a> {
                 mechanics.on_battle_start(&mut battle, actor);
             }
         }
+        battle.notify_wave_start();
         battle.advance_to_decision();
         battle
     }
@@ -630,6 +633,13 @@ impl<'a> Battle<'a> {
                         self.set_toughness(actor, actor, kit.max_toughness());
                     }
                     self.reset_gauge(actor);
+                    for owner in self.allies() {
+                        if self.units[owner].hp > 0
+                            && let Some(mechanics) = self.mechanics(owner)
+                        {
+                            mechanics.on_enemy_turn_start(self, owner, actor);
+                        }
+                    }
                     if let Kit::Enemy(enemy) = kit {
                         self.resolve_enemy(actor, enemy);
                     }
@@ -649,6 +659,17 @@ impl<'a> Battle<'a> {
             } else {
                 self.wave_index += 1;
                 self.emit(EventKind::WaveStarted, None, None);
+                self.notify_wave_start();
+            }
+        }
+    }
+
+    fn notify_wave_start(&mut self) {
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.on_wave_start(self, owner);
             }
         }
     }

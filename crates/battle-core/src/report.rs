@@ -28,6 +28,7 @@ pub enum StatusKind {
     ResistanceDown,
     Frozen,
     DotVulnerability,
+    EffectResistanceDown,
 }
 
 impl StatusKind {
@@ -43,6 +44,7 @@ impl StatusKind {
             Self::ResistanceDown => 5,
             Self::Frozen => 6,
             Self::DotVulnerability => 7,
+            Self::EffectResistanceDown => 8,
         }
     }
 }

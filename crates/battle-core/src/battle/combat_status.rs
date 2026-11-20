@@ -8,6 +8,7 @@ pub(super) enum DebuffKind {
     DefenseDown,
     Vulnerability,
     DotVulnerability,
+    EffectResistanceDown,
     ResistanceDown(Element),
 }
 
@@ -18,6 +19,7 @@ impl DebuffKind {
             Self::DefenseDown => StatusKind::DefenseDown,
             Self::Vulnerability => StatusKind::Vulnerability,
             Self::DotVulnerability => StatusKind::DotVulnerability,
+            Self::EffectResistanceDown => StatusKind::EffectResistanceDown,
             Self::ResistanceDown(_) => StatusKind::ResistanceDown,
         }
     }
@@ -98,6 +100,24 @@ impl Battle<'_> {
 
     pub(super) fn apply_vulnerability(&mut self, actor: usize, target: usize, bp: u32, turns: u32) {
         self.apply_debuff(actor, target, DebuffKind::Vulnerability, bp, turns);
+    }
+
+    pub(super) fn vulnerability_from(&self, source: usize, target: usize) -> u32 {
+        self.units[target]
+            .debuffs
+            .iter()
+            .find(|debuff| debuff.kind == DebuffKind::Vulnerability && debuff.source == source)
+            .map_or(0, |debuff| debuff.bp)
+    }
+
+    pub(super) fn apply_effect_resistance_down(
+        &mut self,
+        actor: usize,
+        target: usize,
+        bp: u32,
+        turns: u32,
+    ) {
+        self.apply_debuff(actor, target, DebuffKind::EffectResistanceDown, bp, turns);
     }
 
     pub(super) fn apply_dot_vulnerability(

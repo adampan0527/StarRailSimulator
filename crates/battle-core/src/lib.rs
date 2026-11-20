@@ -11,7 +11,7 @@ mod rng;
 pub use battle::{
     Battle, DprCharacter, DprCredit, DprHit, DprResult, DprScenario, DprTarget, OfficialCharacter,
     OfficialStats, PreparedBattle, STANDARD_DPR_SCENARIO, VictorySearch, VictorySolution,
-    calculate_dpr, search_fastest_victory, supports_official_dpr,
+    calculate_dpr, search_fastest_victory, supports_official_dpr, supports_official_dpr_variant,
 };
 pub use contract::{
     Action, AllyInput, BattleError, Command, Config, EnemyInput, InitialInput, LightCone, Relic,

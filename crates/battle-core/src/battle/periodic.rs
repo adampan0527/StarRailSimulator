@@ -3,6 +3,15 @@ use crate::{Action, fixture::Element};
 use super::{Battle, resolve::PeriodicHit};
 
 #[derive(Clone, Copy)]
+pub(super) struct DotEvent {
+    pub source: usize,
+    pub target: usize,
+    pub element: Element,
+    pub origin: Action,
+    pub from_break: bool,
+}
+
+#[derive(Clone, Copy)]
 pub(super) enum DotScale {
     Attack(u16),
     TargetHp { hp_bp: u16, attack_cap_bp: u16 },
@@ -47,6 +56,18 @@ impl Battle<'_> {
             || dot.max_stacks == 0
             || !self.roll_effect(source, target, chance_bp)
         {
+            return false;
+        }
+        self.inflict_skill_dot(source, target, dot)
+    }
+
+    pub(super) fn inflict_skill_dot(
+        &mut self,
+        source: usize,
+        target: usize,
+        dot: SkillDot,
+    ) -> bool {
+        if self.hp(target).0 == 0 || dot.turns == 0 || dot.max_stacks == 0 {
             return false;
         }
         let existing = self.units[target]
@@ -124,16 +145,43 @@ impl Battle<'_> {
         ratio_bp: u16,
         origin: Action,
     ) {
+        self.detonate_matching_dots(actor, target, Some(element), ratio_bp, origin);
+    }
+
+    pub(super) fn detonate_all_dots(
+        &mut self,
+        actor: usize,
+        target: usize,
+        ratio_bp: u16,
+        origin: Action,
+    ) {
+        self.detonate_matching_dots(actor, target, None, ratio_bp, origin);
+    }
+
+    fn detonate_matching_dots(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Option<Element>,
+        ratio_bp: u16,
+        origin: Action,
+    ) {
         if self.hp(actor).0 == 0 {
             return;
         }
+        if element.is_none_or(|element| element == Element::Thunder) {
+            self.detonate_shocks(target, ratio_bp, origin);
+        }
         let active = self.units[target].skill_dots.clone();
-        for dot in active.into_iter().filter(|dot| dot.rule.element == element) {
+        for dot in active
+            .into_iter()
+            .filter(|dot| element.is_none_or(|value| dot.rule.element == value))
+        {
             self.periodic_hit(
                 dot.source,
                 target,
                 PeriodicHit {
-                    element,
+                    element: dot.rule.element,
                     damage: dot.rule.damage,
                     stacks: dot.stacks,
                     ratio_bp,
@@ -142,8 +190,11 @@ impl Battle<'_> {
             );
         }
         let breaks = self.units[target].break_dots.clone();
-        for dot in breaks.into_iter().filter(|dot| dot.element == element) {
-            self.break_dot_hit(dot.source, target, element, origin, ratio_bp);
+        for dot in breaks
+            .into_iter()
+            .filter(|dot| element.is_none_or(|value| dot.element == value))
+        {
+            self.break_dot_hit(dot.source, target, dot.element, origin, ratio_bp);
         }
     }
 }

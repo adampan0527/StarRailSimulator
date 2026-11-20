@@ -19,7 +19,7 @@ mod yanqing;
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use super::Battle;
+use super::{Battle, periodic::DotEvent};
 use crate::{
     Action, BattleError, DamageKind,
     fixture::{Ability, Effect, Element, Stats, Target},
@@ -494,10 +494,53 @@ pub(super) trait Mechanics: Send + Sync {
     ) -> Option<u8> {
         None
     }
+
+    fn on_enemy_dot_damage(&self, _battle: &mut Battle<'_>, _owner: usize, _event: DotEvent) {}
+
+    fn on_enemy_turn_start(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
+
+    fn on_wave_start(&self, _battle: &mut Battle<'_>, _owner: usize) {}
+
+    fn ally_dot_damage_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
+    fn ally_target_damage_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _attacker: usize,
+        _enemy: usize,
+        _kind: DamageKind,
+    ) -> u32 {
+        0
+    }
+
+    fn ultimate_vulnerability_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _target: usize,
+    ) -> u32 {
+        0
+    }
+
+    fn all_resistance_down_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
+    fn attack_reduction_bp(&self, _battle: &Battle<'_>, _owner: usize, _enemy: usize) -> u32 {
+        0
+    }
 }
 
 pub fn supports_official_dpr(form_id: &str) -> bool {
     kit_builder(form_id).is_some()
+}
+
+pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
+    supports_official_dpr(form_id)
+        && (variant == "base" || (form_id == "character.1005" && variant == "novaflare"))
 }
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {

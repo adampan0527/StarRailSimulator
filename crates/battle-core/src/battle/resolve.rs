@@ -8,8 +8,10 @@ use crate::{
 };
 
 use super::{
-    Battle, DummyDamage, Kit, Status, combat_status::DebuffKind, periodic::DotScale,
-    support::OffenseBuffs,
+    Battle, DummyDamage, Kit, Status,
+    combat_status::DebuffKind,
+    periodic::{DotEvent, DotScale},
+    support::{OffenseBuffs, OffenseContext},
 };
 
 struct Hit {
@@ -32,6 +34,13 @@ struct DamageEvent {
     critical: bool,
     origin: Option<Action>,
     assisted_by: Option<usize>,
+    from_break: bool,
+}
+
+impl DamageEvent {
+    fn is_ultimate_hit(&self) -> bool {
+        self.kind == DamageKind::Direct && self.origin == Some(Action::Ultimate)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -257,6 +266,19 @@ impl Battle<'_> {
         self.roll_status(actor, target, base_chance_bp, false)
     }
 
+    pub(super) fn effective_effect_hit_rate_bp(&self, actor: usize) -> u32 {
+        let aura = self
+            .allies()
+            .filter(|&ally| actor < self.plan.ally_count && self.units[ally].hp > 0)
+            .filter_map(|ally| self.mechanics(ally))
+            .map(|mechanics| mechanics.effect_hit_rate_aura_bp())
+            .fold(0_u32, u32::saturating_add);
+        self.plan.units[actor]
+            .stats
+            .effect_hit_rate_bp
+            .saturating_add(aura)
+    }
+
     pub(super) fn roll_status(
         &mut self,
         actor: usize,
@@ -264,23 +286,19 @@ impl Battle<'_> {
         base_chance_bp: u32,
         control: bool,
     ) -> bool {
-        let battle = &*self;
-        let auras = |unit: usize| {
-            battle
-                .allies()
-                .filter(move |&ally| unit < battle.plan.ally_count && battle.units[ally].hp > 0)
-                .filter_map(|ally| battle.mechanics(ally))
-        };
-        let hit_aura_bp = auras(actor)
-            .map(|mechanics| mechanics.effect_hit_rate_aura_bp())
-            .sum();
-        let resist_aura_bp = auras(target)
+        let hit_rate = self.effective_effect_hit_rate_bp(actor);
+        let resist_aura_bp = self
+            .allies()
+            .filter(|&ally| target < self.plan.ally_count && self.units[ally].hp > 0)
+            .filter_map(|ally| self.mechanics(ally))
             .map(|mechanics| mechanics.effect_resistance_aura_bp())
-            .sum();
-        let effect_hit_rate = self.plan.units[actor]
-            .stats
-            .effect_hit_rate_bp
-            .saturating_add(hit_aura_bp);
+            .fold(0_u32, u32::saturating_add);
+        let resistance_down = self.units[target]
+            .debuffs
+            .iter()
+            .filter(|status| status.kind == DebuffKind::EffectResistanceDown)
+            .map(|status| status.bp)
+            .fold(0_u32, u32::saturating_add);
         let personal_resistance = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.effect_resistance_bonus_bp(self, target)
         });
@@ -288,7 +306,8 @@ impl Battle<'_> {
             .stats
             .effect_resistance_bp
             .saturating_add(resist_aura_bp)
-            .saturating_add(personal_resistance);
+            .saturating_add(personal_resistance)
+            .saturating_sub(resistance_down);
         let control_resistance = if control {
             self.mechanics(target)
                 .map_or(0, |mechanics| mechanics.control_resistance_bp())
@@ -296,7 +315,7 @@ impl Battle<'_> {
             0
         };
         let chance = u128::from(base_chance_bp)
-            * (10_000 + u128::from(effect_hit_rate))
+            * (10_000 + u128::from(hit_rate))
             * u128::from(10_000_u32.saturating_sub(resistance))
             * u128::from(10_000_u32.saturating_sub(control_resistance))
             / 10_000_u128.pow(3);
@@ -481,12 +500,29 @@ impl Battle<'_> {
         }
     }
 
+    fn target_auras_from(&self, owner: usize, target: usize, event: &DamageEvent) -> (u32, u32) {
+        if self.units[owner].hp == 0 || !self.enemies().contains(&target) {
+            return (0, 0);
+        }
+        self.mechanics(owner).map_or((0, 0), |mechanics| {
+            let vulnerability = if event.is_ultimate_hit() {
+                mechanics.ultimate_vulnerability_bp(self, owner, target)
+            } else {
+                0
+            };
+            (
+                vulnerability,
+                mechanics.all_resistance_down_bp(self, owner, target),
+            )
+        })
+    }
+
     fn damage_target(
         &self,
         actor: usize,
         target: usize,
         element: Element,
-        kind: DamageKind,
+        event: &DamageEvent,
         allow_source: impl Fn(usize) -> bool,
     ) -> DamageTarget {
         let plan = &self.plan.units[target];
@@ -503,8 +539,15 @@ impl Battle<'_> {
             .filter(|status| allow_source(status.source))
             .map_or(0, |status| status.magnitude);
         let mut vulnerability = legacy_vulnerability.saturating_add(sum(DebuffKind::Vulnerability));
-        if kind == DamageKind::DamageOverTime {
+        if event.kind == DamageKind::DamageOverTime {
             vulnerability = vulnerability.saturating_add(sum(DebuffKind::DotVulnerability));
+        }
+        let mut field_resistance_down = 0_u32;
+        for owner in self.allies().filter(|&owner| allow_source(owner)) {
+            let (ultimate_vulnerability, resistance_down) =
+                self.target_auras_from(owner, target, event);
+            vulnerability = vulnerability.saturating_add(ultimate_vulnerability);
+            field_resistance_down = field_resistance_down.saturating_add(resistance_down);
         }
         let personal_penetration = self.mechanics(actor).map_or(0, |mechanics| {
             mechanics.resistance_penetration_bp(self, actor, element)
@@ -517,6 +560,7 @@ impl Battle<'_> {
             vulnerability_bp: vulnerability,
             defense_down_bp: sum(DebuffKind::DefenseDown),
             resistance_down_bp: sum(DebuffKind::ResistanceDown(element))
+                .saturating_add(field_resistance_down)
                 .saturating_add(personal_penetration)
                 .saturating_add(if element == Element::Wind {
                     self.units[actor].active_penetration_bp
@@ -781,6 +825,7 @@ impl Battle<'_> {
                 critical: crit,
                 origin,
                 assisted_by,
+                from_break: false,
             },
             |view| {
                 let mut adjusted = source;
@@ -818,6 +863,7 @@ impl Battle<'_> {
                         critical: false,
                         origin,
                         assisted_by: None,
+                        from_break: true,
                     },
                     |view| damage::weakness_break(source, view.target, element),
                 );
@@ -947,6 +993,7 @@ impl Battle<'_> {
                 critical: false,
                 origin: Some(origin),
                 assisted_by: None,
+                from_break: true,
             },
             |view| damage::break_status(source, view.target, element, ratio_bp),
         );
@@ -965,14 +1012,21 @@ impl Battle<'_> {
             critical,
             origin,
             assisted_by,
+            from_break,
         } = event;
+        let offense = OffenseContext {
+            actor,
+            enemy: self.enemies().contains(&target).then_some(target),
+            element,
+            kind,
+        };
         let reduction_bp = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
         });
         let damage_with = |allow: &dyn Fn(usize) -> bool| {
-            let mut defender = self.damage_target(actor, target, element, kind, allow);
+            let mut defender = self.damage_target(actor, target, element, &event, allow);
             defender.damage_reduction_bp = reduction_bp;
-            let bonus = self.offense_buffs(actor, element, allow);
+            let bonus = self.offense_buffs(offense, allow);
             calculate(DamageView {
                 target: defender,
                 bonus,
@@ -999,7 +1053,8 @@ impl Battle<'_> {
                     state.statuses[StatusKind::Vulnerability.index()].map(|status| status.source),
                 )
                 .chain(self.allies().filter(|&owner| {
-                    self.offense_buffs_from(owner, actor, element) != OffenseBuffs::default()
+                    self.offense_buffs_from(owner, offense) != OffenseBuffs::default()
+                        || self.target_auras_from(owner, target, &event) != (0, 0)
                 }))
                 .filter(|&source| source != actor && source < self.plan.ally_count)
                 .collect();
@@ -1037,6 +1092,26 @@ impl Battle<'_> {
             });
         } else {
             self.deal_damage(actor, target, kind, amount, critical);
+        }
+        if amount > 0
+            && kind == DamageKind::DamageOverTime
+            && offense.enemy.is_some()
+            && let Some(origin) = origin
+        {
+            let dot = DotEvent {
+                source: actor,
+                target,
+                element,
+                origin,
+                from_break,
+            };
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.on_enemy_dot_damage(self, owner, dot);
+                }
+            }
         }
     }
 
@@ -1097,7 +1172,7 @@ impl Battle<'_> {
                     }
                 }
             }
-            self.units[target].statuses = [None; 8];
+            self.units[target].statuses = [None; 9];
             self.units[target].shields.clear();
             self.units[target].shocks.clear();
             self.units[target].frozen = None;

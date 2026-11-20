@@ -1,6 +1,6 @@
 use crate::{Action, DamageKind, EventKind, fixture::Element};
 
-use super::Battle;
+use super::{Battle, periodic::DotScale, resolve::PeriodicHit};
 
 #[derive(Clone, Copy)]
 enum ShockDamage {
@@ -135,6 +135,28 @@ impl Battle<'_> {
             } else {
                 self.units[target].shocks[index].turns -= 1;
                 index += 1;
+            }
+        }
+    }
+
+    pub(super) fn detonate_shocks(&mut self, target: usize, ratio_bp: u16, origin: Action) {
+        let shocks = self.units[target].shocks.clone();
+        for shock in shocks {
+            match shock.damage {
+                ShockDamage::Skill(multiplier_bp) => self.periodic_hit(
+                    shock.source,
+                    target,
+                    PeriodicHit {
+                        element: Element::Thunder,
+                        damage: DotScale::Attack(multiplier_bp),
+                        stacks: 1,
+                        ratio_bp,
+                        origin,
+                    },
+                ),
+                ShockDamage::WeaknessBreak => {
+                    self.break_dot_hit(shock.source, target, Element::Thunder, origin, ratio_bp)
+                }
             }
         }
     }
