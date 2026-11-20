@@ -19,6 +19,7 @@
 | 第二批 | [丹恒（巡猎）](characters/dan-heng.md)、[娜塔莎](characters/natasha.md)、[佩拉](characters/pela.md) |
 | 第三批 | [三月七（存护）](characters/march-preservation.md)、[杰帕德](characters/gepard.md)、[克拉拉](characters/clara.md) |
 | 第四批 | [虎克](characters/hook.md)、[桑博](characters/sampo.md)、[卢卡](characters/luka.md) |
+| 第五批 | [姬子](characters/himeko.md)、[素裳](characters/sushang.md)、[彦卿](characters/yanqing.md) |
 
 - 正式角色的有效技能等级从档案解析，技能倍率来自冻结的 4.7.0 快照。面板计算纳入配装静态属性，生命、攻击与防御四舍五入为整数，速度保留百万分位，倍率以万分比计算。光锥和遗器战斗触发效果、秘技及客户端逐事件对照待补。
 - 固定靶机保持满生命，正常排程、承受击破、冻结和触电。80 级击破基值使用 3767.5533。雷击破触电在目标回合开始结算，冰击破冻结跳过一次行动并将下一次行动提前 50%。这些结算属于当前靶场规则。合成回放仍使用原合成版本。[游戏内冰击破教程](https://hsr.gachabase.net/tutorials/battle/2202/weakness-break-ice/beta?lang=en)
@@ -28,6 +29,7 @@
 - 技能冻结和冰击破冻结区分来源。技能冻结的冰附伤可暴击。护盾按来源独立记录并同时承受攻击，实际吸收按当时最强护盾计算。反击、护盾吸收和单场一次复苏使用有限敌人夹具验证。实际固定靶机保持待机，配队不会凭空触发受击反击。[保存配队回归](../src-tauri/src/character_archive_tests.rs)
 - Edge 模拟 IPC 验证保存配队的数值结果、角色名称、逐靶机展开、持续伤害类型、切换队伍后清除旧结果，以及 360 CSS px 宽窗口和未支持队伍提示。
 - 角色施加的灼烧、风化与裂伤按来源保留，并与同属性的击破持续伤害分开计时。桑博的易伤仅提高持续伤害，卢卡的引爆沿用裂伤来源，记录触发动作并保留原持续回合。保存配队回归核对三位角色的持续伤害明细及整队归因守恒。[配队回归](../src-tauri/src/character_archive_tests.rs)
+- 全队角色可以监听敌方弱点击破。同一次攻击的各段结算完成后，先处理出手角色的动作后效果，再按队伍站位处理追击触发，排队结算。姬子的群体追击和彦卿的单体追击保留各自来源。素裳的击破特攻同时用于物理击破伤害和后续击破裂伤。[配队回归](../src-tauri/src/character_archive_tests.rs)
 
 ## 后续归因扩展
 

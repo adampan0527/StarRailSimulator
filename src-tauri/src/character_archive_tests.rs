@@ -83,13 +83,13 @@ fn official_saved_team_runs_fixed_dpr_with_resolved_loadouts() {
 
     let slots = [
         Some(arlan.into()),
-        Some("character.1003".into()),
+        Some("character.1004".into()),
         None,
         None,
     ];
     let mixed = archive.save_team(None, "有未接入角色", &slots).unwrap();
     let checked = archive.dpr_readiness(&mixed.id).unwrap();
-    assert_eq!(checked.unsupported_characters, ["姬子"]);
+    assert_eq!(checked.unsupported_characters, ["瓦尔特"]);
     assert!(checked.result.is_none());
 }
 
@@ -197,6 +197,35 @@ fn saved_periodic_damage_team_keeps_the_source_for_each_character() {
             .map(|entry| entry.own_damage + entry.assist_damage)
             .sum::<u64>()
     );
+}
+
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_break_and_follow_up_team_runs_with_the_frozen_catalog() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let forms = ["character.1003", "character.1206", "character.1209"];
+    let saved = archive
+        .save_team(
+            None,
+            "击破与追击",
+            &[
+                Some(forms[0].into()),
+                Some(forms[1].into()),
+                Some(forms[2].into()),
+                None,
+            ],
+        )
+        .unwrap();
+    let run = || archive.dpr_readiness(&saved.id).unwrap().result.unwrap();
+    let result = run();
+    assert!(result.characters.iter().all(|actor| actor.own_damage > 0));
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| hit.kind == DamageKind::WeaknessBreak));
+    assert!(hits().any(|hit| hit.kind == DamageKind::FollowUp && hit.source_id == forms[0]));
+    assert_eq!(result, run());
 }
 
 fn remove_archiver_schema(db: &rusqlite::Connection) {
