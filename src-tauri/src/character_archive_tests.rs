@@ -495,6 +495,64 @@ fn saved_abundance_team_credits_eidolon_damage_bonus_and_resistance_down() {
     );
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_follow_up_team_replays_bounces_and_keeps_each_damage_source() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [misha, moze, xueyi, hanya] = [
+        "character.1312",
+        "character.1223",
+        "character.1214",
+        "character.1215",
+    ];
+    let team = archive
+        .save_team(
+            None,
+            "弹射与追击",
+            &[misha, moze, xueyi, hanya].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    let ultimate_hits = || {
+        hits().filter(|hit| {
+            hit.source_id == misha
+                && hit.action == Action::Ultimate
+                && hit.kind == DamageKind::Direct
+        })
+    };
+    let ultimate = ultimate_hits().next().unwrap().av_micros;
+    assert!(
+        ultimate_hits()
+            .filter(|hit| hit.av_micros == ultimate)
+            .count()
+            >= 4
+    );
+    for teammate in [moze, xueyi] {
+        assert!(
+            hits().any(|hit| hit.source_id == teammate && hit.kind == DamageKind::FollowUp),
+            "{teammate}"
+        );
+    }
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;

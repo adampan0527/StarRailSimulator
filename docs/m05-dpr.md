@@ -24,6 +24,7 @@
 | 第七批 | [桂乃芬](characters/guinaifen.md)、[椒丘](characters/jiaoqiu.md)、[卡芙卡（原版与强化版）](characters/kafka.md) |
 | 第八批 | [加拉赫](characters/gallagher.md)、[寒鸦](characters/hanya.md)、[驭空](characters/yukong.md) |
 | 第九批 | [白露](characters/bailu.md)、[玲可](characters/lynx.md)、[罗刹](characters/luocha.md) |
+| 第十批 | [米沙](characters/misha.md)、[貊泽](characters/moze.md)、[雪衣](characters/xueyi.md) |
 
 - 正式角色的有效技能等级从档案解析，技能倍率来自冻结的 4.7.0 快照。面板计算纳入配装静态属性，生命、攻击与防御四舍五入为整数，速度保留百万分位，倍率以万分比计算。光锥和遗器战斗触发效果、秘技及客户端逐事件对照待补。
 - 固定靶机保持满生命，正常排程、承受击破、冻结和触电。80 级击破基值使用 3767.5533。雷击破触电在目标回合开始结算，冰击破冻结跳过一次行动并将下一次行动提前 50%。这些结算属于当前靶场规则。合成回放仍使用原合成版本。[游戏内冰击破教程](https://hsr.gachabase.net/tutorials/battle/2202/weakness-break-ice/beta?lang=en)
@@ -39,6 +40,7 @@
 - 加拉赫的酩酊增加即时击破伤害，寒鸦的负担累计合格指令并返还战技点，驭空的鸣弦号令随普通回合消耗。虚数击破另结算禁锢延后。暴击率光环参与直接伤害归因时，各次重算复用实际命中的同一次随机判定值。[配队回归](../src-tauri/src/character_archive_tests.rs)
 - 白露的过量治疗可暂时提高角色生命上限，生命倍率伤害按该增益的来源归因。保存配队验证白露 E4 的增伤贡献。生息受击治疗、护盾吸收与致命攻击救援由有限敌人夹具复验。[角色规则与测试](characters/bailu.md)
 - 玲可的求生反应提高生命上限并随受益者的回合计时。量子纠缠在目标回合开始造成追加伤害，保留原击破者。罗刹的自动治疗、净化和结界由有限敌人夹具验证。保存四人配队核对玲可的命中与白露 E4、罗刹 E6 的增益归因。[配队回归](../src-tauri/src/character_archive_tests.rs)
+- 米沙按实际消耗的战技点增加终结技段数，雪衣按实际削韧累计恶报，貊泽离场后保留针对猎物的附伤和追击。保存四人配队核对米沙的终结技弹射、貊泽和雪衣的追击来源及整队归因守恒。[配队回归](../src-tauri/src/character_archive_tests.rs)
 
 ## 后续归因扩展
 
