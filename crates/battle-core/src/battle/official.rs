@@ -24,6 +24,7 @@ mod sampo;
 mod serval;
 mod sushang;
 mod tingyun;
+mod xueyi;
 mod yanqing;
 mod yukong;
 
@@ -31,6 +32,7 @@ pub(super) use {
     bailu::{BailuState, Invigoration},
     hanya::HanyaState,
     jiaoqiu::Field as JiaoqiuField,
+    xueyi::XueyiState,
     yukong::YukongState,
 };
 
@@ -413,6 +415,19 @@ pub(super) trait Mechanics: Send + Sync {
     ) {
     }
 
+    fn ignores_weakness(&self, _action: Option<Action>, _kind: DamageKind) -> bool {
+        false
+    }
+
+    fn on_toughness_reduced(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _amount: u16,
+    ) {
+    }
+
     fn on_attack_finished(
         &self,
         _battle: &mut Battle<'_>,
@@ -639,6 +654,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1207" => Some(yukong::build),
         "character.1210" => Some(guinaifen::build),
         "character.1211" => Some(bailu::build),
+        xueyi::FORM => Some(xueyi::build),
         "character.1215" => Some(hanya::build),
         "character.1218" => Some(jiaoqiu::build),
         "character.1301" => Some(gallagher::build),
