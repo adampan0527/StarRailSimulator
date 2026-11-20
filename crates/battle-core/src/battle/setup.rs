@@ -191,6 +191,13 @@ impl PreparedBattle {
             ));
         }
         let mut units = self.units[..self.ally_count].to_vec();
+        let mut stats = fixture::DUMMY_STATS;
+        if units
+            .iter()
+            .any(|unit| matches!(unit.kit, Kit::Official(_)))
+        {
+            stats.hp = 100_000;
+        }
         units.extend(
             toughness
                 .iter()
@@ -199,7 +206,7 @@ impl PreparedBattle {
                     // The colon keeps internal analysis IDs distinct from input unit IDs.
                     id: format!("dpr:{}", position + 1),
                     kit: Kit::Dummy { max_toughness },
-                    stats: fixture::DUMMY_STATS,
+                    stats,
                     starting_energy_milli: 0,
                 }),
         );

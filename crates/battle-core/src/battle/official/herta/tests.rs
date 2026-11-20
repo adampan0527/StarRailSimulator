@@ -38,6 +38,7 @@ fn character(eidolon: u8) -> OfficialCharacter {
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             energy_regeneration_bp: 10_000,
+            healing_bp: 0,
         },
         skill_parameters: [
             (BASIC.into(), vec![0.5]),

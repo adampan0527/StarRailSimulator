@@ -24,6 +24,7 @@ pub struct OfficialStats {
     pub break_effect_bp: u32,
     pub effect_hit_rate_bp: u32,
     pub energy_regeneration_bp: u32,
+    pub healing_bp: u32,
 }
 
 /// Frozen effective character parameters from the supported game data version.
@@ -59,11 +60,11 @@ impl OfficialCharacter {
             || self.energy_capacity == 0
             || self.energy_capacity > 999
             || stats.hp == 0
-            || stats.hp > 10_000_000
+            || stats.hp > 100_000
             || stats.attack == 0
-            || stats.attack > 10_000_000
+            || stats.attack > 100_000
             || stats.base_attack == 0
-            || stats.base_attack > 10_000_000
+            || stats.base_attack > 100_000
             || stats.base_speed_micros == 0
             || stats.speed_micros < stats.base_speed_micros
             || stats.speed_micros > 1_000_000_000
@@ -74,9 +75,10 @@ impl OfficialCharacter {
                 stats.break_effect_bp,
                 stats.effect_hit_rate_bp,
                 stats.energy_regeneration_bp,
+                stats.healing_bp,
             ]
             .into_iter()
-            .any(|ratio| ratio > 1_000_000)
+            .any(|ratio| ratio > 100_000)
         {
             return Err(BattleError::InvalidInput(format!(
                 "{}: fixed DPR character attributes or level",
@@ -205,6 +207,71 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn after_defeat(&self, _battle: &mut Battle<'_>, _actor: usize, _target: usize) {}
+
+    fn on_enemy_defeat(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _killer: usize,
+        _target: usize,
+    ) {
+    }
+
+    fn on_ally_targeted(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _action: Action,
+    ) {
+    }
+
+    fn heal_over_time(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _origin: Action,
+    ) {
+    }
+
+    fn after_enemy_attack(&self, _battle: &mut Battle<'_>, _target: usize) {}
+
+    fn after_critical_hit(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _action: Action,
+    ) {
+    }
+
+    fn crit_rate_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _action: Option<Action>,
+        _kind: DamageKind,
+    ) -> u32 {
+        0
+    }
+
+    fn damage_multiplier_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _action: Option<Action>,
+        _kind: DamageKind,
+        base: u16,
+    ) -> u16 {
+        base
+    }
+
+    fn effect_hit_rate_aura_bp(&self) -> u32 {
+        0
+    }
 }
 
 pub fn supports_official_dpr(form_id: &str) -> bool {

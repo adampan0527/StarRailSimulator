@@ -23,6 +23,9 @@ pub enum StatusKind {
     Shield,
     Vulnerability,
     SpeedUp,
+    Slow,
+    DefenseDown,
+    ResistanceDown,
 }
 
 impl StatusKind {
@@ -33,6 +36,9 @@ impl StatusKind {
             Self::Shield => 0,
             Self::Vulnerability => 1,
             Self::SpeedUp => 2,
+            Self::Slow => 3,
+            Self::DefenseDown => 4,
+            Self::ResistanceDown => 5,
         }
     }
 }
@@ -99,6 +105,7 @@ pub enum EventKind {
     },
     StatusApplied(StatusKind),
     StatusExpired(StatusKind),
+    StatusCleared,
     ShieldDepleted,
     UnitDefeated,
     BattleEnded(Outcome),

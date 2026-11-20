@@ -22,7 +22,14 @@ export const outcomeNames: Record<Outcome, string> = {
   turn_limit: '达到回合上限',
 };
 
-const statusNames = { shield: '护盾', vulnerability: '易伤', speed_up: '加速' };
+const statusNames = {
+  shield: '护盾',
+  vulnerability: '易伤',
+  speed_up: '加速',
+  slow: '减速',
+  defense_down: '减防',
+  resistance_down: '减抗',
+};
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
 export function av(micros: number) {
@@ -67,6 +74,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return `施加${statusNames[kind.detail]}`;
     case 'status_expired':
       return `${statusNames[kind.detail]}结束`;
+    case 'status_cleared':
+      return '解除状态';
     case 'shield_depleted':
       return '护盾耗尽';
     case 'unit_defeated':

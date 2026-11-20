@@ -70,7 +70,7 @@ pub(super) struct DummyDamage {
     pub kind: DamageKind,
     pub critical: bool,
     pub amount: u32,
-    pub assist: Option<(usize, u32)>,
+    pub assists: Vec<(usize, u32)>,
     pub action: Action,
 }
 
@@ -139,19 +139,16 @@ pub fn calculate_dpr(
             .drain(..)
             .filter(|hit| hit.av_micros < end)
         {
-            let mut own_damage = hit.amount;
-            let assist = hit.assist.filter(|&(_, amount)| amount > 0);
-            if let Some((owner, amount)) = assist {
-                own_damage -= amount;
-                characters[owner].assist_damage += u64::from(amount);
-            }
+            let own_damage =
+                hit.amount - hit.assists.iter().map(|&(_, amount)| amount).sum::<u32>();
             let actor = &mut characters[hit.actor];
             actor.own_damage += u64::from(own_damage);
             let mut credits = vec![DprCredit {
                 unit_id: actor.unit_id.clone(),
                 amount: own_damage,
             }];
-            if let Some((owner, amount)) = assist {
+            for (owner, amount) in hit.assists {
+                characters[owner].assist_damage += u64::from(amount);
                 credits.push(DprCredit {
                     unit_id: characters[owner].unit_id.clone(),
                     amount,

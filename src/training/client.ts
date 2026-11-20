@@ -70,7 +70,13 @@ export type Unit = {
   speed_micros: number;
 };
 
-type Status = 'shield' | 'vulnerability' | 'speed_up';
+type Status =
+  | 'shield'
+  | 'vulnerability'
+  | 'speed_up'
+  | 'slow'
+  | 'defense_down'
+  | 'resistance_down';
 type EventKind =
   | {
       event:
@@ -80,6 +86,7 @@ type EventKind =
         | 'follow_up'
         | 'weakness_broken'
         | 'shield_depleted'
+        | 'status_cleared'
         | 'unit_defeated';
     }
   | { event: 'action'; detail: Action }

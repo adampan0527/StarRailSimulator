@@ -59,6 +59,7 @@ impl Catalog {
             effect_hit_rate_bp: ratio(panel.effect_hit_rate),
             break_effect_bp: ratio(panel.break_effect),
             energy_regeneration_bp: ratio(panel.energy_regeneration),
+            healing_bp: ratio(panel.healing_boost),
         };
         let enabled_trace_ids = variant
             .traces

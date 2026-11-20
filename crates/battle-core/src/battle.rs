@@ -1,4 +1,5 @@
 mod analysis;
+mod combat_status;
 mod official;
 mod resolve;
 mod setup;
@@ -17,6 +18,7 @@ pub use analysis::{
     DprCharacter, DprCredit, DprHit, DprResult, DprScenario, DprTarget, STANDARD_DPR_SCENARIO,
     VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
+use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
 use official::{Mechanics, SkillPoints};
 pub use official::{OfficialCharacter, OfficialStats, supports_official_dpr};
 use setup::Kit;
@@ -38,11 +40,21 @@ struct UnitState {
     gauge_quanta: u64,
     normal_turns: u32,
     advanced_to_front: bool,
-    statuses: [Option<Status>; 3],
+    statuses: [Option<Status>; 6],
     attack_bonus: Option<(u32, u32)>,
     crit_rate_bonus_bp: u32,
     frozen: Option<(usize, Action)>,
     shocks: Vec<shock::Shock>,
+    debuffs: Vec<Debuff>,
+    heals_over_time: Vec<HealOverTime>,
+    break_dots: Vec<BreakDot>,
+    survival_triggered: bool,
+    finished_turns: u32,
+    next_attack_bonus_bp: u32,
+    active_attack_bonus_bp: u32,
+    pending_penetration: Option<(u32, u32)>,
+    active_penetration_bp: u32,
+    penetration_ready_after_turn: u32,
 }
 
 impl UnitState {
@@ -87,11 +99,21 @@ impl<'a> Battle<'a> {
                     gauge_quanta: GAUGE_FULL,
                     normal_turns: 0,
                     advanced_to_front: false,
-                    statuses: [None; 3],
+                    statuses: [None; 6],
                     attack_bonus: None,
                     crit_rate_bonus_bp: 0,
                     frozen: None,
                     shocks: Vec::new(),
+                    debuffs: Vec::new(),
+                    heals_over_time: Vec::new(),
+                    break_dots: Vec::new(),
+                    survival_triggered: false,
+                    finished_turns: 0,
+                    next_attack_bonus_bp: 0,
+                    active_attack_bonus_bp: 0,
+                    pending_penetration: None,
+                    active_penetration_bp: 0,
+                    penetration_ready_after_turn: 0,
                 })
                 .collect(),
             outcome: Outcome::Ongoing,
@@ -199,6 +221,8 @@ impl<'a> Battle<'a> {
         } else {
             self.set_energy(actor, actor, 0);
         }
+        self.notify_ally_targets(actor, target, ability.target, command.action);
+        self.activate_attack_bonuses(actor, command.action);
         let mechanics = self.mechanics(actor);
         if let Some(mechanics) = &mechanics {
             mechanics.before_action(self, actor, command.action, target);
@@ -209,6 +233,8 @@ impl<'a> Battle<'a> {
             mechanics.after_action(self, actor, command.action, target);
         }
         self.finish_attack(actor, command.action);
+        self.units[actor].active_attack_bonus_bp = 0;
+        self.units[actor].active_penetration_bp = 0;
         self.action = None;
         if ordinary {
             self.finish_turn(actor);
@@ -364,6 +390,56 @@ impl<'a> Battle<'a> {
         self.units[unit].frozen.is_some()
     }
 
+    fn notify_ally_targets(
+        &mut self,
+        source: usize,
+        target: Option<usize>,
+        targeting: Target,
+        action: Action,
+    ) {
+        let targets = match (targeting, target) {
+            (Target::Ally, Some(unit)) => unit..unit + 1,
+            (Target::AllAllies, None) => self.allies(),
+            _ => return,
+        };
+        for owner in targets {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.on_ally_targeted(self, owner, source, action);
+            }
+        }
+    }
+
+    fn activate_attack_bonuses(&mut self, actor: usize, action: Action) {
+        let state = &mut self.units[actor];
+        state.active_attack_bonus_bp = std::mem::take(&mut state.next_attack_bonus_bp);
+        if let Some((bp, cooldown)) = state.pending_penetration.take() {
+            state.active_penetration_bp = bp;
+            let after_this_turn = u32::from(action != Action::Ultimate);
+            state.penetration_ready_after_turn = state.finished_turns + after_this_turn + cooldown;
+        }
+    }
+
+    fn arm_next_attack_bonus(&mut self, actor: usize, bp: u32) {
+        self.units[actor].next_attack_bonus_bp = bp;
+    }
+
+    fn arm_resistance_penetration(&mut self, actor: usize, bp: u32, cooldown_turns: u32) {
+        let state = &mut self.units[actor];
+        if state.finished_turns >= state.penetration_ready_after_turn {
+            state.pending_penetration = Some((bp, cooldown_turns));
+        }
+    }
+
+    fn current_action(&self) -> Option<Action> {
+        self.action
+    }
+
+    fn take_once_per_battle(&mut self, actor: usize) -> bool {
+        !std::mem::replace(&mut self.units[actor].survival_triggered, true)
+    }
+
     fn enemies(&self) -> Range<usize> {
         let start = if self.wave_index == 0 {
             self.plan.ally_count
@@ -376,9 +452,18 @@ impl<'a> Battle<'a> {
     fn speed_micros(&self, unit: usize) -> u64 {
         let stats = self.plan.units[unit].stats;
         let bonus_bp = u64::from(self.units[unit].magnitude(StatusKind::SpeedUp));
-        stats.base_speed_micros
+        let slow_bp: u64 = self.units[unit]
+            .debuffs
+            .iter()
+            .filter(|status| status.kind == DebuffKind::Slow)
+            .map(|status| u64::from(status.bp))
+            .sum();
+        let speed = stats.base_speed_micros
             + stats.flat_speed_micros
-            + stats.base_speed_micros * bonus_bp / 10_000
+            + stats.base_speed_micros * bonus_bp / 10_000;
+        speed
+            .saturating_sub(stats.base_speed_micros * slow_bp / 10_000)
+            .max(1_000_000)
     }
 
     fn turn_candidates(&self) -> impl Iterator<Item = usize> {
@@ -427,11 +512,13 @@ impl<'a> Battle<'a> {
             let kit = &self.plan.units[actor].kit;
             match kit {
                 Kit::Ally(_) | Kit::Official(_) => {
+                    self.tick_heals_over_time(actor);
                     self.ordinary_actor = Some(actor);
                     return;
                 }
                 Kit::Enemy(_) | Kit::Dummy { .. } => {
                     self.tick_shocks(actor);
+                    self.tick_break_dots(actor);
                     if self.units[actor].hp == 0 {
                         self.resolve_wave_or_end();
                         continue;
