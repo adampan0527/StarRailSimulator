@@ -250,6 +250,20 @@ impl Battle<'_> {
         *hp -= amount;
         if amount > 0 {
             self.emit(EventKind::HpSpent { amount }, Some(actor), Some(actor));
+            self.notify_ally_hp_loss(actor);
+        }
+    }
+
+    fn notify_ally_hp_loss(&mut self, target: usize) {
+        if target >= self.plan.ally_count || self.units[target].hp == 0 {
+            return;
+        }
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.after_ally_hp_loss(self, owner, target);
+            }
         }
     }
 
@@ -570,6 +584,7 @@ impl Battle<'_> {
             vulnerability_bp: vulnerability,
             defense_down_bp: sum(DebuffKind::DefenseDown),
             resistance_down_bp: sum(DebuffKind::ResistanceDown(element))
+                .saturating_add(sum(DebuffKind::AllResistanceDown))
                 .saturating_add(field_resistance_down)
                 .saturating_add(personal_penetration)
                 .saturating_add(if element == Element::Wind {
@@ -1037,9 +1052,25 @@ impl Battle<'_> {
             element,
             kind,
         };
-        let reduction_bp = self.mechanics(target).map_or(0, |mechanics| {
+        let incoming_reduction_bp = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
         });
+        let reduction_bp = if self.enemies().contains(&actor) {
+            let remaining_bp = self
+                .allies()
+                .filter(|&owner| self.units[owner].hp > 0)
+                .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
+                .fold(
+                    10_000_u32.saturating_sub(incoming_reduction_bp),
+                    |bp, (owner, rules)| {
+                        bp * 10_000_u32.saturating_sub(rules.enemy_damage_reduction_bp(self, owner))
+                            / 10_000
+                    },
+                );
+            10_000 - remaining_bp
+        } else {
+            incoming_reduction_bp
+        };
         let applied_buffs = self.offense_buffs(offense, |_| true);
         // Compare the same roll with each counterfactual crit rate during attribution.
         let crit_roll = crit_rate_bp
@@ -1069,7 +1100,9 @@ impl Battle<'_> {
                 .filter(|status| {
                     matches!(
                         status.kind,
-                        DebuffKind::DefenseDown | DebuffKind::Vulnerability
+                        DebuffKind::DefenseDown
+                            | DebuffKind::Vulnerability
+                            | DebuffKind::AllResistanceDown
                     ) || status.kind == DebuffKind::ResistanceDown(element)
                         || (status.kind == DebuffKind::DotVulnerability
                             && kind == DamageKind::DamageOverTime)
@@ -1175,6 +1208,9 @@ impl Battle<'_> {
             && let Some(mechanics) = self.mechanics(target)
         {
             mechanics.after_hp_loss(self, target, hp_loss);
+        }
+        if hp_loss > 0 {
+            self.notify_ally_hp_loss(target);
         }
         if self.units[target].hp == 0 {
             if let Some(mechanics) = self.mechanics(target)

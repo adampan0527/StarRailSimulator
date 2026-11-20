@@ -13,6 +13,7 @@ mod hook;
 mod jiaoqiu;
 mod kafka;
 mod luka;
+mod luocha;
 mod march_preservation;
 mod natasha;
 mod pela;
@@ -32,7 +33,7 @@ use crate::{
     Action, BattleError, DamageKind,
     fixture::{Ability, Effect, Element, Stats, Target},
 };
-pub(super) use gallagher::GallagherState;
+pub(super) use {gallagher::GallagherState, luocha::LuochaState};
 
 /// Static stats resolved by the profile layer before a fixed-target simulation.
 pub struct OfficialStats {
@@ -417,6 +418,8 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn after_hp_loss(&self, _battle: &mut Battle<'_>, _actor: usize, _hp_lost: u32) {}
 
+    fn after_ally_hp_loss(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
+
     fn after_non_primary_critical_hit(
         &self,
         _battle: &mut Battle<'_>,
@@ -572,6 +575,10 @@ pub(super) trait Mechanics: Send + Sync {
     fn attack_reduction_bp(&self, _battle: &Battle<'_>, _owner: usize, _enemy: usize) -> u32 {
         0
     }
+
+    fn enemy_damage_reduction_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        0
+    }
 }
 
 pub fn supports_official_dpr(form_id: &str) -> bool {
@@ -607,6 +614,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1109" => Some(hook::build),
         "character.1111" => Some(luka::build),
         "character.1202" => Some(tingyun::build),
+        luocha::FORM => Some(luocha::build),
         "character.1206" => Some(sushang::build),
         "character.1207" => Some(yukong::build),
         "character.1210" => Some(guinaifen::build),

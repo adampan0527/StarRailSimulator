@@ -27,6 +27,23 @@ impl Battle<'_> {
         !self.units[target].shocks.is_empty()
     }
 
+    pub(super) fn clear_shock(&mut self, target: usize) -> bool {
+        let shocks = &mut self.units[target].shocks;
+        if shocks.is_empty() {
+            return false;
+        }
+        let shock = shocks.remove(0);
+        self.emit(
+            EventKind::ShockExpired {
+                origin: shock.origin,
+                from_break: shock.is_break(),
+            },
+            Some(shock.source),
+            Some(target),
+        );
+        true
+    }
+
     pub(super) fn apply_skill_shock(
         &mut self,
         actor: usize,

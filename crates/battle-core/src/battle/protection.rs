@@ -175,6 +175,18 @@ impl Battle<'_> {
         true
     }
 
+    pub(super) fn clear_freeze(&mut self, target: usize) -> bool {
+        let Some(freeze) = self.units[target].frozen.take() else {
+            return false;
+        };
+        self.emit(
+            EventKind::StatusExpired(StatusKind::Frozen),
+            Some(freeze.source),
+            Some(target),
+        );
+        true
+    }
+
     pub(super) fn thaw(&mut self, target: usize) -> bool {
         let Some(mut freeze) = self.units[target].frozen.take() else {
             return false;
