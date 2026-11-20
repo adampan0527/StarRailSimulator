@@ -14,6 +14,11 @@ StarRailSimulator 是一款采用 Rust + Tauri 的 Windows《崩坏：星穹铁�
 | 查看开发顺序、当前进度或验收里程碑 | 打开 [开发路线图 HTML 汇报](html_report/01_开发路线图/index.html)。 |
 | 修改里程碑、实现相关工作或新增 HTML 汇报 | 遵循下方的同步要求和 [HTML 汇报维护说明](html_report/README.md)。 |
 
+## 功能变更提交与打包
+
+- 每次完成新增功能或功能修复后，必须创建 Git 提交，并基于该提交运行 `npm.cmd run desktop:build`，生成新的 Windows x64 Release `.exe`。
+- 确认本次构建产出了 `target/x86_64-pc-windows-msvc/release/star-rail-simulator.exe`，并在交付时提供提交哈希和可执行文件路径。
+
 ## HTML 汇报
 
 - 每份汇报放在 `html_report/` 下的独立目录，按创建顺序命名为 `01_名字`、`02_名字`、`03_名字`……已有汇报沿用原编号，更新路线图不另起一份。
