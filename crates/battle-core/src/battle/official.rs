@@ -1,4 +1,5 @@
 mod arlan;
+mod herta;
 
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -205,17 +206,22 @@ pub(super) trait Mechanics: Send + Sync {
     fn after_defeat(&self, _battle: &mut Battle<'_>, _actor: usize, _target: usize) {}
 }
 
-// Register supported 4.7.0 character kits here after their acceptance review.
 pub fn supports_official_dpr(form_id: &str) -> bool {
-    matches!(form_id, "character.1008")
+    kit_builder(form_id).is_some()
 }
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
-    match input.form_id.as_str() {
-        "character.1008" => arlan::build(input),
-        _ => Err(BattleError::UnsupportedData(format!(
-            "character form {}",
-            input.form_id
-        ))),
+    let build = kit_builder(&input.form_id)
+        .ok_or_else(|| BattleError::UnsupportedData(format!("character form {}", input.form_id)))?;
+    build(input)
+}
+
+type KitBuilder = fn(&OfficialCharacter) -> Result<OfficialKit, BattleError>;
+
+fn kit_builder(form_id: &str) -> Option<KitBuilder> {
+    match form_id {
+        "character.1008" => Some(arlan::build),
+        "character.1013" => Some(herta::build),
+        _ => None,
     }
 }
