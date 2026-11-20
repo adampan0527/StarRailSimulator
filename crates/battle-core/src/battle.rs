@@ -6,6 +6,7 @@ mod protection;
 mod resolve;
 mod setup;
 mod shock;
+mod support;
 
 use std::ops::Range;
 
@@ -28,6 +29,7 @@ use protection::{CounterState, Freeze, Shield};
 use setup::Kit;
 pub use setup::PreparedBattle;
 use std::sync::Arc;
+use support::{AllyBuff, AstaState, BronyaState, TingyunState};
 
 #[derive(Clone, Copy)]
 struct Status {
@@ -61,6 +63,10 @@ struct UnitState {
     himeko_charge: u8,
     sushang_state: SushangState,
     yanqing_state: YanqingState,
+    ally_buffs: Vec<AllyBuff>,
+    asta_state: AstaState,
+    bronya_state: BronyaState,
+    tingyun_state: TingyunState,
     survival_triggered: bool,
     finished_turns: u32,
     next_attack_bonus_bp: u32,
@@ -94,6 +100,8 @@ pub struct Battle<'a> {
     dummy_damage: Vec<DummyDamage>,
     crossed_half: Vec<usize>,
     action: Option<Action>,
+    action_target: Option<usize>,
+    attack_targets: Vec<usize>,
     pending_follow_ups: std::collections::VecDeque<resolve::FollowUp>,
     resolving_follow_up: bool,
 }
@@ -130,6 +138,10 @@ impl<'a> Battle<'a> {
                     himeko_charge: 0,
                     sushang_state: SushangState::default(),
                     yanqing_state: YanqingState::default(),
+                    ally_buffs: Vec::new(),
+                    asta_state: AstaState::default(),
+                    bronya_state: BronyaState::default(),
+                    tingyun_state: TingyunState::default(),
                     survival_triggered: false,
                     finished_turns: 0,
                     next_attack_bonus_bp: 0,
@@ -155,6 +167,8 @@ impl<'a> Battle<'a> {
             dummy_damage: Vec::new(),
             crossed_half: Vec::new(),
             action: None,
+            action_target: None,
+            attack_targets: Vec::new(),
             pending_follow_ups: std::collections::VecDeque::new(),
             resolving_follow_up: false,
         };
@@ -231,6 +245,8 @@ impl<'a> Battle<'a> {
 
         self.decision_index += 1;
         self.action = Some(command.action);
+        self.action_target = target;
+        self.attack_targets.clear();
         self.emit(EventKind::Action(command.action), Some(actor), target);
         match skill_points {
             SkillPoints::Generate => {
@@ -259,9 +275,11 @@ impl<'a> Battle<'a> {
         if ability.effects.iter().any(|effect| effect.deals_damage()) {
             self.finish_attack(actor, command.action);
         }
+        self.notify_ally_action_finished(actor, command.action);
         self.units[actor].active_attack_bonus_bp = 0;
         self.units[actor].active_penetration_bp = 0;
         self.action = None;
+        self.action_target = None;
         if ordinary {
             self.finish_turn(actor);
             self.ordinary_actor = None;
@@ -424,7 +442,7 @@ impl<'a> Battle<'a> {
     }
 
     fn defense(&self, unit: usize) -> u32 {
-        self.plan.units[unit].stats.defense
+        self.effective_defense(unit)
     }
 
     fn has_weakness(&self, unit: usize, element: crate::fixture::Element) -> bool {
@@ -490,6 +508,14 @@ impl<'a> Battle<'a> {
         self.action
     }
 
+    fn current_target(&self) -> Option<usize> {
+        self.action_target
+    }
+
+    fn attack_targets(&self) -> &[usize] {
+        &self.attack_targets
+    }
+
     fn take_once_per_battle(&mut self, actor: usize) -> bool {
         !std::mem::replace(&mut self.units[actor].survival_triggered, true)
     }
@@ -517,9 +543,11 @@ impl<'a> Battle<'a> {
             .filter(|status| status.kind == DebuffKind::Slow)
             .map(|status| u64::from(status.bp))
             .sum();
+        let (flat_buff, ratio_buff) = self.support_speed(unit);
         let speed = stats.base_speed_micros
             + stats.flat_speed_micros
-            + stats.base_speed_micros * bonus_bp / 10_000;
+            + stats.base_speed_micros * (bonus_bp + ratio_buff) / 10_000
+            + flat_buff;
         speed
             .saturating_sub(stats.base_speed_micros * slow_bp / 10_000)
             .max(1_000_000)

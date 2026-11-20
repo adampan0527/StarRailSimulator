@@ -21,6 +21,8 @@ pub struct CharacterStats {
     pub crit_rate: Option<f64>,
     pub crit_damage: Option<f64>,
     pub element_damage: Option<f64>,
+    #[serde(skip)]
+    pub(crate) thunder_damage: Option<f64>,
     pub break_effect: Option<f64>,
     pub elation: Option<f64>,
     pub healing_boost: Option<f64>,
@@ -112,6 +114,7 @@ impl Catalog {
             element_damage: Some(
                 bonus(element_property.as_str()) + bonus("alldamagetypeaddedratio"),
             ),
+            thunder_damage: Some(bonus("thunderaddedratio") + bonus("alldamagetypeaddedratio")),
             break_effect: Some(bonus("breakdamageaddedratiobase")),
             elation: Some(bonus("elationdamageaddedratiobase")),
             healing_boost: Some(bonus("healratiobase")),

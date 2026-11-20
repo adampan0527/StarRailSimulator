@@ -44,18 +44,21 @@ impl Catalog {
         let panel = self.character_stats(id, loadout)?;
         let stat = |name, value: Option<ScaledStat>| value.ok_or_else(|| Error::invalid(name, id));
         let attack = stat("character.attack", panel.attack)?;
+        let defense = stat("character.defense", panel.defense)?;
         let speed = stat("character.speed", panel.speed)?;
         let ratio = |value: Option<f64>| (value.unwrap_or_default() * 10_000.0).round() as u32;
         let stats = OfficialStats {
             hp: stat("character.hp", panel.hp)?.total.round() as u32,
             attack: attack.total.round() as u32,
             base_attack: attack.base.round() as u32,
-            defense: stat("character.defense", panel.defense)?.total.round() as u32,
+            defense: defense.total.round() as u32,
+            base_defense: defense.base.round() as u32,
             base_speed_micros: (speed.base * 1_000_000.0).round() as u64,
             speed_micros: (speed.total * 1_000_000.0).round() as u64,
             crit_rate_bp: ratio(panel.crit_rate),
             crit_damage_bp: ratio(panel.crit_damage),
             element_damage_bp: ratio(panel.element_damage),
+            thunder_damage_bp: Some(ratio(panel.thunder_damage)),
             effect_hit_rate_bp: ratio(panel.effect_hit_rate),
             effect_resistance_bp: ratio(panel.effect_resistance),
             break_effect_bp: ratio(panel.break_effect),

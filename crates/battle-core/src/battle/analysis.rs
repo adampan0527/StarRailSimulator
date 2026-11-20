@@ -182,6 +182,17 @@ fn offensive_priority(battle: &Battle<'_>, command: &Command) -> u8 {
     let actor = battle
         .allies()
         .find(|&unit| battle.plan.units[unit].id == command.actor_id);
+    if let Some(unit) = actor
+        && let Some(mechanics) = battle.mechanics(unit)
+    {
+        let target = command
+            .target_id
+            .as_deref()
+            .and_then(|id| battle.plan.units.iter().position(|target| target.id == id));
+        if let Some(priority) = mechanics.dpr_priority(battle, unit, command.action, target) {
+            return priority;
+        }
+    }
     let damaging = actor
         .and_then(|unit| battle.check_action(unit, command.action).ok())
         .is_some_and(|(ability, _)| ability.effects.iter().any(|effect| effect.deals_damage()));

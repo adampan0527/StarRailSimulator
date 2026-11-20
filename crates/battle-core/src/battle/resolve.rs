@@ -7,7 +7,10 @@ use crate::{
     },
 };
 
-use super::{Battle, DummyDamage, Kit, Status, combat_status::DebuffKind, periodic::DotScale};
+use super::{
+    Battle, DummyDamage, Kit, Status, combat_status::DebuffKind, periodic::DotScale,
+    support::OffenseBuffs,
+};
 
 struct Hit {
     element: Element,
@@ -17,11 +20,49 @@ struct Hit {
     scale: DamageScale,
 }
 
+struct DamageView {
+    target: DamageTarget,
+    attack: u32,
+    defense: u32,
+    bonus: OffenseBuffs,
+}
+
+struct DamageEvent {
+    kind: DamageKind,
+    critical: bool,
+    origin: Option<Action>,
+    assisted_by: Option<usize>,
+}
+
+#[derive(Clone, Copy)]
 enum DamageScale {
     Attack,
     MaxHp,
     AttackAndDefense(u16),
     TargetHpCapped(u16),
+}
+
+impl DamageScale {
+    fn base_bp(
+        self,
+        attack: u32,
+        defense: u32,
+        source_hp: u32,
+        target_hp: u32,
+        multiplier_bp: u16,
+    ) -> u64 {
+        let ratio = u64::from(multiplier_bp);
+        match self {
+            Self::Attack => u64::from(attack) * ratio,
+            Self::MaxHp => u64::from(source_hp) * ratio,
+            Self::AttackAndDefense(defense_bp) => {
+                u64::from(attack) * ratio + u64::from(defense) * u64::from(defense_bp)
+            }
+            Self::TargetHpCapped(cap_bp) => {
+                (u64::from(target_hp) * ratio).min(u64::from(attack) * u64::from(cap_bp))
+            }
+        }
+    }
 }
 
 pub(super) struct PeriodicHit {
@@ -272,7 +313,11 @@ impl Battle<'_> {
     }
 
     pub(super) fn advance_immediate(&mut self, actor: usize) {
-        self.shift_gauge(actor, actor, 0, true);
+        self.advance_ally_immediate(actor, actor);
+    }
+
+    pub(super) fn advance_ally_immediate(&mut self, actor: usize, target: usize) {
+        self.shift_gauge(actor, target, 0, true);
     }
 
     pub(super) fn advance(&mut self, actor: usize, bp: u16) {
@@ -340,6 +385,7 @@ impl Battle<'_> {
                 continue;
             }
             let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
+            self.attack_targets.clear();
             let mechanics = self.mechanics(actor);
             self.emit(EventKind::FollowUp, Some(actor), target);
             for target in targets {
@@ -379,15 +425,22 @@ impl Battle<'_> {
     }
 
     fn notify_attack(&mut self, actor: usize, origin: Action) {
-        let crossed_half = std::mem::take(&mut self.crossed_half);
         for owner in self.allies() {
             if self.units[owner].hp > 0
                 && let Some(mechanics) = self.mechanics(owner)
             {
-                if !crossed_half.is_empty() {
-                    mechanics.after_attack(self, owner, actor, &crossed_half, origin);
-                }
                 mechanics.on_attack_finished(self, owner, actor, origin);
+            }
+        }
+        let crossed_half = std::mem::take(&mut self.crossed_half);
+        if crossed_half.is_empty() {
+            return;
+        }
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.after_attack(self, owner, actor, &crossed_half, origin);
             }
         }
     }
@@ -456,8 +509,10 @@ impl Battle<'_> {
         let personal_penetration = self.mechanics(actor).map_or(0, |mechanics| {
             mechanics.resistance_penetration_bp(self, actor, element)
         });
+        let mut stats = plan.stats;
+        stats.defense = self.defense(target);
         DamageTarget {
-            stats: plan.stats,
+            stats,
             damage_reduction_bp: 0,
             vulnerability_bp: vulnerability,
             defense_down_bp: sum(DebuffKind::DefenseDown),
@@ -518,6 +573,31 @@ impl Battle<'_> {
         );
     }
 
+    pub(super) fn secondary_hit_with_credit(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        multiplier_bp: u16,
+        origin: Action,
+        provider: usize,
+    ) {
+        self.strike_scaled(
+            actor,
+            target,
+            DamageKind::Additional,
+            Hit {
+                element,
+                multiplier_bp,
+                toughness: 0,
+                origin: Some(origin),
+                scale: DamageScale::Attack,
+            },
+            10_000,
+            Some(provider),
+        );
+    }
+
     pub(super) fn secondary_hit_from_hp(
         &mut self,
         actor: usize,
@@ -569,6 +649,7 @@ impl Battle<'_> {
         }
         let origin = Action::Basic;
         let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
+        self.attack_targets.clear();
         self.emit(EventKind::FollowUp, Some(actor), Some(target));
         let neighbors: Vec<_> = self.adjacent_enemies(target).collect();
         let mut hit = |target, multiplier_bp, toughness, defense_multiplier_bp| {
@@ -602,7 +683,7 @@ impl Battle<'_> {
     }
 
     fn strike(&mut self, actor: usize, target: usize, kind: DamageKind, impact: Hit) -> bool {
-        self.strike_scaled(actor, target, kind, impact, 10_000)
+        self.strike_scaled(actor, target, kind, impact, 10_000, None)
     }
 
     pub(super) fn periodic_hit(&mut self, actor: usize, target: usize, dot: PeriodicHit) {
@@ -628,6 +709,7 @@ impl Battle<'_> {
                 scale,
             },
             dot.ratio_bp,
+            None,
         );
     }
 
@@ -638,6 +720,7 @@ impl Battle<'_> {
         kind: DamageKind,
         impact: Hit,
         ratio_bp: u16,
+        assisted_by: Option<usize>,
     ) -> bool {
         let Hit {
             element,
@@ -650,18 +733,24 @@ impl Battle<'_> {
         if hp_before == 0 {
             return false;
         }
+        if matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
+            && origin.is_some()
+            && matches!(self.plan.units[actor].kit, Kit::Official(_))
+            && self.enemies().contains(&target)
+            && !self.attack_targets.contains(&target)
+        {
+            self.attack_targets.push(target);
+        }
         let mut source = self.plan.units[actor].stats;
-        if let Some((bp, _)) = self.units[actor].attack_bonus {
-            let boost = u64::from(source.base_attack) * u64::from(bp) / 10_000;
-            source.attack = source.attack.saturating_add(saturating_stat(boost));
+        if element == Element::Thunder
+            && let Some(bp) = source.thunder_damage_bp
+        {
+            source.element_damage_bp = bp;
         }
         source.element_damage_bp = source
             .element_damage_bp
             .saturating_add(self.units[actor].active_attack_bonus_bp);
         if let Some(mechanics) = self.mechanics(actor) {
-            source.attack = source
-                .attack
-                .saturating_add(mechanics.bonus_attack_flat(self, actor));
             source.element_damage_bp = source
                 .element_damage_bp
                 .saturating_add(mechanics.damage_bonus_bp(self, actor, target, origin, kind));
@@ -683,24 +772,35 @@ impl Battle<'_> {
         let crit = kind != DamageKind::DamageOverTime
             && crit_rate > 0
             && self.rng.below(10_000) < u64::from(crit_rate);
-        let base_bp = match scale {
-            DamageScale::Attack => u64::from(source.attack) * u64::from(multiplier_bp),
-            DamageScale::MaxHp => u64::from(source.hp) * u64::from(multiplier_bp),
-            DamageScale::AttackAndDefense(defense_bp) => {
-                u64::from(source.attack) * u64::from(multiplier_bp)
-                    + u64::from(source.defense) * u64::from(defense_bp)
-            }
-            DamageScale::TargetHpCapped(attack_cap_bp) => {
-                let by_target_hp =
-                    u64::from(self.plan.units[target].stats.hp) * u64::from(multiplier_bp);
-                let cap = u64::from(source.attack) * u64::from(attack_cap_bp);
-                by_target_hp.min(cap)
-            }
-        };
-        let base_bp = base_bp * u64::from(ratio_bp) / 10_000;
-        self.resolve_damage(actor, target, element, (kind, crit, origin), |defender| {
-            damage::direct(source, defender, element, base_bp, crit)
-        });
+        self.resolve_damage(
+            actor,
+            target,
+            element,
+            DamageEvent {
+                kind,
+                critical: crit,
+                origin,
+                assisted_by,
+            },
+            |view| {
+                let mut adjusted = source;
+                adjusted.element_damage_bp = adjusted
+                    .element_damage_bp
+                    .saturating_add(view.bonus.damage_bp);
+                adjusted.crit_damage_bp = adjusted
+                    .crit_damage_bp
+                    .saturating_add(view.bonus.crit_damage_bp);
+                let base_bp = scale.base_bp(
+                    view.attack,
+                    view.defense,
+                    source.hp,
+                    view.target.stats.hp,
+                    multiplier_bp,
+                ) * u64::from(ratio_bp)
+                    / 10_000;
+                damage::direct(adjusted, view.target, element, base_bp, crit)
+            },
+        );
 
         let hit_weakness = self.has_weakness(target, element);
         let before = self.units[target].toughness;
@@ -713,8 +813,13 @@ impl Battle<'_> {
                     actor,
                     target,
                     element,
-                    (DamageKind::WeaknessBreak, false, origin),
-                    |defender| damage::weakness_break(source, defender, element),
+                    DamageEvent {
+                        kind: DamageKind::WeaknessBreak,
+                        critical: false,
+                        origin,
+                        assisted_by: None,
+                    },
+                    |view| damage::weakness_break(source, view.target, element),
                 );
                 if self.units[target].hp > 0 {
                     let delayed = self.units[target].gauge_quanta + gauge_for(BREAK_DELAY_BP);
@@ -837,8 +942,13 @@ impl Battle<'_> {
             actor,
             target,
             element,
-            (kind, false, Some(origin)),
-            |defender| damage::break_status(source, defender, element, ratio_bp),
+            DamageEvent {
+                kind,
+                critical: false,
+                origin: Some(origin),
+                assisted_by: None,
+            },
+            |view| damage::break_status(source, view.target, element, ratio_bp),
         );
     }
 
@@ -847,18 +957,30 @@ impl Battle<'_> {
         actor: usize,
         target: usize,
         element: Element,
-        (kind, critical, origin): (DamageKind, bool, Option<Action>),
-        calculate: impl Fn(DamageTarget) -> u32,
+        event: DamageEvent,
+        calculate: impl Fn(DamageView) -> u32,
     ) {
+        let DamageEvent {
+            kind,
+            critical,
+            origin,
+            assisted_by,
+        } = event;
         let reduction_bp = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
         });
-        let calculate = |mut defender: DamageTarget| {
+        let damage_with = |allow: &dyn Fn(usize) -> bool| {
+            let mut defender = self.damage_target(actor, target, element, kind, allow);
             defender.damage_reduction_bp = reduction_bp;
-            calculate(defender)
+            let bonus = self.offense_buffs(actor, element, allow);
+            calculate(DamageView {
+                target: defender,
+                bonus,
+                attack: self.attack_with_buffs(actor, bonus),
+                defense: self.defense_with_buff(actor, bonus.defense_bp),
+            })
         };
-        let defender = self.damage_target(actor, target, element, kind, |_| true);
-        let amount = calculate(defender);
+        let amount = damage_with(&|_| true);
         if matches!(self.plan.units[target].kit, Kit::Dummy { .. }) {
             let state = &self.units[target];
             let assists: std::collections::BTreeSet<_> = state
@@ -876,23 +998,31 @@ impl Battle<'_> {
                 .chain(
                     state.statuses[StatusKind::Vulnerability.index()].map(|status| status.source),
                 )
+                .chain(self.allies().filter(|&owner| {
+                    self.offense_buffs_from(owner, actor, element) != OffenseBuffs::default()
+                }))
                 .filter(|&source| source != actor && source < self.plan.ally_count)
                 .collect();
             let mut credits = Vec::new();
             if !assists.is_empty() {
-                let mut damage =
-                    calculate(self.damage_target(actor, target, element, kind, |source| {
-                        !assists.contains(&source)
-                    }));
+                let mut damage = damage_with(&|source| !assists.contains(&source));
                 for &owner in &assists {
                     let adjusted =
-                        calculate(self.damage_target(actor, target, element, kind, |source| {
-                            source <= owner || !assists.contains(&source)
-                        }));
+                        damage_with(&|source| source <= owner || !assists.contains(&source));
                     if adjusted > damage {
                         credits.push((owner, adjusted - damage));
                     }
                     damage = adjusted;
+                }
+            }
+            if let Some(owner) =
+                assisted_by.filter(|&owner| owner != actor && owner < self.plan.ally_count)
+            {
+                let remainder = amount - credits.iter().map(|&(_, value)| value).sum::<u32>();
+                if let Some((_, value)) = credits.iter_mut().find(|entry| entry.0 == owner) {
+                    *value += remainder;
+                } else if remainder > 0 {
+                    credits.push((owner, remainder));
                 }
             }
             self.dummy_damage.push(DummyDamage {
@@ -975,6 +1105,7 @@ impl Battle<'_> {
             self.units[target].break_dots.clear();
             self.units[target].skill_dots.clear();
             self.units[target].heals_over_time.clear();
+            self.units[target].ally_buffs.clear();
         }
     }
 
@@ -1026,6 +1157,7 @@ impl Battle<'_> {
     pub(super) fn finish_turn(&mut self, actor: usize) {
         self.expire_debuffs(actor);
         self.expire_shields(actor);
+        self.expire_ally_buffs(actor);
         let state = &mut self.units[actor];
         state.finished_turns = state.normal_turns;
         if state
@@ -1047,6 +1179,7 @@ impl Battle<'_> {
                 );
             }
         }
+        self.notify_ordinary_turn_finished(actor);
     }
 
     pub(super) fn gain_energy(&mut self, actor: usize, target: usize, amount_milli: u32) {

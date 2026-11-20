@@ -204,12 +204,12 @@ impl Mechanics for Gepard {
         true
     }
 
-    fn bonus_attack_flat(&self, battle: &Battle<'_>, actor: usize) -> u32 {
-        if !self.fighting_spirit {
-            return 0;
+    fn attack_conversion_from_defense_bp(&self) -> u32 {
+        if self.fighting_spirit {
+            u32::from(FIGHTING_SPIRIT_BP)
+        } else {
+            0
         }
-        let defense = u64::from(battle.defense(actor));
-        (defense * u64::from(FIGHTING_SPIRIT_BP) / BASIS_POINTS) as u32
     }
 
     fn effect_resistance_aura_bp(&self) -> u32 {

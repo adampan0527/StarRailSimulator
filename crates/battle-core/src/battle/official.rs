@@ -28,11 +28,13 @@ pub struct OfficialStats {
     pub attack: u32,
     pub base_attack: u32,
     pub defense: u32,
+    pub base_defense: u32,
     pub base_speed_micros: u64,
     pub speed_micros: u64,
     pub crit_rate_bp: u32,
     pub crit_damage_bp: u32,
     pub element_damage_bp: u32,
+    pub thunder_damage_bp: Option<u32>,
     pub break_effect_bp: u32,
     pub effect_hit_rate_bp: u32,
     pub energy_regeneration_bp: u32,
@@ -79,6 +81,7 @@ impl OfficialCharacter {
             || stats.base_attack == 0
             || stats.base_attack > 100_000
             || stats.defense > 100_000
+            || stats.base_defense > 100_000
             || stats.base_speed_micros == 0
             || stats.speed_micros < stats.base_speed_micros
             || stats.speed_micros > 1_000_000_000
@@ -86,6 +89,7 @@ impl OfficialCharacter {
                 stats.crit_rate_bp,
                 stats.crit_damage_bp,
                 stats.element_damage_bp,
+                stats.thunder_damage_bp.unwrap_or_default(),
                 stats.break_effect_bp,
                 stats.effect_hit_rate_bp,
                 stats.energy_regeneration_bp,
@@ -106,12 +110,14 @@ impl OfficialCharacter {
             attack: stats.attack,
             base_attack: stats.base_attack,
             defense: stats.defense,
+            base_defense: stats.base_defense,
             base_speed_micros: stats.base_speed_micros,
             flat_speed_micros: stats.speed_micros - stats.base_speed_micros,
             resist_bp: [0; Element::COUNT],
             crit_rate_bp: stats.crit_rate_bp,
             crit_damage_bp: stats.crit_damage_bp,
             element_damage_bp: stats.element_damage_bp,
+            thunder_damage_bp: stats.thunder_damage_bp,
             break_effect_bp: stats.break_effect_bp,
             effect_hit_rate_bp: stats.effect_hit_rate_bp,
             effect_resistance_bp: stats.effect_resistance_bp,
@@ -437,6 +443,53 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn effect_resistance_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         0
+    }
+
+    fn ally_attack_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
+    fn ally_attack_bonus_flat(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
+    fn ally_damage_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _target: usize,
+        _element: Element,
+    ) -> u32 {
+        0
+    }
+
+    fn defense_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn attack_conversion_from_defense_bp(&self) -> u32 {
+        0
+    }
+
+    fn after_ordinary_turn(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
+
+    fn on_ally_action_finished(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _action: Action,
+    ) {
+    }
+
+    fn dpr_priority(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _action: Action,
+        _target: Option<usize>,
+    ) -> Option<u8> {
+        None
     }
 }
 
