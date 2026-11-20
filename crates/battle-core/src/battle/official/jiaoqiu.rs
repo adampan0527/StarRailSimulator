@@ -170,7 +170,7 @@ impl Jiaoqiu {
     ) {
         let stacks = stacks.min(self.stack_limit);
         if stacks == 0
-            || !battle.inflict_skill_dot(
+            || !battle.inflict_skill_dot_with_vulnerability(
                 owner,
                 target,
                 SkillDot {

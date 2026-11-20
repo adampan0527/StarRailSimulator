@@ -34,6 +34,8 @@ const statusNames = {
   besotted: '酩酊',
   attack_down: '攻击力降低',
   entangled: '纠缠',
+  survival_response: '求生反应',
+  wisemans_folly: '智者的短见',
   frozen: '冻结',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });

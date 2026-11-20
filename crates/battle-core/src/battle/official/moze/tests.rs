@@ -417,6 +417,8 @@ fn a6_adds_vulnerability_credit_and_a_teammate_counter_consumes_charge() {
     let plan = prepared(&[moze(0, &[VENGEWISE]), natasha()], 42, 3);
     let mut battle = Battle::start(&plan, LogMode::Detailed);
     act(&mut battle, MOZE, Action::Skill, Some(PREY));
+    assert_eq!(battle.debuff_count(2), 0);
+    assert_eq!(battle.debuff_count(3), 2);
     for target in [2, 3] {
         battle.counter_attack(
             1,

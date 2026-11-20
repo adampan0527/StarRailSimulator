@@ -4,6 +4,7 @@ mod bailu;
 mod bronya;
 mod clara;
 mod dan_heng;
+mod dr_ratio;
 mod gallagher;
 mod gepard;
 mod guinaifen;
@@ -32,6 +33,7 @@ mod yukong;
 
 pub(super) use {
     bailu::{BailuState, Invigoration},
+    dr_ratio::DrRatioState,
     hanya::HanyaState,
     jiaoqiu::Field as JiaoqiuField,
     misha::MishaState,
@@ -388,6 +390,15 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn additional_debuff_count(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _target: usize,
+    ) -> usize {
+        0
+    }
+
     fn prevent_debuff(&self, _battle: &mut Battle<'_>, _actor: usize) -> bool {
         false
     }
@@ -710,6 +721,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1218" => Some(jiaoqiu::build),
         "character.1223" => Some(moze::build),
         "character.1301" => Some(gallagher::build),
+        "character.1305" => Some(dr_ratio::build),
         "character.1312" => Some(misha::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         "march_7th.preservation" => Some(march_preservation::build),

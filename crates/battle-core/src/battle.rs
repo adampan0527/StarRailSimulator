@@ -23,8 +23,9 @@ pub use analysis::{
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
-    BailuState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse, Mechanics,
-    MishaState, MozeState, SkillPoints, SushangState, XueyiState, YanqingState, YukongState,
+    BailuState, DrRatioState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse,
+    Mechanics, MishaState, MozeState, SkillPoints, SushangState, XueyiState, YanqingState,
+    YukongState,
 };
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
@@ -86,6 +87,7 @@ struct UnitState {
     yukong_state: YukongState,
     luocha_state: LuochaState,
     jiaoqiu_field: official::JiaoqiuField,
+    dr_ratio_state: DrRatioState,
     survival_triggered: bool,
     finished_turns: u32,
     next_attack_bonus_bp: u32,
@@ -175,6 +177,7 @@ impl<'a> Battle<'a> {
                     yukong_state: YukongState::default(),
                     luocha_state: LuochaState::default(),
                     jiaoqiu_field: official::JiaoqiuField::default(),
+                    dr_ratio_state: DrRatioState::default(),
                     survival_triggered: false,
                     finished_turns: 0,
                     next_attack_bonus_bp: 0,

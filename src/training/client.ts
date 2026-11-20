@@ -82,6 +82,8 @@ type Status =
   | 'besotted'
   | 'attack_down'
   | 'entangled'
+  | 'survival_response'
+  | 'wisemans_folly'
   | 'frozen';
 type EventKind =
   | {

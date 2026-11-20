@@ -265,6 +265,14 @@ impl Mechanics for Moze {
         self.vengewise
     }
 
+    fn additional_debuff_count(&self, battle: &Battle<'_>, owner: usize, target: usize) -> usize {
+        if Self::is_prey(battle, owner, target) {
+            1 + usize::from(self.vengewise)
+        } else {
+            0
+        }
+    }
+
     fn follow_up_vulnerability_bp(&self, battle: &Battle<'_>, owner: usize, enemy: usize) -> u32 {
         if self.vengewise && Self::is_prey(battle, owner, enemy) {
             2_500

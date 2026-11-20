@@ -181,14 +181,25 @@ impl Battle<'_> {
     }
 
     pub(super) fn is_debuffed(&self, target: usize) -> bool {
+        self.debuff_count(target) > 0
+    }
+
+    pub(super) fn debuff_count(&self, target: usize) -> usize {
         let state = &self.units[target];
-        !state.debuffs.is_empty()
-            || state.magnitude(StatusKind::Vulnerability) > 0
-            || self.is_frozen(target)
-            || self.has_shock(target)
-            || state.entanglement.is_some()
-            || !state.break_dots.is_empty()
-            || !state.skill_dots.is_empty()
+        let special = self
+            .allies()
+            .filter(|&owner| self.units[owner].hp > 0)
+            .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
+            .map(|(owner, rules)| rules.additional_debuff_count(self, owner, target))
+            .sum::<usize>();
+        state.debuffs.len()
+            + usize::from(state.magnitude(StatusKind::Vulnerability) > 0)
+            + usize::from(self.is_frozen(target))
+            + state.shocks.len()
+            + usize::from(state.entanglement.is_some())
+            + state.break_dots.len()
+            + self.standalone_skill_dot_count(target)
+            + special
     }
 
     pub(super) fn cleanse_one(&mut self, actor: usize, target: usize) {
