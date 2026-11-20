@@ -1,6 +1,6 @@
 use crate::{Action, fixture::Element};
 
-use super::{Battle, resolve::PeriodicHit};
+use super::{Battle, combat_status::DebuffKind, resolve::PeriodicHit};
 
 #[derive(Clone, Copy)]
 pub(super) struct DotEvent {
@@ -30,6 +30,7 @@ pub(super) struct ActiveSkillDot {
     source: usize,
     rule: SkillDot,
     stacks: u8,
+    shares_vulnerability: bool,
 }
 
 #[derive(Clone, Default)]
@@ -57,14 +58,24 @@ impl Battle<'_> {
         {
             return false;
         }
-        self.inflict_skill_dot(source, target, dot)
+        self.inflict_skill_dot(source, target, dot, false)
     }
 
-    pub(super) fn inflict_skill_dot(
+    pub(super) fn inflict_skill_dot_with_vulnerability(
         &mut self,
         source: usize,
         target: usize,
         dot: SkillDot,
+    ) -> bool {
+        self.inflict_skill_dot(source, target, dot, true)
+    }
+
+    fn inflict_skill_dot(
+        &mut self,
+        source: usize,
+        target: usize,
+        dot: SkillDot,
+        shares_vulnerability: bool,
     ) -> bool {
         if self.hp(target).0 == 0
             || dot.turns == 0
@@ -80,14 +91,30 @@ impl Battle<'_> {
         if let Some(current) = existing {
             current.stacks = current.stacks.saturating_add(1).min(dot.max_stacks);
             current.rule = dot;
+            current.shares_vulnerability = shares_vulnerability;
         } else {
             self.units[target].skill_dots.push(ActiveSkillDot {
                 source,
                 rule: dot,
                 stacks: 1,
+                shares_vulnerability,
             });
         }
         true
+    }
+
+    pub(super) fn standalone_skill_dot_count(&self, target: usize) -> usize {
+        let state = &self.units[target];
+        state
+            .skill_dots
+            .iter()
+            .filter(|dot| {
+                !dot.shares_vulnerability
+                    || !state.debuffs.iter().any(|debuff| {
+                        debuff.kind == DebuffKind::Vulnerability && debuff.source == dot.source
+                    })
+            })
+            .count()
     }
 
     pub(super) fn has_elemental_dot(&self, target: usize, element: Element) -> bool {

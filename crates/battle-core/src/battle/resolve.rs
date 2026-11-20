@@ -107,6 +107,7 @@ pub(super) struct FollowUp {
     target: Option<usize>,
     origin: Action,
     attack: FollowUpAttack,
+    retarget: bool,
 }
 
 impl Battle<'_> {
@@ -430,6 +431,7 @@ impl Battle<'_> {
             actor,
             target: None,
             origin,
+            retarget: false,
             attack: FollowUpAttack {
                 element,
                 multiplier_bp,
@@ -452,6 +454,23 @@ impl Battle<'_> {
             target: Some(target),
             origin,
             attack,
+            retarget: false,
+        });
+    }
+
+    pub(super) fn retargeting_follow_up(
+        &mut self,
+        actor: usize,
+        target: usize,
+        origin: Action,
+        attack: FollowUpAttack,
+    ) {
+        self.pending_follow_ups.push_back(FollowUp {
+            actor,
+            target: Some(target),
+            origin,
+            attack,
+            retarget: true,
         });
     }
 
@@ -463,9 +482,26 @@ impl Battle<'_> {
                 target,
                 origin,
                 attack,
+                retarget,
             } = follow_up;
+            if self.units[actor].hp == 0 {
+                continue;
+            }
+            let target = if retarget && target.is_some_and(|unit| self.units[unit].hp == 0) {
+                let living: Vec<_> = self
+                    .enemies()
+                    .filter(|&unit| self.units[unit].hp > 0)
+                    .collect();
+                let index = self.random_index(living.len());
+                let Some(&replacement) = living.get(index) else {
+                    continue;
+                };
+                Some(replacement)
+            } else {
+                target
+            };
             let targets = target.map_or_else(|| self.enemies(), |target| target..target + 1);
-            if self.units[actor].hp == 0 || !targets.clone().any(|unit| self.units[unit].hp > 0) {
+            if !targets.clone().any(|unit| self.units[unit].hp > 0) {
                 continue;
             }
             let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
