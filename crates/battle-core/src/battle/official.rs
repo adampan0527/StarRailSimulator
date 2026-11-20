@@ -3,6 +3,7 @@ mod clara;
 mod dan_heng;
 mod gepard;
 mod herta;
+mod march_preservation;
 mod natasha;
 mod pela;
 mod serval;
@@ -344,6 +345,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1106" => Some(pela::build),
         "character.1107" => Some(clara::build),
         "dan_heng.hunt" => Some(dan_heng::build),
+        "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),
         _ => None,
     }
