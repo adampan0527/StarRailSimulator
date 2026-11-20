@@ -1,3 +1,5 @@
+mod herta;
+
 use std::{collections::BTreeMap, sync::Arc};
 
 use super::Battle;
@@ -204,13 +206,13 @@ pub(super) trait Mechanics: Send + Sync {
 }
 
 // Register supported 4.7.0 character kits here after their acceptance review.
-pub const fn supports_official_dpr(_form_id: &str) -> bool {
-    false
+pub const fn supports_official_dpr(form_id: &str) -> bool {
+    matches!(form_id.as_bytes(), b"character.1013")
 }
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
-    Err(BattleError::UnsupportedData(format!(
-        "character form {}",
-        input.form_id
-    )))
+    match input.form_id.as_str() {
+        "character.1013" => herta::build(input),
+        id => Err(BattleError::UnsupportedData(format!("character form {id}"))),
+    }
 }
