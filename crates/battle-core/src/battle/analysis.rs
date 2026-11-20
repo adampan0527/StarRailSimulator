@@ -3,10 +3,7 @@ use std::{cmp::Reverse, collections::BinaryHeap, num::NonZeroU32};
 use serde::Serialize;
 
 use super::{Battle, Kit, PreparedBattle};
-use crate::{
-    Action, BattleError, Command, DamageKind, LogMode, Outcome,
-    fixture::{Effect, EnemyTarget},
-};
+use crate::{Action, BattleError, Command, DamageKind, LogMode, Outcome, fixture::EnemyTarget};
 
 const AV_MICROS: u64 = 1_000_000;
 
@@ -187,12 +184,7 @@ fn offensive_priority(battle: &Battle<'_>, command: &Command) -> u8 {
         .find(|&unit| battle.plan.units[unit].id == command.actor_id);
     let damaging = actor
         .and_then(|unit| battle.check_action(unit, command.action).ok())
-        .is_some_and(|(ability, _)| {
-            ability
-                .effects
-                .iter()
-                .any(|effect| matches!(effect, Effect::Hit { .. }))
-        });
+        .is_some_and(|(ability, _)| ability.effects.iter().any(|effect| effect.deals_damage()));
     match (command.action, damaging) {
         (Action::Ultimate, true) => 0,
         (Action::Basic, _)

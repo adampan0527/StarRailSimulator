@@ -42,13 +42,20 @@ pub(super) struct CounterAttack {
 }
 
 #[derive(Clone)]
+pub(super) struct FollowUpAttack {
+    pub element: Element,
+    pub multiplier_bp: u16,
+    pub toughness: u16,
+    pub energy_milli: u32,
+    pub first_hit: Option<(u16, u16)>,
+}
+
+#[derive(Clone)]
 pub(super) struct FollowUp {
     actor: usize,
-    element: Element,
-    multiplier_bp: u16,
-    toughness: u16,
+    target: Option<usize>,
     origin: Action,
-    energy_milli: u32,
+    attack: FollowUpAttack,
 }
 
 impl Battle<'_> {
@@ -59,7 +66,9 @@ impl Battle<'_> {
         ability: Ability<'_>,
     ) {
         for effect in ability.effects {
-            if let Some(target) = target {
+            if matches!(effect, Effect::RandomHits { .. }) {
+                self.apply_effect(actor, actor, *effect);
+            } else if let Some(target) = target {
                 self.apply_effect(actor, target, *effect);
             } else {
                 let targets = match ability.target {
@@ -99,7 +108,7 @@ impl Battle<'_> {
                     mechanics.blast_multiplier_bp(self, actor, self.action, multiplier_bp)
                 });
                 for neighbor in self.adjacent_enemies(target) {
-                    self.hit(actor, neighbor, element, multiplier_bp, toughness);
+                    self.attack_hit(actor, neighbor, element, multiplier_bp, toughness);
                 }
             }
             Effect::RandomHits {
@@ -231,10 +240,14 @@ impl Battle<'_> {
             .stats
             .effect_hit_rate_bp
             .saturating_add(hit_aura_bp);
+        let personal_resistance = self.mechanics(target).map_or(0, |mechanics| {
+            mechanics.effect_resistance_bonus_bp(self, target)
+        });
         let resistance = self.plan.units[target]
             .stats
             .effect_resistance_bp
-            .saturating_add(resist_aura_bp);
+            .saturating_add(resist_aura_bp)
+            .saturating_add(personal_resistance);
         let control_resistance = if control {
             self.mechanics(target)
                 .map_or(0, |mechanics| mechanics.control_resistance_bp())
@@ -286,11 +299,30 @@ impl Battle<'_> {
     ) {
         self.pending_follow_ups.push_back(FollowUp {
             actor,
-            element,
-            multiplier_bp,
-            toughness,
+            target: None,
             origin,
-            energy_milli,
+            attack: FollowUpAttack {
+                element,
+                multiplier_bp,
+                toughness,
+                energy_milli,
+                first_hit: None,
+            },
+        });
+    }
+
+    pub(super) fn follow_up_single(
+        &mut self,
+        actor: usize,
+        target: usize,
+        origin: Action,
+        attack: FollowUpAttack,
+    ) {
+        self.pending_follow_ups.push_back(FollowUp {
+            actor,
+            target: Some(target),
+            origin,
+            attack,
         });
     }
 
@@ -299,47 +331,63 @@ impl Battle<'_> {
         while let Some(follow_up) = self.pending_follow_ups.pop_front() {
             let FollowUp {
                 actor,
-                element,
-                multiplier_bp,
-                toughness,
+                target,
                 origin,
-                energy_milli,
+                attack,
             } = follow_up;
-            if self.units[actor].hp == 0 || !self.enemies().any(|unit| self.units[unit].hp > 0) {
+            let targets = target.map_or_else(|| self.enemies(), |target| target..target + 1);
+            if self.units[actor].hp == 0 || !targets.clone().any(|unit| self.units[unit].hp > 0) {
                 continue;
             }
-            self.emit(EventKind::FollowUp, Some(actor), None);
-            for target in self.enemies() {
-                self.strike(
-                    actor,
-                    target,
-                    DamageKind::FollowUp,
-                    Hit {
-                        element,
-                        multiplier_bp,
-                        toughness,
-                        origin: Some(origin),
-                        scale: DamageScale::Attack,
-                    },
+            let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
+            let mechanics = self.mechanics(actor);
+            self.emit(EventKind::FollowUp, Some(actor), target);
+            for target in targets {
+                if self.units[target].hp == 0 {
+                    continue;
+                }
+                let (first_bp, first_toughness) = attack.first_hit.unwrap_or_default();
+                let remaining = (
+                    attack.multiplier_bp.saturating_sub(first_bp),
+                    attack.toughness.saturating_sub(first_toughness),
                 );
+                for (multiplier_bp, toughness) in attack.first_hit.into_iter().chain([remaining]) {
+                    self.strike(
+                        actor,
+                        target,
+                        DamageKind::FollowUp,
+                        Hit {
+                            element: attack.element,
+                            multiplier_bp,
+                            toughness,
+                            origin: Some(origin),
+                            scale: DamageScale::Attack,
+                        },
+                    );
+                }
+                if let Some(mechanics) = &mechanics {
+                    mechanics.after_follow_up_hit(self, actor, target, origin);
+                }
             }
-            self.gain_energy(actor, actor, energy_milli);
+            self.gain_energy(actor, actor, attack.energy_milli);
+            if let Some(mechanics) = mechanics {
+                mechanics.after_follow_up(self, actor, origin);
+            }
             self.notify_attack(actor, origin);
+            self.resolving_follow_up = was_follow_up;
         }
     }
 
     fn notify_attack(&mut self, actor: usize, origin: Action) {
-        if self.crossed_half.is_empty() {
-            return;
-        }
         let crossed_half = std::mem::take(&mut self.crossed_half);
-        for owner in self
-            .allies()
-            .filter(|&owner| self.units[owner].hp > 0)
-            .collect::<Vec<_>>()
-        {
-            if let Some(mechanics) = self.mechanics(owner) {
-                mechanics.after_attack(self, owner, actor, &crossed_half, origin);
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                if !crossed_half.is_empty() {
+                    mechanics.after_attack(self, owner, actor, &crossed_half, origin);
+                }
+                mechanics.on_attack_finished(self, owner, actor, origin);
             }
         }
     }
@@ -405,18 +453,21 @@ impl Battle<'_> {
         if kind == DamageKind::DamageOverTime {
             vulnerability = vulnerability.saturating_add(sum(DebuffKind::DotVulnerability));
         }
+        let personal_penetration = self.mechanics(actor).map_or(0, |mechanics| {
+            mechanics.resistance_penetration_bp(self, actor, element)
+        });
         DamageTarget {
             stats: plan.stats,
             damage_reduction_bp: 0,
             vulnerability_bp: vulnerability,
             defense_down_bp: sum(DebuffKind::DefenseDown),
-            resistance_down_bp: sum(DebuffKind::ResistanceDown(element)).saturating_add(
-                if element == Element::Wind {
+            resistance_down_bp: sum(DebuffKind::ResistanceDown(element))
+                .saturating_add(personal_penetration)
+                .saturating_add(if element == Element::Wind {
                     self.units[actor].active_penetration_bp
                 } else {
                     0
-                },
-            ),
+                }),
             toughness: state.toughness,
             max_toughness: plan.kit.max_toughness(),
         }
@@ -517,6 +568,7 @@ impl Battle<'_> {
             return;
         }
         let origin = Action::Basic;
+        let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
         self.emit(EventKind::FollowUp, Some(actor), Some(target));
         let neighbors: Vec<_> = self.adjacent_enemies(target).collect();
         let mut hit = |target, multiplier_bp, toughness, defense_multiplier_bp| {
@@ -546,6 +598,7 @@ impl Battle<'_> {
         }
         self.gain_energy(actor, actor, counter.energy_milli);
         self.finish_attack(actor, origin);
+        self.resolving_follow_up = was_follow_up;
     }
 
     fn strike(&mut self, actor: usize, target: usize, kind: DamageKind, impact: Hit) -> bool {
@@ -615,6 +668,12 @@ impl Battle<'_> {
             source.crit_rate_bp = source
                 .crit_rate_bp
                 .saturating_add(mechanics.crit_rate_bonus_bp(self, actor, target, origin, kind));
+            source.crit_damage_bp = source
+                .crit_damage_bp
+                .saturating_add(mechanics.crit_damage_bonus_bp(self, actor, target, origin, kind));
+            source.break_effect_bp = source
+                .break_effect_bp
+                .saturating_add(mechanics.break_effect_bonus_bp(self, actor));
             multiplier_bp =
                 mechanics.damage_multiplier_bp(self, actor, target, origin, kind, multiplier_bp);
         }
@@ -677,7 +736,23 @@ impl Battle<'_> {
                         }
                     }
                 }
+                if let Some(action) = origin {
+                    for owner in self.allies() {
+                        if self.units[owner].hp > 0
+                            && let Some(mechanics) = self.mechanics(owner)
+                        {
+                            mechanics.on_weakness_break(self, owner, actor, target, action);
+                        }
+                    }
+                }
             }
+        }
+        if crit
+            && kind != DamageKind::Direct
+            && let Some(action) = origin
+            && let Some(mechanics) = self.mechanics(actor)
+        {
+            mechanics.after_non_primary_critical_hit(self, actor, target, action, kind);
         }
         let (hp, max_hp) = self.hp(target);
         if origin.is_some()
@@ -752,7 +827,12 @@ impl Battle<'_> {
         if self.units[target].hp == 0 {
             return;
         }
-        let source = self.plan.units[actor].stats;
+        let mut source = self.plan.units[actor].stats;
+        if let Some(mechanics) = self.mechanics(actor) {
+            source.break_effect_bp = source
+                .break_effect_bp
+                .saturating_add(mechanics.break_effect_bonus_bp(self, actor));
+        }
         self.resolve_damage(
             actor,
             target,
@@ -858,6 +938,11 @@ impl Battle<'_> {
         );
         if absorbed > 0 {
             self.deplete_shields(target, amount);
+        }
+        if hp_loss > 0
+            && let Some(mechanics) = self.mechanics(target)
+        {
+            mechanics.after_hp_loss(self, target, hp_loss);
         }
         if self.units[target].hp == 0 {
             if let Some(mechanics) = self.mechanics(target)
@@ -966,7 +1051,13 @@ impl Battle<'_> {
 
     pub(super) fn gain_energy(&mut self, actor: usize, target: usize, amount_milli: u32) {
         let cap = self.plan.units[target].kit.max_energy_milli();
-        let ratio = self.plan.units[target].stats.energy_regeneration_bp;
+        let bonus_bp = self.mechanics(target).map_or(0, |mechanics| {
+            mechanics.energy_regeneration_bonus_bp(self, target)
+        });
+        let ratio = self.plan.units[target]
+            .stats
+            .energy_regeneration_bp
+            .saturating_add(bonus_bp);
         let gain = u64::from(amount_milli) * u64::from(ratio) / 10_000;
         let after = cap.min(
             self.units[target]

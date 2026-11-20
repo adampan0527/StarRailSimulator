@@ -128,6 +128,15 @@ pub(crate) enum Effect {
     ImmediateTurn,
 }
 
+impl Effect {
+    pub(crate) const fn deals_damage(&self) -> bool {
+        matches!(
+            self,
+            Self::Hit { .. } | Self::BlastAdjacent { .. } | Self::RandomHits { .. }
+        )
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct Ability<'a> {
     pub target: Target,

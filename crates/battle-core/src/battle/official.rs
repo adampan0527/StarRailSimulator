@@ -163,6 +163,23 @@ impl OfficialKit {
     }
 }
 
+#[derive(Clone, Default)]
+pub(super) struct SushangState {
+    pub sword_stance_stacks: u8,
+    pub ultimate_expires_after_turn: u32,
+    pub damage_reduction_expires_after_turn: u32,
+    pub speed_expirations: [u32; 2],
+    pub target_was_broken: bool,
+}
+
+#[derive(Clone, Default)]
+pub(super) struct YanqingState {
+    pub soulsteel_expires_after_turn: u32,
+    pub ultimate_expires_after_turn: u32,
+    pub ultimate_crit_damage: bool,
+    pub target_was_frozen: bool,
+}
+
 pub(super) trait Mechanics: Send + Sync {
     fn ability_override(
         &self,
@@ -338,6 +355,84 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn bonus_attack_flat(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn on_weakness_break(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _target: usize,
+        _origin: Action,
+    ) {
+    }
+
+    fn on_attack_finished(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _origin: Action,
+    ) {
+    }
+
+    fn after_follow_up_hit(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _origin: Action,
+    ) {
+    }
+
+    fn after_follow_up(&self, _battle: &mut Battle<'_>, _actor: usize, _origin: Action) {}
+
+    fn after_hp_loss(&self, _battle: &mut Battle<'_>, _actor: usize, _hp_lost: u32) {}
+
+    fn after_non_primary_critical_hit(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _action: Action,
+        _kind: DamageKind,
+    ) {
+    }
+
+    fn break_effect_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn speed_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn crit_damage_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _action: Option<Action>,
+        _kind: DamageKind,
+    ) -> u32 {
+        0
+    }
+
+    fn resistance_penetration_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _element: Element,
+    ) -> u32 {
+        0
+    }
+
+    fn energy_regeneration_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn effect_resistance_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         0
     }
 }

@@ -21,7 +21,7 @@ pub use analysis::{
     VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
-use official::{Mechanics, SkillPoints};
+use official::{Mechanics, SkillPoints, SushangState, YanqingState};
 pub use official::{OfficialCharacter, OfficialStats, supports_official_dpr};
 use periodic::{ActiveSkillDot, LukaState};
 use protection::{CounterState, Freeze, Shield};
@@ -58,6 +58,9 @@ struct UnitState {
     charged_skill: bool,
     burning_targets_at_action_start: Vec<usize>,
     luka_state: LukaState,
+    himeko_charge: u8,
+    sushang_state: SushangState,
+    yanqing_state: YanqingState,
     survival_triggered: bool,
     finished_turns: u32,
     next_attack_bonus_bp: u32,
@@ -92,6 +95,7 @@ pub struct Battle<'a> {
     crossed_half: Vec<usize>,
     action: Option<Action>,
     pending_follow_ups: std::collections::VecDeque<resolve::FollowUp>,
+    resolving_follow_up: bool,
 }
 
 impl<'a> Battle<'a> {
@@ -123,6 +127,9 @@ impl<'a> Battle<'a> {
                     charged_skill: false,
                     burning_targets_at_action_start: Vec::new(),
                     luka_state: LukaState::default(),
+                    himeko_charge: 0,
+                    sushang_state: SushangState::default(),
+                    yanqing_state: YanqingState::default(),
                     survival_triggered: false,
                     finished_turns: 0,
                     next_attack_bonus_bp: 0,
@@ -149,6 +156,7 @@ impl<'a> Battle<'a> {
             crossed_half: Vec::new(),
             action: None,
             pending_follow_ups: std::collections::VecDeque::new(),
+            resolving_follow_up: false,
         };
         battle.emit(EventKind::WaveStarted, None, None);
         for actor in battle.allies() {
@@ -248,7 +256,9 @@ impl<'a> Battle<'a> {
         if let Some(mechanics) = &mechanics {
             mechanics.after_action(self, actor, command.action, target);
         }
-        self.finish_attack(actor, command.action);
+        if ability.effects.iter().any(|effect| effect.deals_damage()) {
+            self.finish_attack(actor, command.action);
+        }
         self.units[actor].active_attack_bonus_bp = 0;
         self.units[actor].active_penetration_bp = 0;
         self.action = None;
@@ -421,6 +431,14 @@ impl<'a> Battle<'a> {
         self.plan.units[unit].kit.matches_weakness(element)
     }
 
+    fn is_elite(&self, unit: usize) -> bool {
+        self.plan.units[unit].kit.max_toughness() >= 120
+    }
+
+    fn in_follow_up(&self) -> bool {
+        self.resolving_follow_up
+    }
+
     fn is_frozen(&self, unit: usize) -> bool {
         self.units[unit].frozen.is_some()
     }
@@ -488,6 +506,11 @@ impl<'a> Battle<'a> {
     fn speed_micros(&self, unit: usize) -> u64 {
         let stats = self.plan.units[unit].stats;
         let bonus_bp = u64::from(self.units[unit].magnitude(StatusKind::SpeedUp));
+        let bonus_bp = bonus_bp
+            + u64::from(
+                self.mechanics(unit)
+                    .map_or(0, |mechanics| mechanics.speed_bonus_bp(self, unit)),
+            );
         let slow_bp: u64 = self.units[unit]
             .debuffs
             .iter()
