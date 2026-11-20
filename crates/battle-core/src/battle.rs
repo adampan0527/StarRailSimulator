@@ -21,9 +21,10 @@ pub use analysis::{
     DprCharacter, DprCredit, DprHit, DprResult, DprScenario, DprTarget, STANDARD_DPR_SCENARIO,
     VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
-use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
+use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
-    GallagherState, HanyaState, Mechanics, SkillPoints, SushangState, YanqingState, YukongState,
+    GallagherState, HanyaState, LynxResponse, Mechanics, SkillPoints, SushangState, YanqingState,
+    YukongState,
 };
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
@@ -60,6 +61,8 @@ struct UnitState {
     debuffs: Vec<Debuff>,
     heals_over_time: Vec<HealOverTime>,
     break_dots: Vec<BreakDot>,
+    entanglement: Option<Entanglement>,
+    lynx_response: Option<LynxResponse>,
     skill_dots: Vec<ActiveSkillDot>,
     charged_skill: bool,
     burning_targets_at_action_start: Vec<usize>,
@@ -140,6 +143,8 @@ impl<'a> Battle<'a> {
                     debuffs: Vec::new(),
                     heals_over_time: Vec::new(),
                     break_dots: Vec::new(),
+                    entanglement: None,
+                    lynx_response: None,
                     skill_dots: Vec::new(),
                     charged_skill: false,
                     burning_targets_at_action_start: Vec::new(),
@@ -633,6 +638,7 @@ impl<'a> Battle<'a> {
                     self.tick_shocks(actor);
                     self.tick_skill_dots(actor);
                     self.tick_break_dots(actor);
+                    self.tick_entanglement(actor);
                     if self.units[actor].hp == 0 {
                         self.resolve_wave_or_end();
                         continue;

@@ -7,6 +7,7 @@ use super::Battle;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum AllyBuffKind {
+    AttackFlat,
     AttackPercent,
     CritDamage,
     Damage,
@@ -205,6 +206,7 @@ impl Battle<'_> {
             .filter(|buff| buff.source == source)
         {
             let total = match buff.kind {
+                AllyBuffKind::AttackFlat => &mut bonuses.attack_flat,
                 AllyBuffKind::AttackPercent => &mut bonuses.attack_bp,
                 AllyBuffKind::CritDamage => &mut bonuses.crit_damage_bp,
                 AllyBuffKind::Damage => &mut bonuses.damage_bp,
@@ -222,7 +224,9 @@ impl Battle<'_> {
             bonuses.attack_bp = bonuses
                 .attack_bp
                 .saturating_add(mechanics.ally_attack_bonus_bp(self, source, target));
-            bonuses.attack_flat = mechanics.ally_attack_bonus_flat(self, source, target);
+            bonuses.attack_flat = bonuses
+                .attack_flat
+                .saturating_add(mechanics.ally_attack_bonus_flat(self, source, target));
             bonuses.crit_rate_bp = mechanics.ally_crit_rate_bonus_bp(self, source, target);
             bonuses.crit_damage_bp = bonuses
                 .crit_damage_bp
