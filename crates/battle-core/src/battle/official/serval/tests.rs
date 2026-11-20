@@ -15,6 +15,7 @@ fn serval(eidolon: u8, enabled_traces: &[&str]) -> OfficialCharacter {
         level: 80,
         stats: OfficialStats {
             hp: 1_000,
+            base_hp: 1_000,
             attack: 1_000,
             base_attack: 1_000,
             defense: 500,

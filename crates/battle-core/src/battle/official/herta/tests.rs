@@ -27,6 +27,7 @@ fn character(eidolon: u8) -> OfficialCharacter {
         energy_capacity: 110,
         stats: OfficialStats {
             hp: 2_000,
+            base_hp: 2_000,
             attack: 1_000,
             base_attack: 600,
             defense: 500,

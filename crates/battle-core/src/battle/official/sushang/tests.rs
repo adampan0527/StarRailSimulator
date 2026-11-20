@@ -14,6 +14,7 @@ fn character(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
         energy_capacity: 120,
         stats: OfficialStats {
             hp: 5_000,
+            base_hp: 5_000,
             attack: 1_000,
             base_attack: 600,
             defense: 500,
