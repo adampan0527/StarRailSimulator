@@ -7,6 +7,7 @@ mod gepard;
 mod herta;
 mod himeko;
 mod hook;
+mod jiaoqiu;
 mod luka;
 mod march_preservation;
 mod natasha;
@@ -16,6 +17,8 @@ mod serval;
 mod sushang;
 mod tingyun;
 mod yanqing;
+
+pub(super) use jiaoqiu::Field as JiaoqiuField;
 
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -567,6 +570,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1111" => Some(luka::build),
         "character.1202" => Some(tingyun::build),
         "character.1206" => Some(sushang::build),
+        "character.1218" => Some(jiaoqiu::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),
