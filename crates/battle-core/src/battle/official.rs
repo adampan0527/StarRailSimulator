@@ -1,3 +1,5 @@
+mod serval;
+
 use std::{collections::BTreeMap, sync::Arc};
 
 use super::Battle;
@@ -203,14 +205,16 @@ pub(super) trait Mechanics: Send + Sync {
     fn after_defeat(&self, _battle: &mut Battle<'_>, _actor: usize, _target: usize) {}
 }
 
-// Register supported 4.7.0 character kits here after their acceptance review.
-pub const fn supports_official_dpr(_form_id: &str) -> bool {
-    false
+pub const fn supports_official_dpr(form_id: &str) -> bool {
+    matches!(form_id.as_bytes(), b"character.1103")
 }
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
-    Err(BattleError::UnsupportedData(format!(
-        "character form {}",
-        input.form_id
-    )))
+    match input.form_id.as_str() {
+        "character.1103" => serval::build(input),
+        _ => Err(BattleError::UnsupportedData(format!(
+            "character form {}",
+            input.form_id
+        ))),
+    }
 }
