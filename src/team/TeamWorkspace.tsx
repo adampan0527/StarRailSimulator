@@ -6,6 +6,7 @@ import type {
   SavedTeam,
   TeamDprReadiness,
 } from '../characters/client';
+import { DprResults } from '../training/Dpr';
 import { TeamBoard } from './TeamBoard';
 
 type Draft = Pick<SavedTeam, 'name' | 'slots'>;
@@ -224,7 +225,7 @@ function NamedTeam({
           disabled={!canCalculate || locked}
           onClick={() => void checkDpr()}
         >
-          {dpr?.kind === 'checking' ? '正在检查配队…' : '计算 DPR'}
+          {dpr?.kind === 'checking' ? '正在计算…' : '计算 DPR'}
         </button>
         <button type="button" className="secondary" disabled>
           计算最优解
@@ -233,19 +234,26 @@ function NamedTeam({
       <p id="team-compute-status" className="muted">
         DPR 使用固定靶场。开始战斗和计算最优解等待正式战斗规则接入。
       </p>
-      {dpr?.kind === 'checked' && (
-        <section className="field-zone" aria-labelledby="team-dpr-title">
-          <h3 id="team-dpr-title">{saved?.name} · DPR</h3>
-          <p className="muted">
-            固定靶场 · 前 {dpr.value.scenario.cycles} 轮 · 靶机韧性{' '}
-            {dpr.value.scenario.toughness.join(' / ')}
-          </p>
+      {dpr?.kind === 'checked' &&
+        (dpr.value.result ? (
+          <>
+            <p className="muted">
+              固定靶场估算，计入配装静态属性。光锥与遗器的战斗触发效果暂未计入。
+            </p>
+            <DprResults
+              result={dpr.value.result}
+              unitName={(id) =>
+                catalog.characters.find((character) => character.id === id)
+                  ?.name ?? id
+              }
+            />
+          </>
+        ) : (
           <p role="status">
-            暂无 DPR 结果。{dpr.value.unsupported_characters.join('、')}
-            的实战技能尚未接入伤害计算。
+            以下角色的当前配置暂不支持固定靶场计算。
+            {dpr.value.unsupported_characters.join('、')}
           </p>
-        </section>
-      )}
+        ))}
       {dpr?.kind === 'error' && <p role="alert">{dpr.message}</p>}
     </form>
   );

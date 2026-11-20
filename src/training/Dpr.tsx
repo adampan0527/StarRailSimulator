@@ -1,4 +1,4 @@
-import { actionNames, av } from './Timeline';
+import { actionNames, av, damageNames } from './Timeline';
 import type { DprResult } from './client';
 import './dpr.css';
 
@@ -59,7 +59,7 @@ export function DprResults({
                   <span>
                     <span className="muted">{av(hit.av_micros)} AV</span> ·{' '}
                     {unitName(hit.source_id)} · {actionNames[hit.action]}
-                    {hit.kind === 'weakness_break' && ' · 击破'}
+                    {hit.kind !== 'direct' && ` · ${damageNames[hit.kind]}`}
                     {hit.critical && ' · 暴击'} ·{' '}
                     <strong>{format.format(hit.amount)}</strong>
                   </span>

@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod catalog;
+mod dpr;
 mod loadout;
 mod panel;
 mod store;

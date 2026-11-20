@@ -1,10 +1,18 @@
 import { useId, useState } from 'react';
-import type { Action, BattleEvent, Outcome } from './client';
+import type { Action, BattleEvent, DamageKind, Outcome } from './client';
 
 export const actionNames: Record<Action, string> = {
   basic: '普攻',
   skill: '战技',
   ultimate: '终结技',
+};
+
+export const damageNames: Record<DamageKind, string> = {
+  direct: '伤害',
+  weakness_break: '击破伤害',
+  damage_over_time: '持续伤害',
+  additional: '附加伤害',
+  follow_up: '追加攻击',
 };
 
 export const outcomeNames: Record<Outcome, string> = {
@@ -31,14 +39,24 @@ function eventTitle({ kind }: BattleEvent): string {
       return actionNames[kind.detail];
     case 'enemy_attack':
       return '敌方攻击';
+    case 'follow_up':
+      return '追加攻击';
     case 'skill_points':
       return '战技点变化';
     case 'energy':
       return '能量变化';
     case 'damage':
-      return kind.detail.kind === 'weakness_break' ? '击破伤害' : '伤害';
+      return damageNames[kind.detail.kind];
     case 'heal':
       return '治疗';
+    case 'hp_spent':
+      return '消耗生命';
+    case 'shock_applied':
+      return '施加触电';
+    case 'shock_extended':
+      return '延长触电';
+    case 'shock_expired':
+      return '触电结束';
     case 'toughness':
       return '韧性变化';
     case 'weakness_broken':
@@ -67,6 +85,8 @@ function eventDetail({ kind }: BattleEvent) {
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;
     case 'heal':
       return `恢复生命 ${kind.detail.amount}`;
+    case 'hp_spent':
+      return `消耗生命 ${kind.detail.amount}`;
     case 'damage': {
       const { amount, hp_loss, absorbed, critical } = kind.detail;
       const values = [`伤害 ${amount}`, `实际扣除生命 ${hp_loss}`];

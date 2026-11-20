@@ -28,6 +28,10 @@ impl From<Error> for CommandError {
             Error::Catalog(_) | Error::CatalogSize => "catalog_invalid",
             Error::Profile(ProfileError::Version { .. }) => "catalog_mismatch",
             Error::TeamName => "invalid_team_name",
+            Error::Dpr(_) => {
+                eprintln!("固定靶场计算失败：{error}");
+                "dpr_failed"
+            }
             Error::RelicSnapshot(ExportError::InvalidSnapshot) => "invalid_relic_snapshot",
             Error::RelicSnapshot(ExportError::UnsupportedFormat) => "unsupported_relic_snapshot",
             Error::Profile(ProfileError::Invalid {

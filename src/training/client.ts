@@ -77,6 +77,7 @@ type EventKind =
         | 'wave_started'
         | 'turn_started'
         | 'enemy_attack'
+        | 'follow_up'
         | 'weakness_broken'
         | 'shield_depleted'
         | 'unit_defeated';
@@ -91,14 +92,20 @@ type EventKind =
   | {
       event: 'damage';
       detail: {
-        kind: 'direct' | 'weakness_break';
+        kind: DamageKind;
         amount: number;
         hp_loss: number;
         absorbed: number;
         critical: boolean;
       };
     }
-  | { event: 'heal'; detail: { amount: number } }
+  | { event: 'heal' | 'hp_spent'; detail: { amount: number } }
+  | {
+      event: 'shock_applied';
+      detail: { origin: Action; from_break: boolean; turns: number };
+    }
+  | { event: 'shock_extended'; detail: { extra_turns: number } }
+  | { event: 'shock_expired'; detail: { origin: Action; from_break: boolean } }
   | {
       event: 'gauge_shifted';
       detail: { before_quanta: number; after_quanta: number };
@@ -141,11 +148,17 @@ export type AnalysisRequest =
   | { kind: 'fastest_victory'; enemy_ids: string[] };
 
 type DamageCredit = { unit_id: string; amount: number };
+export type DamageKind =
+  | 'direct'
+  | 'weakness_break'
+  | 'damage_over_time'
+  | 'additional'
+  | 'follow_up';
 type DprHit = {
   av_micros: number;
   source_id: string;
   action: Action;
-  kind: 'direct' | 'weakness_break';
+  kind: DamageKind;
   critical: boolean;
   amount: number;
   credits: DamageCredit[];

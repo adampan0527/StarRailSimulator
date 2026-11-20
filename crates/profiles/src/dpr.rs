@@ -1,0 +1,83 @@
+use star_rail_battle_core::{OfficialCharacter, OfficialStats, supports_official_dpr};
+
+use crate::{Catalog, Error, FrozenCharacter, ScaledStat};
+
+const DATA_VERSION: &str =
+    "sr.4.7.0.m03.dce40f8d031ea2b3272537b2dd4041510e65e163db773a9d1a7cda7a509b1ff9";
+
+impl Catalog {
+    /// Resolves a frozen loadout against the exact data snapshot accepted by the DPR rules.
+    pub fn dpr_character(
+        &self,
+        member: &FrozenCharacter,
+    ) -> Result<Option<OfficialCharacter>, Error> {
+        let id = &member.character_form_id;
+        let loadout = &member.loadout;
+        let config = &loadout.config;
+        if self.data_version != DATA_VERSION
+            || !supports_official_dpr(id)
+            || config.level != 80
+            || loadout.variant_id != "base"
+            || loadout.affinitive_eidolon
+        {
+            return Ok(None);
+        }
+        self.validate_loadout(id, loadout)?;
+        let character = self.character(id)?;
+        let capacity = character
+            .resource
+            .capacity
+            .filter(|_| character.resource.kind == "energy")
+            .ok_or_else(|| Error::invalid("character.resource", id))?;
+        let variant = &character.variants[&loadout.variant_id];
+        let mut skill_parameters = std::collections::BTreeMap::new();
+        for (skill_id, skill) in &variant.skills {
+            if !skill.conditional_levels.is_empty() {
+                continue;
+            }
+            let level = self.effective_skill_level(id, loadout, skill_id)?;
+            skill_parameters.insert(
+                skill_id.clone(),
+                skill.parameters[usize::from(level - 1)].clone(),
+            );
+        }
+        let panel = self.character_stats(id, loadout)?;
+        let stat = |name, value: Option<ScaledStat>| value.ok_or_else(|| Error::invalid(name, id));
+        let attack = stat("character.attack", panel.attack)?;
+        let speed = stat("character.speed", panel.speed)?;
+        let ratio = |value: Option<f64>| (value.unwrap_or_default() * 10_000.0).round() as u32;
+        let stats = OfficialStats {
+            hp: stat("character.hp", panel.hp)?.total.round() as u32,
+            attack: attack.total.round() as u32,
+            base_attack: attack.base.round() as u32,
+            defense: stat("character.defense", panel.defense)?.total.round() as u32,
+            base_speed_micros: (speed.base * 1_000_000.0).round() as u64,
+            speed_micros: (speed.total * 1_000_000.0).round() as u64,
+            crit_rate_bp: ratio(panel.crit_rate),
+            crit_damage_bp: ratio(panel.crit_damage),
+            element_damage_bp: ratio(panel.element_damage),
+            effect_hit_rate_bp: ratio(panel.effect_hit_rate),
+            break_effect_bp: ratio(panel.break_effect),
+            energy_regeneration_bp: ratio(panel.energy_regeneration),
+        };
+        let enabled_trace_ids = variant
+            .traces
+            .iter()
+            .filter(|(id, trace)| {
+                config.unlocked_trace_ids.contains(id)
+                    || (trace.automatic && trace.requirement.met(config.level, config.ascension))
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        Ok(Some(OfficialCharacter {
+            unit_id: id.clone(),
+            form_id: id.clone(),
+            energy_capacity: capacity,
+            level: config.level,
+            stats,
+            skill_parameters,
+            eidolon: config.eidolon,
+            enabled_trace_ids,
+        }))
+    }
+}

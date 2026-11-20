@@ -4,6 +4,7 @@ import { describeError, errorCode } from '../training/client';
 import type {
   CharacterStats,
   CharacterSummary,
+  DprResult,
   TeamSlots,
 } from '../training/client';
 
@@ -61,6 +62,7 @@ export type SavedTeam = { id: string; name: string; slots: TeamSlots };
 export type TeamDprReadiness = {
   scenario: { cycles: number; toughness: number[] };
   unsupported_characters: string[];
+  result: DprResult | null;
 };
 export type Catalog = {
   game_version: string;
@@ -173,6 +175,8 @@ export function catalogError(error: unknown) {
       return '配队名称需填写 1–48 个字符。';
     case 'invalid_team':
       return '配队已变更或站位有重复角色，请检查后重试。';
+    case 'dpr_failed':
+      return '固定靶场计算失败。请检查当前角色配置。';
     default:
       return describeError(error);
   }

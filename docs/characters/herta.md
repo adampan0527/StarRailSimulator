@@ -1,6 +1,6 @@
 # 黑塔战斗规则
 
-使用 4.7.0 目录中的 `character.1013` 与 `base` 技能配置。技能倍率从配装快照的有效等级取值，命中倍率按核心的万分比单位舍入。下表的削韧以普攻削韧 `10` 为基准，原始 `ShowStanceList` 除以三。能量与削韧来自固定版本的 `AvatarSkillConfig`，目标和生效条件与简中技能数据对账。[4.7.0 数据来源与修订](m03-profiles.md#数据来源与离线重建)
+使用 4.7.0 目录中的 `character.1013` 与 `base` 技能配置。技能倍率从配装快照的有效等级取值，命中倍率按核心的万分比单位舍入。下表的削韧以普攻削韧 `10` 为基准，原始 `ShowStanceList` 除以三。能量与削韧来自固定版本的 `AvatarSkillConfig`，目标和生效条件与简中技能数据对账。[4.7.0 数据来源与修订](../m03-profiles.md#数据来源与离线重建)
 
 | 记录 | 目标 | 战技点 | 回能 | 削韧 |
 | --- | --- | --- | --- | --- |
@@ -20,4 +20,4 @@
 
 ## 验证
 
-`cargo test --locked --offline -p star-rail-battle-core` 覆盖六项黑塔回归。固定靶场核对两段战技伤害、伤害归属和重复运行；有限敌人核对逐段生命判定、恰好半血、连锁追击、逐转削韧与回能、冻结目标伤害和 E1、E2、E4、E6。[回归用例](../crates/battle-core/src/battle/official/herta/tests.rs)
+`cargo test --locked --offline -p star-rail-battle-core` 覆盖六项黑塔回归。固定靶场核对两段战技伤害、伤害归属和重复运行；有限敌人核对逐段生命判定、恰好半血、连锁追击、逐转削韧与回能、冻结目标伤害和 E1、E2、E4、E6。[回归用例](../../crates/battle-core/src/battle/official/herta/tests.rs)

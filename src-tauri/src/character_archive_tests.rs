@@ -30,12 +30,67 @@ fn dpr_checks_selected_saved_team_against_fixed_scenario() {
     let checked = archive.dpr_readiness(&selected.id).unwrap();
     assert_eq!(checked.scenario.cycles.get(), 3);
     assert_eq!(checked.scenario.toughness, [30, 120, 30]);
+    assert!(checked.result.is_none());
     assert_eq!(
         checked.unsupported_characters,
         ["丹恒 · 巡猎", "三月七 · 存护"]
     );
     assert!(archive.dpr_readiness(&empty.id).is_err());
     assert!(archive.dpr_readiness("team.missing").is_err());
+}
+
+#[cfg(bundled_catalog)]
+#[test]
+fn official_saved_team_runs_fixed_dpr_with_resolved_loadouts() {
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let arlan = "character.1008";
+    let herta = "character.1013";
+    let serval = "character.1103";
+    let slots = [
+        None,
+        Some(arlan.into()),
+        Some(herta.into()),
+        Some(serval.into()),
+    ];
+    let saved = archive.save_team(None, "角色靶场", &slots).unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&saved.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let first = run();
+    assert!(first.total_damage > 0);
+    assert_eq!(
+        first
+            .characters
+            .iter()
+            .map(|entry| entry.unit_id.as_str())
+            .collect::<Vec<_>>(),
+        [arlan, herta, serval],
+    );
+    assert!(first.characters.iter().all(|entry| entry.own_damage > 0));
+    assert_eq!(first.targets.len(), 3);
+    assert_eq!(
+        first
+            .targets
+            .iter()
+            .map(|target| target.damage)
+            .sum::<u64>(),
+        first.total_damage
+    );
+    assert_eq!(run(), first);
+
+    let slots = [
+        Some(arlan.into()),
+        Some("character.1003".into()),
+        None,
+        None,
+    ];
+    let mixed = archive.save_team(None, "有未接入角色", &slots).unwrap();
+    let checked = archive.dpr_readiness(&mixed.id).unwrap();
+    assert_eq!(checked.unsupported_characters, ["姬子"]);
+    assert!(checked.result.is_none());
 }
 
 fn remove_archiver_schema(db: &rusqlite::Connection) {
