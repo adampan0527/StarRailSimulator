@@ -93,6 +93,39 @@ fn official_saved_team_runs_fixed_dpr_with_resolved_loadouts() {
     assert!(checked.result.is_none());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn fixed_dpr_for_saved_team_credits_pelas_debuff_damage() {
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "佩拉与巡猎",
+            &[
+                Some("character.1106".into()),
+                Some("character.1013".into()),
+                Some("dan_heng.hunt".into()),
+                Some("natasha.abundance".into()),
+            ],
+        )
+        .unwrap();
+    let checked = archive.dpr_readiness(&team.id).unwrap();
+    assert!(checked.unsupported_characters.is_empty());
+    let result = checked.result.unwrap();
+    assert_eq!(result.characters.len(), 4);
+    assert!(result.characters.iter().all(|entry| entry.own_damage > 0));
+    assert!(result.characters[0].assist_damage > 0);
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|entry| entry.own_damage + entry.assist_damage)
+            .sum::<u64>()
+    );
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
