@@ -77,6 +77,7 @@ type Status =
   | 'slow'
   | 'defense_down'
   | 'resistance_down'
+  | 'dot_vulnerability'
   | 'frozen';
 type EventKind =
   | {

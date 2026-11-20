@@ -29,6 +29,7 @@ const statusNames = {
   slow: '减速',
   defense_down: '减防',
   resistance_down: '减抗',
+  dot_vulnerability: '持续伤害易伤',
   frozen: '冻结',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });

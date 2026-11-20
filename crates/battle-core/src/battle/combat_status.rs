@@ -6,6 +6,8 @@ use super::Battle;
 pub(super) enum DebuffKind {
     Slow,
     DefenseDown,
+    Vulnerability,
+    DotVulnerability,
     ResistanceDown(Element),
 }
 
@@ -14,6 +16,8 @@ impl DebuffKind {
         match self {
             Self::Slow => StatusKind::Slow,
             Self::DefenseDown => StatusKind::DefenseDown,
+            Self::Vulnerability => StatusKind::Vulnerability,
+            Self::DotVulnerability => StatusKind::DotVulnerability,
             Self::ResistanceDown(_) => StatusKind::ResistanceDown,
         }
     }
@@ -36,9 +40,9 @@ pub(super) struct HealOverTime {
 
 #[derive(Clone, Copy)]
 pub(super) struct BreakDot {
-    source: usize,
+    pub source: usize,
     origin: Action,
-    element: Element,
+    pub element: Element,
     turns: u32,
 }
 
@@ -92,6 +96,20 @@ impl Battle<'_> {
         self.apply_debuff(actor, target, DebuffKind::DefenseDown, bp, turns);
     }
 
+    pub(super) fn apply_vulnerability(&mut self, actor: usize, target: usize, bp: u32, turns: u32) {
+        self.apply_debuff(actor, target, DebuffKind::Vulnerability, bp, turns);
+    }
+
+    pub(super) fn apply_dot_vulnerability(
+        &mut self,
+        actor: usize,
+        target: usize,
+        bp: u32,
+        turns: u32,
+    ) {
+        self.apply_debuff(actor, target, DebuffKind::DotVulnerability, bp, turns);
+    }
+
     pub(super) fn apply_resistance_down(
         &mut self,
         actor: usize,
@@ -116,6 +134,7 @@ impl Battle<'_> {
             || self.is_frozen(target)
             || self.has_shock(target)
             || !state.break_dots.is_empty()
+            || !state.skill_dots.is_empty()
     }
 
     pub(super) fn cleanse_one(&mut self, actor: usize, target: usize) {
@@ -223,8 +242,8 @@ impl Battle<'_> {
     }
 
     pub(super) fn tick_break_dots(&mut self, target: usize) {
-        let mut dots = std::mem::take(&mut self.units[target].break_dots);
-        for dot in &mut dots {
+        let dots = self.units[target].break_dots.clone();
+        for dot in dots {
             if self.units[target].hp == 0 {
                 return;
             }
@@ -235,9 +254,10 @@ impl Battle<'_> {
                 dot.origin,
                 DamageKind::DamageOverTime,
             );
-            dot.turns -= 1;
         }
-        dots.retain(|dot| dot.turns > 0);
-        self.units[target].break_dots = dots;
+        self.units[target].break_dots.retain_mut(|dot| {
+            dot.turns = dot.turns.saturating_sub(1);
+            dot.turns > 0
+        });
     }
 }

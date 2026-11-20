@@ -11,7 +11,7 @@ static ICE_WEAK_ENEMY: EnemyKit = EnemyKit {
     stats: DUMMY_STATS,
     max_toughness: 30,
     weakness: {
-        let mut weaknesses = [false; 4];
+        let mut weaknesses = [false; Element::COUNT];
         weaknesses[Element::Ice.index()] = true;
         weaknesses
     },

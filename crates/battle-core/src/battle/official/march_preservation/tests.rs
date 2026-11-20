@@ -4,7 +4,7 @@ use crate::{
     PreparedBattle, STANDARD_DPR_SCENARIO,
     battle::setup::Kit,
     calculate_dpr,
-    fixture::{DUMMY_STATS, EnemyKit, EnemyTarget},
+    fixture::{DUMMY_STATS, Element, EnemyKit, EnemyTarget},
 };
 
 fn march(eidolon: u8) -> OfficialCharacter {
@@ -199,7 +199,7 @@ fn weakness_break_freeze_alone_does_not_refund_first_eidolon_energy() {
 static COUNTER_ENEMY: EnemyKit = EnemyKit {
     stats: DUMMY_STATS,
     max_toughness: 30,
-    weakness: [false; 4],
+    weakness: [false; Element::COUNT],
     target: EnemyTarget::FirstLiving,
     hit_energy_milli: 0,
 };

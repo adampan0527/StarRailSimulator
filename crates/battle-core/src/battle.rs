@@ -1,6 +1,7 @@
 mod analysis;
 mod combat_status;
 mod official;
+mod periodic;
 mod protection;
 mod resolve;
 mod setup;
@@ -22,6 +23,7 @@ pub use analysis::{
 use combat_status::{BreakDot, Debuff, DebuffKind, HealOverTime};
 use official::{Mechanics, SkillPoints};
 pub use official::{OfficialCharacter, OfficialStats, supports_official_dpr};
+use periodic::{ActiveSkillDot, LukaState};
 use protection::{CounterState, Freeze, Shield};
 use setup::Kit;
 pub use setup::PreparedBattle;
@@ -42,7 +44,7 @@ struct UnitState {
     gauge_quanta: u64,
     normal_turns: u32,
     advanced_to_front: bool,
-    statuses: [Option<Status>; 7],
+    statuses: [Option<Status>; 8],
     attack_bonus: Option<(u32, u32)>,
     crit_rate_bonus_bp: u32,
     frozen: Option<Freeze>,
@@ -52,6 +54,10 @@ struct UnitState {
     debuffs: Vec<Debuff>,
     heals_over_time: Vec<HealOverTime>,
     break_dots: Vec<BreakDot>,
+    skill_dots: Vec<ActiveSkillDot>,
+    charged_skill: bool,
+    burning_targets_at_action_start: Vec<usize>,
+    luka_state: LukaState,
     survival_triggered: bool,
     finished_turns: u32,
     next_attack_bonus_bp: u32,
@@ -103,7 +109,7 @@ impl<'a> Battle<'a> {
                     gauge_quanta: GAUGE_FULL,
                     normal_turns: 0,
                     advanced_to_front: false,
-                    statuses: [None; 7],
+                    statuses: [None; 8],
                     attack_bonus: None,
                     crit_rate_bonus_bp: 0,
                     frozen: None,
@@ -113,6 +119,10 @@ impl<'a> Battle<'a> {
                     debuffs: Vec::new(),
                     heals_over_time: Vec::new(),
                     break_dots: Vec::new(),
+                    skill_dots: Vec::new(),
+                    charged_skill: false,
+                    burning_targets_at_action_start: Vec::new(),
+                    luka_state: LukaState::default(),
                     survival_triggered: false,
                     finished_turns: 0,
                     next_attack_bonus_bp: 0,
@@ -276,7 +286,15 @@ impl<'a> Battle<'a> {
                         toughness: state.toughness,
                         max_toughness: self.plan.units[unit].kit.max_toughness(),
                         shield: self.shield_amount(unit),
-                        vulnerability_bp: state.magnitude(StatusKind::Vulnerability),
+                        vulnerability_bp: state
+                            .debuffs
+                            .iter()
+                            .filter(|status| status.kind == DebuffKind::Vulnerability)
+                            .map(|status| status.bp)
+                            .fold(
+                                state.magnitude(StatusKind::Vulnerability),
+                                u32::saturating_add,
+                            ),
                         speed_micros: self.speed_micros(unit),
                         gauge_quanta: state.gauge_quanta,
                         normal_turns: state.normal_turns,
@@ -323,7 +341,10 @@ impl<'a> Battle<'a> {
                     Action::Ultimate => SkillPoints::Unchanged,
                 },
             ),
-            Kit::Official(kit) => kit.ability(action),
+            Kit::Official(kit) => kit
+                .mechanics
+                .ability_override(self, actor, action)
+                .map_or_else(|| kit.ability(action), official::OfficialAbility::resolve),
             Kit::Enemy(_) | Kit::Dummy { .. } => return Err(BattleError::InvalidActor),
         };
         if self.units[actor].hp == 0 {
@@ -394,6 +415,10 @@ impl<'a> Battle<'a> {
 
     fn defense(&self, unit: usize) -> u32 {
         self.plan.units[unit].stats.defense
+    }
+
+    fn has_weakness(&self, unit: usize, element: crate::fixture::Element) -> bool {
+        self.plan.units[unit].kit.matches_weakness(element)
     }
 
     fn is_frozen(&self, unit: usize) -> bool {
@@ -539,6 +564,7 @@ impl<'a> Battle<'a> {
                 }
                 Kit::Enemy(_) | Kit::Dummy { .. } => {
                     self.tick_shocks(actor);
+                    self.tick_skill_dots(actor);
                     self.tick_break_dots(actor);
                     if self.units[actor].hp == 0 {
                         self.resolve_wave_or_end();

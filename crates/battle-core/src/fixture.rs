@@ -21,21 +21,25 @@ pub(crate) enum Element {
     Wind,
     Ice,
     Thunder,
+    Fire,
 }
 
 impl Element {
+    pub(crate) const COUNT: usize = 5;
+
     pub const fn index(self) -> usize {
         match self {
             Self::Physical => 0,
             Self::Wind => 1,
             Self::Ice => 2,
             Self::Thunder => 3,
+            Self::Fire => 4,
         }
     }
 
     pub const fn break_multiplier_bp(self) -> u16 {
         match self {
-            Self::Physical => 20_000,
+            Self::Physical | Self::Fire => 20_000,
             Self::Wind => 15_000,
             Self::Ice => 10_000,
             Self::Thunder => 10_000,
@@ -52,7 +56,7 @@ pub(crate) struct Stats {
     pub defense: u32,
     pub base_speed_micros: u64,
     pub flat_speed_micros: u64,
-    pub resist_bp: [u16; 4],
+    pub resist_bp: [u16; Element::COUNT],
     pub crit_rate_bp: u32,
     pub crit_damage_bp: u32,
     pub element_damage_bp: u32,
@@ -100,6 +104,12 @@ pub(crate) enum Effect {
         element: Element,
         multiplier_bp: u16,
         toughness: u16,
+    },
+    RandomHits {
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+        count: u8,
     },
     Shield {
         amount: u32,
@@ -152,7 +162,7 @@ pub(crate) enum EnemyTarget {
 pub(crate) struct EnemyKit {
     pub stats: Stats,
     pub max_toughness: u16,
-    pub weakness: [bool; 4],
+    pub weakness: [bool; Element::COUNT],
     pub target: EnemyTarget,
     pub hit_energy_milli: u32,
 }
@@ -166,7 +176,7 @@ const fn ally_stats(attack: u32, speed: u64) -> Stats {
         defense: 520,
         base_speed_micros: speed * 1_000_000,
         flat_speed_micros: 0,
-        resist_bp: [0; 4],
+        resist_bp: [0; Element::COUNT],
         crit_rate_bp: 0,
         crit_damage_bp: 5_000,
         element_damage_bp: 0,
@@ -177,7 +187,7 @@ const fn ally_stats(attack: u32, speed: u64) -> Stats {
     }
 }
 
-const fn enemy_stats(hp: u32, resist_bp: [u16; 4]) -> Stats {
+const fn enemy_stats(hp: u32, resist_bp: [u16; Element::COUNT]) -> Stats {
     Stats {
         level: 32,
         hp,
@@ -190,7 +200,7 @@ const fn enemy_stats(hp: u32, resist_bp: [u16; 4]) -> Stats {
     }
 }
 
-pub(crate) const DUMMY_STATS: Stats = enemy_stats(1, [0; 4]);
+pub(crate) const DUMMY_STATS: Stats = enemy_stats(1, [0; Element::COUNT]);
 
 const fn hit(element: Element, multiplier_bp: u16, toughness: u16) -> Effect {
     Effect::Hit {
@@ -278,16 +288,16 @@ static SUPPORT: AllyKit = AllyKit {
 };
 
 static LEFT: EnemyKit = EnemyKit {
-    stats: enemy_stats(1_000, [0, 0, 2_000, 0]),
+    stats: enemy_stats(1_000, [0, 0, 2_000, 0, 0]),
     max_toughness: 20,
-    weakness: [true, true, false, false],
+    weakness: [true, true, false, false, false],
     target: EnemyTarget::FirstLiving,
     hit_energy_milli: 10_000,
 };
 static RIGHT: EnemyKit = EnemyKit {
-    stats: enemy_stats(950, [0, 2_000, 2_000, 0]),
+    stats: enemy_stats(950, [0, 2_000, 2_000, 0, 0]),
     max_toughness: 10,
-    weakness: [true, false, false, false],
+    weakness: [true, false, false, false, false],
     target: EnemyTarget::RandomLiving,
     hit_energy_milli: 10_000,
 };

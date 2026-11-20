@@ -79,13 +79,18 @@ pub(crate) fn weakness_break(source: Stats, target: DamageTarget, element: Eleme
     damage_after_reduction(numerator, denominator, target)
 }
 
-pub(crate) fn break_status(source: Stats, target: DamageTarget, element: Element) -> u32 {
+pub(crate) fn break_status(
+    source: Stats,
+    target: DamageTarget,
+    element: Element,
+    ratio_bp: u16,
+) -> u32 {
     let defense = defense_points(source.level);
     let toughness = if target.toughness > 0 { 9_000 } else { BP };
     const LEVEL_80_BASE_X_BP: u128 = 37_675_533;
     let large_dummy = target.max_toughness >= 120;
     let base = match element {
-        Element::Ice => LEVEL_80_BASE_X_BP,
+        Element::Ice | Element::Fire => LEVEL_80_BASE_X_BP,
         Element::Thunder => 2 * LEVEL_80_BASE_X_BP,
         Element::Wind => {
             if large_dummy {
@@ -101,7 +106,7 @@ pub(crate) fn break_status(source: Stats, target: DamageTarget, element: Element
             from_hp.min(cap)
         }
     };
-    let numerator = base
+    let numerator = base * u128::from(ratio_bp) / BP
         * (BP + u128::from(source.break_effect_bp))
         * defense
         * resist_factor(target, element)

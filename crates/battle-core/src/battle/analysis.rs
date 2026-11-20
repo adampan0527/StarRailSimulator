@@ -182,9 +182,10 @@ pub fn calculate_dpr(
 }
 
 fn offensive_priority(battle: &Battle<'_>, command: &Command) -> u8 {
-    let damaging = battle
+    let actor = battle
         .allies()
-        .find(|&unit| battle.plan.units[unit].id == command.actor_id)
+        .find(|&unit| battle.plan.units[unit].id == command.actor_id);
+    let damaging = actor
         .and_then(|unit| battle.check_action(unit, command.action).ok())
         .is_some_and(|(ability, _)| {
             ability
@@ -194,9 +195,20 @@ fn offensive_priority(battle: &Battle<'_>, command: &Command) -> u8 {
         });
     match (command.action, damaging) {
         (Action::Ultimate, true) => 0,
-        (Action::Skill, true) => 1,
-        (Action::Basic, _) => 2,
-        _ => 3,
+        (Action::Basic, _)
+            if actor.is_some_and(|unit| {
+                battle.mechanics(unit).is_some_and(|mechanics| {
+                    mechanics
+                        .ability_override(battle, unit, Action::Basic)
+                        .is_some()
+                })
+            }) =>
+        {
+            1
+        }
+        (Action::Skill, true) => 2,
+        (Action::Basic, _) => 3,
+        _ => 4,
     }
 }
 

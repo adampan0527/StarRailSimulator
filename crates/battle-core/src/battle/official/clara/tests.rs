@@ -11,7 +11,7 @@ static ENEMY: EnemyKit = EnemyKit {
     stats: DUMMY_STATS,
     max_toughness: 120,
     weakness: {
-        let mut weaknesses = [false; 4];
+        let mut weaknesses = [false; Element::COUNT];
         weaknesses[Element::Physical.index()] = true;
         weaknesses
     },

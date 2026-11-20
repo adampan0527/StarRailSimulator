@@ -13,7 +13,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use super::Battle;
 use crate::{
     Action, BattleError, DamageKind,
-    fixture::{Ability, Effect, Stats, Target},
+    fixture::{Ability, Effect, Element, Stats, Target},
 };
 
 /// Static stats resolved by the profile layer before a fixed-target simulation.
@@ -102,7 +102,7 @@ impl OfficialCharacter {
             defense: stats.defense,
             base_speed_micros: stats.base_speed_micros,
             flat_speed_micros: stats.speed_micros - stats.base_speed_micros,
-            resist_bp: [0; 4],
+            resist_bp: [0; Element::COUNT],
             crit_rate_bp: stats.crit_rate_bp,
             crit_damage_bp: stats.crit_damage_bp,
             element_damage_bp: stats.element_damage_bp,
@@ -128,6 +128,19 @@ pub(super) struct OfficialAbility {
     pub skill_points: SkillPoints,
 }
 
+impl OfficialAbility {
+    pub(super) fn resolve(&self) -> (Ability<'_>, SkillPoints) {
+        (
+            Ability {
+                target: self.target,
+                energy_milli: self.energy_milli,
+                effects: &self.effects,
+            },
+            self.skill_points,
+        )
+    }
+}
+
 pub(super) struct OfficialKit {
     pub max_energy_milli: u32,
     pub basic: OfficialAbility,
@@ -143,18 +156,20 @@ impl OfficialKit {
             Action::Skill => &self.skill,
             Action::Ultimate => &self.ultimate,
         };
-        (
-            Ability {
-                target: ability.target,
-                energy_milli: ability.energy_milli,
-                effects: &ability.effects,
-            },
-            ability.skill_points,
-        )
+        ability.resolve()
     }
 }
 
 pub(super) trait Mechanics: Send + Sync {
+    fn ability_override(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _action: Action,
+    ) -> Option<&OfficialAbility> {
+        None
+    }
+
     fn on_battle_start(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     fn before_action(
