@@ -119,18 +119,7 @@ pub fn calculate_dpr(
         })
         .collect();
     let middle = &plan.units[plan.ally_count + (targets.len() - 1) / 2].id;
-    while battle.outcome == Outcome::Ongoing && battle.av_micros < end {
-        let actions = battle.legal_actions();
-        let command = actions
-            .iter()
-            .min_by_key(|command| {
-                (
-                    offensive_priority(&battle, command),
-                    command.target_id.as_ref() != Some(middle),
-                )
-            })
-            .ok_or(BattleError::InvalidActor)?;
-        battle.apply(command)?;
+    loop {
         for hit in battle
             .dummy_damage
             .drain(..)
@@ -163,6 +152,20 @@ pub fn calculate_dpr(
                 credits,
             });
         }
+        if battle.outcome != Outcome::Ongoing || battle.av_micros >= end {
+            break;
+        }
+        let actions = battle.legal_actions();
+        let command = actions
+            .iter()
+            .min_by_key(|command| {
+                (
+                    offensive_priority(&battle, command),
+                    command.target_id.as_ref() != Some(middle),
+                )
+            })
+            .ok_or(BattleError::InvalidActor)?;
+        battle.apply(command)?;
     }
     let rounds = f64::from(cycles.get());
     for character in &mut characters {

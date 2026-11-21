@@ -67,6 +67,7 @@ pub(super) struct OffenseContext {
     pub enemy: Option<usize>,
     pub element: Element,
     pub kind: DamageKind,
+    pub follow_up: bool,
 }
 
 impl OffenseBuffs {
@@ -210,6 +211,7 @@ impl Battle<'_> {
             enemy,
             element,
             kind,
+            follow_up,
         } = context;
         let mut bonuses = OffenseBuffs::default();
         for buff in self.units[target]
@@ -258,6 +260,11 @@ impl Battle<'_> {
                 bonuses.crit_damage_bp = bonuses
                     .crit_damage_bp
                     .saturating_add(mechanics.target_crit_damage_bonus_bp(self, source, enemy));
+                if follow_up {
+                    bonuses.crit_damage_bp = bonuses.crit_damage_bp.saturating_add(
+                        mechanics.follow_up_crit_damage_bonus_bp(self, source, enemy),
+                    );
+                }
             }
         }
         bonuses
@@ -286,6 +293,7 @@ impl Battle<'_> {
                     enemy: None,
                     element: Element::Physical,
                     kind: DamageKind::Direct,
+                    follow_up: false,
                 },
                 |_| true,
             )
@@ -300,6 +308,7 @@ impl Battle<'_> {
                 enemy: None,
                 element: Element::Physical,
                 kind: DamageKind::Direct,
+                follow_up: false,
             },
             |_| true,
         );

@@ -26,6 +26,7 @@ mod sampo;
 mod serval;
 mod sushang;
 mod tingyun;
+mod topaz;
 mod xueyi;
 mod yanqing;
 mod yukong;
@@ -36,6 +37,7 @@ pub(super) use {
     jiaoqiu::Field as JiaoqiuField,
     misha::MishaState,
     moze::MozeState,
+    topaz::TopazState,
     xueyi::XueyiState,
     yukong::YukongState,
 };
@@ -238,6 +240,8 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn on_battle_start(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn on_summon_turn(&self, _battle: &mut Battle<'_>, _owner: usize) {}
 
     fn before_action(
         &self,
@@ -466,6 +470,16 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_attack_target(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
 
+    fn on_first_attack_hit(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _target: usize,
+        _primary: bool,
+        _follow_up: bool,
+    ) {
+    }
+
     fn after_follow_up_hit(
         &self,
         _battle: &mut Battle<'_>,
@@ -635,7 +649,20 @@ pub(super) trait Mechanics: Send + Sync {
         false
     }
 
+    fn primary_attack_counts_as_follow_up(&self, action: Action) -> bool {
+        action == Action::Ultimate && self.ultimate_counts_as_follow_up()
+    }
+
     fn follow_up_vulnerability_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _enemy: usize,
+    ) -> u32 {
+        0
+    }
+
+    fn follow_up_crit_damage_bonus_bp(
         &self,
         _battle: &Battle<'_>,
         _owner: usize,
@@ -699,6 +726,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1109" => Some(hook::build),
         "character.1110" => Some(lynx::build),
         "character.1111" => Some(luka::build),
+        "character.1112" => Some(topaz::build),
         "character.1202" => Some(tingyun::build),
         luocha::FORM => Some(luocha::build),
         "character.1206" => Some(sushang::build),
