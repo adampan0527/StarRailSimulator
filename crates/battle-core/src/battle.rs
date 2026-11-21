@@ -572,6 +572,10 @@ impl<'a> Battle<'a> {
 
     fn has_weakness(&self, unit: usize, element: crate::fixture::Element) -> bool {
         self.plan.units[unit].kit.matches_weakness(element)
+            || self.units[unit]
+                .debuffs
+                .iter()
+                .any(|status| status.kind == combat_status::DebuffKind::ImplantedWeakness(element))
     }
 
     fn is_elite(&self, unit: usize) -> bool {

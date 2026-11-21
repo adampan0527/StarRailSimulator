@@ -839,14 +839,15 @@ impl Battle<'_> {
     ) -> DamageTarget {
         let plan = &self.plan.units[target];
         let state = &self.units[target];
-        let sum = |kind| {
+        let sum_matching = |matches_kind: &dyn Fn(DebuffKind) -> bool| {
             state
                 .debuffs
                 .iter()
-                .filter(|status| status.kind == kind && allow_source(status.source))
+                .filter(|status| matches_kind(status.kind) && allow_source(status.source))
                 .map(|status| status.bp)
                 .fold(0_u32, u32::saturating_add)
         };
+        let sum = |kind| sum_matching(&|other| other == kind);
         let legacy_vulnerability = state.statuses[StatusKind::Vulnerability.index()]
             .filter(|status| allow_source(status.source))
             .map_or(0, |status| status.magnitude);
@@ -910,10 +911,10 @@ impl Battle<'_> {
             damage_reduction_bp: 0,
             vulnerability_bp: vulnerability,
             defense_down_bp: sum(DebuffKind::DefenseDown)
+                .saturating_add(sum(DebuffKind::DefenseBug))
                 .saturating_add(weightless_defense_down)
                 .saturating_add(u32::from(event.defense_ignore_bp)),
-            resistance_down_bp: sum(DebuffKind::ResistanceDown(element))
-                .saturating_add(sum(DebuffKind::AllResistanceDown))
+            resistance_down_bp: sum_matching(&|kind| kind.reduces_resistance_to(element))
                 .saturating_add(weightless_resistance_down)
                 .saturating_add(field_resistance_down)
                 .saturating_add(personal_penetration)
@@ -1510,11 +1511,11 @@ impl Battle<'_> {
                     matches!(
                         status.kind,
                         DebuffKind::DefenseDown
+                            | DebuffKind::DefenseBug
                             | DebuffKind::Vulnerability
-                            | DebuffKind::AllResistanceDown
                             | DebuffKind::Weightless { .. }
                     ) || self.epiphany_applies(status.kind, target)
-                        || status.kind == DebuffKind::ResistanceDown(element)
+                        || status.kind.reduces_resistance_to(element)
                         || (status.kind == DebuffKind::DotVulnerability
                             && kind == DamageKind::DamageOverTime)
                         || (status.kind == DebuffKind::Besotted

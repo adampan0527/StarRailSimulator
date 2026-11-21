@@ -88,7 +88,8 @@ type Status =
   | 'weightless'
   | 'arcana'
   | 'epiphany'
-  | 'frozen';
+  | 'frozen'
+  | 'weakness_implanted';
 type EventKind =
   | {
       event:

@@ -12,6 +12,7 @@ pub(super) enum DebuffKind {
         resistance_down_bp: u16,
     },
     DefenseDown,
+    DefenseBug,
     Vulnerability,
     DotVulnerability,
     EffectResistanceDown,
@@ -23,6 +24,7 @@ pub(super) enum DebuffKind {
         only_on_turn: bool,
         effect_resistance_down_bp: u16,
     },
+    ImplantedWeakness(Element),
 }
 
 impl DebuffKind {
@@ -41,7 +43,7 @@ impl DebuffKind {
             Self::Slow | Self::BreakImprisonment => StatusKind::Slow,
             Self::SkillImprisonment => StatusKind::Imprisoned,
             Self::Weightless { .. } => StatusKind::Weightless,
-            Self::DefenseDown => StatusKind::DefenseDown,
+            Self::DefenseDown | Self::DefenseBug => StatusKind::DefenseDown,
             Self::Vulnerability => StatusKind::Vulnerability,
             Self::DotVulnerability => StatusKind::DotVulnerability,
             Self::EffectResistanceDown => StatusKind::EffectResistanceDown,
@@ -49,6 +51,17 @@ impl DebuffKind {
             Self::AttackDown => StatusKind::AttackDown,
             Self::AllResistanceDown | Self::ResistanceDown(_) => StatusKind::ResistanceDown,
             Self::Epiphany { .. } => StatusKind::Epiphany,
+            Self::ImplantedWeakness(_) => StatusKind::WeaknessImplanted,
+        }
+    }
+
+    pub(super) fn reduces_resistance_to(self, element: Element) -> bool {
+        match self {
+            Self::AllResistanceDown => true,
+            Self::ResistanceDown(affected) | Self::ImplantedWeakness(affected) => {
+                affected == element
+            }
+            _ => false,
         }
     }
 }
@@ -58,7 +71,13 @@ pub(super) struct Debuff {
     pub source: usize,
     pub kind: DebuffKind,
     pub bp: u32,
-    expires_after_turn: u32,
+    expires_after_turn: Option<u32>,
+}
+
+impl Debuff {
+    pub(super) fn remaining_turns(self, turn: u32) -> Option<u32> {
+        self.expires_after_turn.map(|end| end.saturating_sub(turn))
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -106,18 +125,48 @@ impl Battle<'_> {
         if self.units[target].hp == 0 || self.resists_debuff(target) {
             return false;
         }
+        self.store_debuff(source, target, kind, bp, Some(turns))
+    }
+
+    pub(super) fn apply_permanent_debuff(
+        &mut self,
+        source: usize,
+        target: usize,
+        kind: DebuffKind,
+        bp: u32,
+    ) {
+        self.store_debuff(source, target, kind, bp, None);
+    }
+
+    fn store_debuff(
+        &mut self,
+        source: usize,
+        target: usize,
+        kind: DebuffKind,
+        bp: u32,
+        turns: Option<u32>,
+    ) -> bool {
         let state = &mut self.units[target];
+        if state.hp == 0 {
+            return false;
+        }
         let updated = Debuff {
             source,
             kind,
             bp,
-            expires_after_turn: state.normal_turns + turns,
+            expires_after_turn: turns.map(|turns| state.normal_turns.saturating_add(turns)),
         };
-        if let Some(current) = state
-            .debuffs
-            .iter_mut()
-            .find(|status| status.kind == kind && status.source == source)
-        {
+        if let Some(current) = state.debuffs.iter_mut().find(|status| {
+            status.source == source
+                && (status.kind == kind
+                    || matches!(
+                        (status.kind, kind),
+                        (
+                            DebuffKind::ImplantedWeakness(_),
+                            DebuffKind::ImplantedWeakness(_)
+                        )
+                    ))
+        }) {
             *current = updated;
         } else {
             state.debuffs.push(updated);
@@ -263,8 +312,12 @@ impl Battle<'_> {
 
     pub(super) fn cleanse_one(&mut self, actor: usize, target: usize) {
         let state = &mut self.units[target];
-        let expired = if let Some(status) = state.debuffs.first().copied() {
-            state.debuffs.remove(0);
+        let expired = if let Some(index) = state
+            .debuffs
+            .iter()
+            .position(|status| status.expires_after_turn.is_some())
+        {
+            let status = state.debuffs.remove(index);
             Some((status.kind.status(), status.source))
         } else {
             state.statuses[StatusKind::Vulnerability.index()]
@@ -328,7 +381,9 @@ impl Battle<'_> {
         let turns = state.normal_turns;
         let expired: Vec<_> = state
             .debuffs
-            .extract_if(.., |status| status.expires_after_turn <= turns)
+            .extract_if(.., |status| {
+                status.expires_after_turn.is_some_and(|end| end <= turns)
+            })
             .collect();
         for status in expired {
             self.emit(
