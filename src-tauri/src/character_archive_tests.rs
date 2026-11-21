@@ -553,6 +553,46 @@ fn saved_follow_up_team_replays_bounces_and_keeps_each_damage_source() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_follow_up_team_credits_mozes_prey_on_ratios_talent() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let ratio = "character.1305";
+    let moze = "character.1223";
+    let forms = [ratio, moze, "character.1106", "character.1110"];
+    let team = archive
+        .save_team(None, "负面状态与追击", &forms.map(|id| Some(id.into())))
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| {
+        hit.source_id == ratio
+            && hit.kind == DamageKind::FollowUp
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == moze && credit.amount > 0)
+    }));
+    assert!(hits().any(|hit| hit.source_id == moze && hit.kind == DamageKind::FollowUp));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
