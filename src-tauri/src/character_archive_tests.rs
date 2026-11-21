@@ -786,6 +786,76 @@ fn black_swan_preserves_arcana_sources_with_both_saved_variants() {
     assert_eq!(original, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_quantum_team_credits_matrix_and_defense_debuffs() {
+    let dir = TestData::new();
+    let catalog =
+        star_rail_profiles::Catalog::from_json(include_str!("../../.m03-data/4.7.0/catalog.json"))
+            .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let [seele, silver_wolf, fu_xuan, arlan] = [
+        "character.1102",
+        "character.1006",
+        "character.1208",
+        "character.1008",
+    ];
+    let mut edit = archive.profile(fu_xuan).unwrap().edit;
+    edit.eidolon = 1;
+    archive.save(fu_xuan, edit).unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "量子配队",
+            &[seele, silver_wolf, fu_xuan, arlan].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    assert!(result.characters[0].own_damage > 0);
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    for support in [silver_wolf, fu_xuan] {
+        assert!(
+            hits().any(|hit| {
+                hit.source_id != support
+                    && hit
+                        .credits
+                        .iter()
+                        .any(|credit| credit.unit_id == support && credit.amount > 0)
+            }),
+            "{support}"
+        );
+    }
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    for form in [seele, silver_wolf] {
+        let profile = profiles.profile(form).unwrap();
+        assert_eq!(
+            profile.presets[&profile.current_preset].variant_id,
+            "novaflare"
+        );
+        let loadout = catalog.default_loadout_at(form, "base", 80, 6).unwrap();
+        profiles.save_preset(form, "原版", &loadout, true).unwrap();
+    }
+    let original = run();
+    assert_ne!(result.total_damage, original.total_damage);
+    assert!(original.characters[0].own_damage > 0);
+    assert_eq!(original, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
