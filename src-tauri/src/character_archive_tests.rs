@@ -95,6 +95,53 @@ fn official_saved_team_runs_fixed_dpr_with_resolved_loadouts() {
 
 #[cfg(bundled_catalog)]
 #[test]
+fn every_registered_official_variant_runs_from_a_saved_loadout() {
+    use star_rail_battle_core::supports_official_dpr_variant;
+
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+
+    for (form_id, character) in &catalog.characters {
+        for variant in character.variants.keys() {
+            if !supports_official_dpr_variant(form_id, variant) {
+                continue;
+            }
+            profiles.ensure_profile(form_id).unwrap();
+            let loadout = catalog.default_loadout_at(form_id, variant, 80, 6).unwrap();
+            profiles
+                .save_preset(form_id, variant, &loadout, true)
+                .unwrap();
+            let team = archive
+                .save_team(None, form_id, &[Some(form_id.clone()), None, None, None])
+                .unwrap();
+            let checked = archive
+                .dpr_readiness(&team.id)
+                .unwrap_or_else(|error| panic!("{form_id}/{variant}: {error}"));
+            let result = checked
+                .result
+                .unwrap_or_else(|| panic!("{form_id}/{variant}: unsupported saved loadout"));
+            assert_eq!(result.characters[0].unit_id, *form_id);
+            assert_eq!(
+                result
+                    .targets
+                    .iter()
+                    .map(|target| target.damage)
+                    .sum::<u64>(),
+                result.total_damage,
+                "{form_id}/{variant}"
+            );
+        }
+    }
+}
+
+#[cfg(bundled_catalog)]
+#[test]
 fn welt_fixed_dpr_uses_default_and_saved_base_variant() {
     let dir = TestData::new();
     let welt = "character.1004";
@@ -854,6 +901,65 @@ fn saved_quantum_team_credits_matrix_and_defense_debuffs() {
     assert_ne!(result.total_damage, original.total_damage);
     assert!(original.characters[0].own_damage > 0);
     assert_eq!(original, run());
+}
+
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_slashed_dream_and_sparkles_assists() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [acheron, aventurine, sparkle, silver_wolf] = [
+        "character.1308",
+        "character.1304",
+        "character.1306",
+        "character.1006",
+    ];
+    let mut edit = archive.profile(aventurine).unwrap().edit;
+    edit.eidolon = 2;
+    archive.save(aventurine, edit).unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "残梦与护盾支援",
+            &[acheron, aventurine, sparkle, silver_wolf].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| {
+        hit.source_id == acheron && hit.action == Action::Ultimate && hit.kind == DamageKind::Direct
+    }));
+    assert!(hits().any(|hit| {
+        hit.source_id == acheron
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == sparkle && credit.amount > 0)
+    }));
+    assert!(hits().any(|hit| {
+        hit.source_id == acheron
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == aventurine && credit.amount > 0)
+    }));
+    assert!(hits().any(|hit| hit.source_id == aventurine && hit.amount > 0));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
 }
 
 fn remove_archiver_schema(db: &rusqlite::Connection) {
