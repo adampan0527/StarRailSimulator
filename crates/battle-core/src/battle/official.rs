@@ -26,6 +26,7 @@ mod sampo;
 mod serval;
 mod sushang;
 mod tingyun;
+mod welt;
 mod xueyi;
 mod yanqing;
 mod yukong;
@@ -36,6 +37,7 @@ pub(super) use {
     jiaoqiu::Field as JiaoqiuField,
     misha::MishaState,
     moze::MozeState,
+    welt::WeltState,
     xueyi::XueyiState,
     yukong::YukongState,
 };
@@ -672,7 +674,8 @@ pub fn supports_official_dpr(form_id: &str) -> bool {
 
 pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
     supports_official_dpr(form_id)
-        && (variant == "base" || (form_id == "character.1005" && variant == "novaflare"))
+        && (variant == "base"
+            || (variant == "novaflare" && matches!(form_id, welt::FORM | "character.1005")))
 }
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
@@ -686,6 +689,7 @@ type KitBuilder = fn(&OfficialCharacter) -> Result<OfficialKit, BattleError>;
 fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
         "character.1003" => Some(himeko::build),
+        welt::FORM => Some(welt::build),
         "character.1005" => Some(kafka::build),
         "character.1008" => Some(arlan::build),
         "character.1009" => Some(asta::build),

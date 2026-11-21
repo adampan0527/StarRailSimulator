@@ -760,6 +760,24 @@ impl Battle<'_> {
             vulnerability = vulnerability.saturating_add(source_vulnerability);
             field_resistance_down = field_resistance_down.saturating_add(resistance_down);
         }
+        let mut weightless_defense_down = 0_u32;
+        let mut weightless_resistance_down = 0_u32;
+        for status in state
+            .debuffs
+            .iter()
+            .filter(|status| allow_source(status.source))
+        {
+            if let DebuffKind::Weightless {
+                defense_down_bp,
+                resistance_down_bp,
+            } = status.kind
+            {
+                weightless_defense_down =
+                    weightless_defense_down.saturating_add(u32::from(defense_down_bp));
+                weightless_resistance_down =
+                    weightless_resistance_down.saturating_add(u32::from(resistance_down_bp));
+            }
+        }
         let personal_penetration = self.mechanics(actor).map_or(0, |mechanics| {
             mechanics.resistance_penetration_bp(self, actor, element)
         });
@@ -770,9 +788,10 @@ impl Battle<'_> {
             stats,
             damage_reduction_bp: 0,
             vulnerability_bp: vulnerability,
-            defense_down_bp: sum(DebuffKind::DefenseDown),
+            defense_down_bp: sum(DebuffKind::DefenseDown).saturating_add(weightless_defense_down),
             resistance_down_bp: sum(DebuffKind::ResistanceDown(element))
                 .saturating_add(sum(DebuffKind::AllResistanceDown))
+                .saturating_add(weightless_resistance_down)
                 .saturating_add(field_resistance_down)
                 .saturating_add(personal_penetration)
                 .saturating_add(if element == Element::Wind {
@@ -1313,6 +1332,7 @@ impl Battle<'_> {
                         DebuffKind::DefenseDown
                             | DebuffKind::Vulnerability
                             | DebuffKind::AllResistanceDown
+                            | DebuffKind::Weightless { .. }
                     ) || status.kind == DebuffKind::ResistanceDown(element)
                         || (status.kind == DebuffKind::DotVulnerability
                             && kind == DamageKind::DamageOverTime)
@@ -1506,6 +1526,13 @@ impl Battle<'_> {
             Some(actor),
             Some(target),
         );
+    }
+
+    pub(super) fn delay_action(&mut self, source: usize, target: usize, delay_bp: u16) {
+        let delayed = self.units[target]
+            .gauge_quanta
+            .saturating_add(gauge_for(delay_bp));
+        self.shift_gauge(source, target, delayed, false);
     }
 
     fn apply_imprisonment(&mut self, actor: usize, target: usize, break_effect_bp: u32) {

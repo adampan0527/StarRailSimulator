@@ -35,6 +35,8 @@ const statusNames = {
   attack_down: '攻击力降低',
   entangled: '纠缠',
   frozen: '冻结',
+  imprisoned: '禁锢',
+  weightless: '失重',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

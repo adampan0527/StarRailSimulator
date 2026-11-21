@@ -82,7 +82,9 @@ type Status =
   | 'besotted'
   | 'attack_down'
   | 'entangled'
-  | 'frozen';
+  | 'frozen'
+  | 'imprisoned'
+  | 'weightless';
 type EventKind =
   | {
       event:

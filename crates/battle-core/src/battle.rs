@@ -24,7 +24,8 @@ pub use analysis::{
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
     BailuState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse, Mechanics,
-    MishaState, MozeState, SkillPoints, SushangState, XueyiState, YanqingState, YukongState,
+    MishaState, MozeState, SkillPoints, SushangState, WeltState, XueyiState, YanqingState,
+    YukongState,
 };
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
@@ -83,6 +84,7 @@ struct UnitState {
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
     misha_state: MishaState,
+    welt_state: WeltState,
     yukong_state: YukongState,
     luocha_state: LuochaState,
     jiaoqiu_field: official::JiaoqiuField,
@@ -172,6 +174,7 @@ impl<'a> Battle<'a> {
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
                     misha_state: MishaState::default(),
+                    welt_state: WeltState::default(),
                     yukong_state: YukongState::default(),
                     luocha_state: LuochaState::default(),
                     jiaoqiu_field: official::JiaoqiuField::default(),
@@ -585,7 +588,7 @@ impl<'a> Battle<'a> {
         let slow_bp: u64 = self.units[unit]
             .debuffs
             .iter()
-            .filter(|status| status.kind == DebuffKind::Slow)
+            .filter(|status| status.kind.is_speed_down())
             .map(|status| u64::from(status.bp))
             .sum();
         let (flat_buff, ratio_buff) = self.support_speed(unit);
