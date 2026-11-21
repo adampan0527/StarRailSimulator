@@ -54,21 +54,29 @@ struct SummonTurn {
     speed_micros: u64,
     gauge_quanta: u64,
     advanced_to_front: bool,
+    can_advance: bool,
 }
 
 impl SummonTurn {
     fn new(name: &'static str, speed_micros: u64) -> Self {
+        Self::with_action_advance(name, speed_micros, true)
+    }
+
+    fn with_action_advance(name: &'static str, speed_micros: u64, can_advance: bool) -> Self {
         Self {
             name,
             speed_micros,
             gauge_quanta: GAUGE_FULL,
             advanced_to_front: false,
+            can_advance,
         }
     }
 
     fn advance(&mut self, bp: u16) {
-        self.gauge_quanta = self.gauge_quanta.saturating_sub(resolve::gauge_for(bp));
-        self.advanced_to_front = self.gauge_quanta == 0;
+        if self.can_advance {
+            self.gauge_quanta = self.gauge_quanta.saturating_sub(resolve::gauge_for(bp));
+            self.advanced_to_front = self.gauge_quanta == 0;
+        }
     }
 }
 
@@ -122,6 +130,7 @@ struct UnitState {
     bronya_state: BronyaState,
     tingyun_state: TingyunState,
     sparkle_state: official::SparkleState,
+    sunday_state: official::SundayState,
     qingque_state: official::QingqueState,
     ruan_mei_state: official::RuanMeiState,
     robin_state: official::RobinState,
@@ -244,6 +253,7 @@ impl<'a> Battle<'a> {
                     bronya_state: BronyaState::default(),
                     tingyun_state: TingyunState::default(),
                     sparkle_state: official::SparkleState::default(),
+                    sunday_state: official::SundayState::default(),
                     qingque_state: official::QingqueState::default(),
                     ruan_mei_state: official::RuanMeiState::default(),
                     robin_state: official::RobinState::default(),

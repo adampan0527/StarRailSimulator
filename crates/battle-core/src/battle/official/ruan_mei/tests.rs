@@ -179,6 +179,7 @@ fn ruan_mei_skill_adds_efficiency_before_rounding_and_a6_uses_live_break_effect(
         element: Element::Fire,
         kind: DamageKind::Direct,
         follow_up: false,
+        summon: false,
     };
     let buffs = battle.offense_buffs_from(0, offense);
     assert_eq!(buffs.break_effect_bp, 2_000);

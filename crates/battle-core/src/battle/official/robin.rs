@@ -149,7 +149,11 @@ impl Robin {
             attack_bonus: u32::try_from(bonus).unwrap_or(u32::MAX),
             encore_hits: E6_HIT_COUNT * u8::from(self.eidolon >= 6),
         });
-        battle.units[owner].summon_turn = Some(SummonTurn::new("concerto", CONCERTO_SPEED_MICROS));
+        battle.units[owner].summon_turn = Some(SummonTurn::with_action_advance(
+            "concerto",
+            CONCERTO_SPEED_MICROS,
+            false,
+        ));
         battle.close_turn_before_suspension(owner);
         for target in battle.allies() {
             if !battle.is_targetable(target) {
