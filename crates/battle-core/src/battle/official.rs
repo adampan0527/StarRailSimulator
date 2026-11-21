@@ -31,6 +31,7 @@ mod misha;
 mod moze;
 mod natasha;
 mod pela;
+mod qingque;
 mod sampo;
 mod seele;
 mod serval;
@@ -59,6 +60,7 @@ pub(super) use {
     march_hunt::MarchHuntState,
     misha::MishaState,
     moze::MozeState,
+    qingque::QingqueState,
     seele::SeeleState,
     sparkle::SparkleState,
     topaz::TopazState,
@@ -300,6 +302,11 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn can_use_skill(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         true
+    }
+
+    /// An ordinary action can leave the current turn open for another command.
+    fn keeps_turn(&self, _action: Action) -> bool {
+        false
     }
 
     fn ability_override(
@@ -1029,6 +1036,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1110" => Some(lynx::build),
         "character.1111" => Some(luka::build),
         "character.1112" => Some(topaz::build),
+        qingque::FORM => Some(qingque::build),
         "character.1202" => Some(tingyun::build),
         jing_yuan::FORM => Some(jing_yuan::build),
         luocha::FORM => Some(luocha::build),

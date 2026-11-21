@@ -131,6 +131,10 @@ pub(super) enum PendingAttack {
 enum FollowUpTargets {
     All,
     Single(usize),
+    SingleBlast {
+        target: usize,
+        adjacent: (u16, u16),
+    },
     Random {
         hit_count: u8,
         adjacent_multiplier_bp: Option<u16>,
@@ -617,6 +621,24 @@ impl Battle<'_> {
             }));
     }
 
+    /// Hit the original target and its neighbors while the primary target is still living.
+    pub(super) fn follow_up_blast(
+        &mut self,
+        actor: usize,
+        target: usize,
+        origin: Action,
+        attack: FollowUpAttack,
+        adjacent: (u16, u16),
+    ) {
+        self.pending_follow_ups
+            .push_back(PendingAttack::FollowUp(FollowUp {
+                actor,
+                targets: FollowUpTargets::SingleBlast { target, adjacent },
+                origin,
+                attack,
+            }));
+    }
+
     /// Each hit draws a living enemy and grants the specified energy for that hit.
     pub(super) fn follow_up_random(
         &mut self,
@@ -718,7 +740,8 @@ impl Battle<'_> {
             }
             let single = match targets {
                 FollowUpTargets::All | FollowUpTargets::Random { .. } => None,
-                FollowUpTargets::Single(unit) => Some(unit),
+                FollowUpTargets::Single(unit)
+                | FollowUpTargets::SingleBlast { target: unit, .. } => Some(unit),
                 FollowUpTargets::SingleOrRandom(Some(unit)) if self.is_targetable(unit) => {
                     Some(unit)
                 }
@@ -796,6 +819,18 @@ impl Battle<'_> {
                             multiplier_bp,
                             toughness,
                         );
+                    }
+                    if let FollowUpTargets::SingleBlast { adjacent, .. } = targets {
+                        for neighbor in self.adjacent_enemies(target) {
+                            self.follow_up_hit(
+                                actor,
+                                neighbor,
+                                origin,
+                                attack.element,
+                                adjacent.0,
+                                adjacent.1,
+                            );
+                        }
                     }
                     if let Some(mechanics) = &mechanics {
                         mechanics.after_follow_up_hit(self, actor, target, origin);

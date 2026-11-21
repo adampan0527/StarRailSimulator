@@ -80,6 +80,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '集真赤变化';
     case 'blind_bet':
       return '盲注变化';
+    case 'jade_tiles':
+      return '琼玉牌变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -124,6 +126,8 @@ function eventDetail({ kind }: BattleEvent) {
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;
     case 'flying_aureus':
       return `${kind.detail.before_halves / 2} → ${kind.detail.after_halves / 2}`;
+    case 'jade_tiles':
+      return kind.detail.hidden_hand ? '暗杠' : kind.detail.suits.join(' / ');
     case 'slashed_dream': {
       const { before, after, overflow_before, overflow_after } = kind.detail;
       const dreams = `${before} → ${after}`;

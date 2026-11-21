@@ -122,6 +122,7 @@ struct UnitState {
     bronya_state: BronyaState,
     tingyun_state: TingyunState,
     sparkle_state: official::SparkleState,
+    qingque_state: official::QingqueState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
     misha_state: MishaState,
@@ -233,6 +234,7 @@ impl<'a> Battle<'a> {
                     bronya_state: BronyaState::default(),
                     tingyun_state: TingyunState::default(),
                     sparkle_state: official::SparkleState::default(),
+                    qingque_state: official::QingqueState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
                     misha_state: MishaState::default(),
@@ -365,6 +367,12 @@ impl<'a> Battle<'a> {
             _ => return Err(BattleError::InvalidTarget),
         };
 
+        let mechanics = self.mechanics(actor);
+        let attacking = ability.effects.iter().any(|effect| effect.deals_damage());
+        let keeps_turn = mechanics
+            .as_ref()
+            .is_some_and(|rules| rules.keeps_turn(command.action));
+        let ends_turn = command.action != Action::Ultimate && !keeps_turn;
         self.decision_index += 1;
         self.action = Some(command.action);
         self.action_target = target;
@@ -378,18 +386,16 @@ impl<'a> Battle<'a> {
             SkillPoints::Spend => self.spend_skill_points(actor, 1),
             SkillPoints::Unchanged => {}
         }
-        let ordinary = command.action != Action::Ultimate;
-        let extra_turn = ordinary && self.in_extra_turn(actor);
-        if ordinary {
-            if !extra_turn {
-                self.reset_gauge(actor);
-            }
-        } else {
+        let extra_turn = ends_turn && self.in_extra_turn(actor);
+        if command.action == Action::Ultimate {
             self.set_energy(actor, actor, 0);
+        } else if ends_turn && !extra_turn {
+            self.reset_gauge(actor);
         }
         self.notify_ally_targets(actor, target, ability.target, command.action);
-        self.activate_attack_bonuses(actor, command.action);
-        let mechanics = self.mechanics(actor);
+        if !keeps_turn || attacking {
+            self.activate_attack_bonuses(actor, command.action);
+        }
         if let Some(mechanics) = &mechanics {
             mechanics.before_action(self, actor, command.action, target);
         }
@@ -399,7 +405,6 @@ impl<'a> Battle<'a> {
         if let Some(mechanics) = &mechanics {
             mechanics.after_action(self, actor, command.action, target);
         }
-        let attacking = ability.effects.iter().any(|effect| effect.deals_damage());
         if attacking {
             self.notify_attack(actor, command.action, target);
         }
@@ -414,7 +419,7 @@ impl<'a> Battle<'a> {
         self.action_target = None;
         if extra_turn {
             self.finish_extra_turn();
-        } else if ordinary {
+        } else if ends_turn {
             self.finish_turn(actor);
             self.ordinary_actor = None;
         }
