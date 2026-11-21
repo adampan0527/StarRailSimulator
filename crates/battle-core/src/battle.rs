@@ -122,6 +122,7 @@ struct UnitState {
     moze_state: MozeState,
     topaz_state: TopazState,
     jing_yuan_state: JingYuanState,
+    jingliu_state: official::JingliuState,
     xueyi_state: XueyiState,
     sushang_state: SushangState,
     yanqing_state: YanqingState,
@@ -247,6 +248,7 @@ impl<'a> Battle<'a> {
                     moze_state: MozeState::default(),
                     topaz_state: TopazState::default(),
                     jing_yuan_state: JingYuanState::default(),
+                    jingliu_state: official::JingliuState::default(),
                     xueyi_state: XueyiState::default(),
                     sushang_state: SushangState::default(),
                     yanqing_state: YanqingState::default(),
@@ -602,10 +604,11 @@ impl<'a> Battle<'a> {
             }
         } else {
             if self.ordinary_actor != Some(actor)
-                || (action == Action::Skill
-                    && self
-                        .mechanics(actor)
-                        .is_some_and(|mechanics| !mechanics.can_use_skill(self, actor)))
+                || self.mechanics(actor).is_some_and(|rules| match action {
+                    Action::Basic => !rules.can_use_basic(self, actor),
+                    Action::Skill => !rules.can_use_skill(self, actor),
+                    Action::Ultimate | Action::EnhancedUltimate => false,
+                })
             {
                 return Err(BattleError::IllegalTiming);
             }

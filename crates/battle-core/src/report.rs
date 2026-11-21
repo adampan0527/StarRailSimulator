@@ -142,6 +142,14 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    Syzygy {
+        before: u8,
+        after: u8,
+    },
+    Moonlight {
+        before: u8,
+        after: u8,
+    },
     Damage {
         kind: DamageKind,
         amount: u32,

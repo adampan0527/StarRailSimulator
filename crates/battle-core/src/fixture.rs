@@ -149,6 +149,11 @@ pub(crate) enum Effect {
         multiplier_bp: u16,
         toughness: u16,
     },
+    MaxHpBlastAdjacent {
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+    },
     RandomHits {
         element: Element,
         multiplier_bp: u16,
@@ -189,6 +194,7 @@ impl Effect {
                 | Self::WideHit { .. }
                 | Self::MaxHpHit { .. }
                 | Self::BlastAdjacent { .. }
+                | Self::MaxHpBlastAdjacent { .. }
                 | Self::RandomHits { .. }
                 | Self::RepeatingSingleHits { .. }
                 | Self::DirectedAreaAttack

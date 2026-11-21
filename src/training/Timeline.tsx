@@ -91,6 +91,10 @@ function eventTitle({ kind }: BattleEvent): string {
       return '优势口袋变化';
     case 'blade_charge':
       return '倏忽恩赐充能';
+    case 'syzygy':
+      return '朔望变化';
+    case 'moonlight':
+      return '月色变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -133,6 +137,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'apotheosis':
     case 'pocket_trickshot':
     case 'blade_charge':
+    case 'syzygy':
+    case 'moonlight':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;

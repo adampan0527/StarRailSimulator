@@ -24,6 +24,7 @@ mod hook;
 mod huohuo;
 mod jiaoqiu;
 mod jing_yuan;
+mod jingliu;
 mod kafka;
 mod luka;
 mod luocha;
@@ -65,6 +66,7 @@ pub(super) use {
     huohuo::HuohuoState,
     jiaoqiu::Field as JiaoqiuField,
     jing_yuan::JingYuanState,
+    jingliu::JingliuState,
     march_hunt::MarchHuntState,
     misha::MishaState,
     moze::MozeState,
@@ -318,6 +320,10 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn can_use_skill(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
+        true
+    }
+
+    fn can_use_basic(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         true
     }
 
@@ -791,6 +797,17 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn after_ally_hp_loss(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
 
+    /// Positive incoming damage (including absorption) or actual voluntary HP consumption.
+    /// Incoming hits from one attack share an index so observers can count the recipient once.
+    fn on_ally_health_event(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _target: usize,
+        _attack_index: Option<u32>,
+    ) {
+    }
+
     fn after_non_primary_critical_hit(
         &self,
         _battle: &mut Battle<'_>,
@@ -1110,6 +1127,7 @@ pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
                         | blade::FORM
                         | silver_wolf::FORM
                         | huohuo::FORM
+                        | jingliu::FORM
                         | seele::FORM
                         | sparkle::FORM
                 )))
@@ -1153,6 +1171,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         fu_xuan::FORM => Some(fu_xuan::build),
         "character.1210" => Some(guinaifen::build),
         "character.1211" => Some(bailu::build),
+        jingliu::FORM => Some(jingliu::build),
         xueyi::FORM => Some(xueyi::build),
         "character.1215" => Some(hanya::build),
         huohuo::FORM => Some(huohuo::build),

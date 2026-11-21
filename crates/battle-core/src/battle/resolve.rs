@@ -276,6 +276,22 @@ impl Battle<'_> {
                     self.attack_hit(actor, neighbor, element, multiplier_bp, toughness);
                 }
             }
+            Effect::MaxHpBlastAdjacent {
+                element,
+                multiplier_bp,
+                toughness,
+            } => {
+                for neighbor in self.adjacent_enemies(target) {
+                    self.attack_hit_scaled(
+                        actor,
+                        neighbor,
+                        element,
+                        u32::from(multiplier_bp),
+                        toughness,
+                        DamageScale::MaxHp,
+                    );
+                }
+            }
             Effect::RandomHits {
                 element,
                 multiplier_bp,
@@ -483,9 +499,23 @@ impl Battle<'_> {
                 rules.after_hp_spent(self, target, amount);
             }
             self.record_team_hp_loss(target, amount);
+            self.notify_ally_health_event(target, None);
             self.notify_ally_hp_loss(target);
         }
         amount
+    }
+
+    fn notify_ally_health_event(&mut self, target: usize, attack_index: Option<u32>) {
+        if !self.allies().contains(&target) {
+            return;
+        }
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.on_ally_health_event(self, owner, target, attack_index);
+            }
+        }
     }
 
     fn record_team_hp_loss(&mut self, target: usize, amount: u32) {
@@ -1001,6 +1031,7 @@ impl Battle<'_> {
         });
         if let Some(target) = target {
             let was_shielded = self.shield_amount(target) > 0;
+            self.begin_attack();
             self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
             self.enemy_action = Some(actor);
             for owner in self.allies() {
@@ -2180,6 +2211,12 @@ impl Battle<'_> {
             self.deplete_shields(target, amount);
         }
         self.record_team_hp_loss(target, hp_loss);
+        if amount > 0 {
+            let attack_index = (self.enemy_action == Some(actor)
+                && matches!(kind, DamageKind::Direct | DamageKind::FollowUp))
+            .then_some(self.attack_index);
+            self.notify_ally_health_event(target, attack_index);
+        }
         if hp_loss > 0
             && let Some(mechanics) = self.mechanics(target)
         {

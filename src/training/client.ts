@@ -118,7 +118,9 @@ type EventKind =
         | 'blind_bet'
         | 'apotheosis'
         | 'pocket_trickshot'
-        | 'blade_charge';
+        | 'blade_charge'
+        | 'syzygy'
+        | 'moonlight';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }
