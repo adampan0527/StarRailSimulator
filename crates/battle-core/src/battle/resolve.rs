@@ -914,10 +914,16 @@ impl Battle<'_> {
     }
 
     pub(super) fn resolve_enemy(&mut self, actor: usize, kit: &EnemyKit) {
-        let target = match kit.target {
+        let taunt = self.allies().find(|&owner| {
+            self.is_targetable(owner)
+                && self
+                    .mechanics(owner)
+                    .is_some_and(|rules| rules.taunts_enemy(self, owner, actor))
+        });
+        let target = taunt.or_else(|| match kit.target {
             EnemyTarget::FirstLiving => self.allies().find(|&unit| self.is_targetable(unit)),
             EnemyTarget::RandomLiving => self.random_enemy_target(),
-        };
+        });
         if let Some(target) = target {
             let was_shielded = self.shield_amount(target) > 0;
             self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
@@ -1053,6 +1059,19 @@ impl Battle<'_> {
             .filter(|status| allow_source(status.source))
             .map_or(0, |status| status.magnitude);
         let mut vulnerability = legacy_vulnerability.saturating_add(sum(DebuffKind::Vulnerability));
+        if event.kind != DamageKind::DamageOverTime
+            && let Some(standoff) = state
+                .debuffs
+                .iter()
+                .find(|status| status.source == actor && status.kind == DebuffKind::Standoff)
+            && allow_source(actor)
+        {
+            vulnerability = vulnerability.saturating_add(standoff.bp);
+        }
+        if let Some(rules) = self.mechanics(target) {
+            vulnerability = vulnerability
+                .saturating_add(rules.incoming_vulnerability_bp(self, target, actor, event.kind));
+        }
         vulnerability = vulnerability.saturating_add(
             state
                 .debuffs
@@ -1706,6 +1725,43 @@ impl Battle<'_> {
         kind: DamageKind,
         ratio_bp: u16,
     ) {
+        let event = Self::break_damage_event(origin, kind);
+        self.resolve_break_status_hit(actor, target, element, event, ratio_bp, u16::MAX);
+    }
+
+    pub(super) fn break_hit_capped(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        origin: Action,
+        ratio_bp: u16,
+        max_toughness: u16,
+    ) {
+        let event = Self::break_damage_event(origin, DamageKind::WeaknessBreak);
+        self.resolve_break_status_hit(actor, target, element, event, ratio_bp, max_toughness);
+    }
+
+    fn break_damage_event(origin: Action, kind: DamageKind) -> DamageEvent {
+        DamageEvent {
+            kind,
+            critical: DamageCritical::Never,
+            origin: Some(origin),
+            assisted_by: None,
+            from_break: true,
+            defense_ignore_bp: 0,
+        }
+    }
+
+    fn resolve_break_status_hit(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        event: DamageEvent,
+        ratio_bp: u16,
+        max_toughness: u16,
+    ) {
         if self.units[target].hp == 0 {
             return;
         }
@@ -1715,30 +1771,20 @@ impl Battle<'_> {
                 .break_effect_bp
                 .saturating_add(mechanics.break_effect_bonus_bp(self, actor));
         }
-        self.resolve_damage(
-            actor,
-            target,
-            element,
-            DamageEvent {
-                kind,
-                critical: DamageCritical::Never,
-                origin: Some(origin),
-                assisted_by: None,
-                from_break: true,
-                defense_ignore_bp: 0,
-            },
-            |view| {
-                let mut adjusted = source;
-                adjusted.break_effect_bp = adjusted
-                    .break_effect_bp
-                    .saturating_add(view.bonus.break_effect_bp);
-                if kind == DamageKind::WeaknessBreak {
-                    damage::weakness_break(adjusted, view.target, element, ratio_bp)
-                } else {
-                    damage::break_status(adjusted, view.target, element, ratio_bp)
-                }
-            },
-        );
+        let initial_break = event.kind == DamageKind::WeaknessBreak;
+        self.resolve_damage(actor, target, element, event, |view| {
+            let mut adjusted = source;
+            adjusted.break_effect_bp = adjusted
+                .break_effect_bp
+                .saturating_add(view.bonus.break_effect_bp);
+            if initial_break {
+                let mut defender = view.target;
+                defender.max_toughness = defender.max_toughness.min(max_toughness);
+                damage::weakness_break(adjusted, defender, element, ratio_bp)
+            } else {
+                damage::break_status(adjusted, view.target, element, ratio_bp)
+            }
+        });
     }
 
     fn resolve_damage(
@@ -1780,16 +1826,27 @@ impl Battle<'_> {
         let main_recipient = recipient(target, distribution.map_or(10_000, |(_, bp)| 10_000 - bp));
         let distributed_recipient = distribution.map(|(unit, bp)| recipient(unit, bp));
         let applied_buffs = self.offense_buffs(offense, |_| true);
-        let defense_critical = crit_rate_bp.and_then(|_| self.mechanics(actor));
+        let derived_critical = crit_rate_bp.and_then(|_| self.mechanics(actor));
         let crit_rate_from_defense = |defense| {
-            defense_critical
+            derived_critical
                 .as_ref()
                 .map_or(0, |rules| rules.crit_rate_from_defense_bp(defense))
+        };
+        let break_effect = self.plan.units[actor].stats.break_effect_bp.saturating_add(
+            derived_critical
+                .as_ref()
+                .map_or(0, |rules| rules.break_effect_bonus_bp(self, actor)),
+        );
+        let crit_from_break = |bonus: OffenseBuffs| {
+            derived_critical.as_ref().map_or((0, 0), |rules| {
+                rules.crit_from_break_effect_bp(break_effect.saturating_add(bonus.break_effect_bp))
+            })
         };
         // Compare the same roll with each counterfactual crit rate during attribution.
         let crit_roll = crit_rate_bp
             .filter(|rate| {
                 rate.saturating_add(applied_buffs.crit_rate_bp)
+                    .saturating_add(crit_from_break(applied_buffs).0)
                     .saturating_add(crit_rate_from_defense(
                         self.defense_with_buff(actor, applied_buffs.defense_bp),
                     ))
@@ -1806,12 +1863,15 @@ impl Battle<'_> {
                 .defense_down_bp
                 .saturating_add(bonus.defense_ignore_bp);
             let defense = self.defense_with_buff(actor, bonus.defense_bp);
+            let (break_crit_rate, break_crit_damage) = crit_from_break(bonus);
             let total_crit_rate = crit_rate_bp
                 .unwrap_or_default()
                 .saturating_add(bonus.crit_rate_bp)
+                .saturating_add(break_crit_rate)
                 .saturating_add(crit_rate_from_defense(defense));
             let rolled_critical = crit_roll.is_some_and(|roll| roll < u64::from(total_crit_rate));
             let critical = matches!(critical, DamageCritical::Guaranteed) || rolled_critical;
+            bonus.crit_damage_bp = bonus.crit_damage_bp.saturating_add(break_crit_damage);
             if rolled_critical && bonus.crit_overflow_ratio_bp > 0 {
                 let overflow = total_crit_rate.saturating_sub(10_000);
                 bonus.crit_damage_bp = bonus

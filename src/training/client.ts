@@ -92,7 +92,8 @@ type Status =
   | 'weakness_implanted'
   | 'ultimate_vulnerability'
   | 'unnerved'
-  | 'thanatoplum_rebloom';
+  | 'thanatoplum_rebloom'
+  | 'standoff';
 type EventKind =
   | {
       event:
@@ -115,7 +116,8 @@ type EventKind =
         | 'toughness'
         | 'crimson_knot'
         | 'blind_bet'
-        | 'apotheosis';
+        | 'apotheosis'
+        | 'pocket_trickshot';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }

@@ -134,6 +134,7 @@ struct UnitState {
     qingque_state: official::QingqueState,
     ruan_mei_state: official::RuanMeiState,
     robin_state: official::RobinState,
+    boothill_state: official::BoothillState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
     misha_state: MishaState,
@@ -257,6 +258,7 @@ impl<'a> Battle<'a> {
                     qingque_state: official::QingqueState::default(),
                     ruan_mei_state: official::RuanMeiState::default(),
                     robin_state: official::RobinState::default(),
+                    boothill_state: official::BoothillState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
                     misha_state: MishaState::default(),
@@ -397,6 +399,13 @@ impl<'a> Battle<'a> {
         };
 
         let mechanics = self.mechanics(actor);
+        if let Some(unit) = mechanics
+            .as_ref()
+            .and_then(|rules| rules.forced_action_target(self, actor, command.action))
+            && target != Some(unit)
+        {
+            return Err(BattleError::InvalidTarget);
+        }
         let attacking = ability.effects.iter().any(|effect| effect.deals_damage());
         let keeps_turn = mechanics
             .as_ref()
@@ -614,6 +623,9 @@ impl<'a> Battle<'a> {
         let Ok(CheckedAction { ability, .. }) = self.check_action(actor, action) else {
             return;
         };
+        let forced_target = self
+            .mechanics(actor)
+            .and_then(|rules| rules.forced_action_target(self, actor, action));
         let mut add = |target: Option<usize>| {
             actions.push(Command {
                 decision_index: self.decision_index,
@@ -631,6 +643,7 @@ impl<'a> Battle<'a> {
                 };
                 for unit in range.filter(|&unit| {
                     self.is_targetable(unit)
+                        && forced_target.is_none_or(|forced| forced == unit)
                         && (!matches!(ability.target, Target::OtherAlly) || unit != actor)
                 }) {
                     add(Some(unit));
