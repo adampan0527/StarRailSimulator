@@ -79,6 +79,17 @@ pub(super) struct Entanglement {
 }
 
 impl Battle<'_> {
+    pub(super) fn is_crowd_controlled(&self, unit: usize) -> bool {
+        self.is_frozen(unit)
+            || self.units[unit].entanglement.is_some()
+            || self.units[unit].debuffs.iter().any(|status| {
+                matches!(
+                    status.kind,
+                    DebuffKind::BreakImprisonment | DebuffKind::SkillImprisonment
+                )
+            })
+    }
+
     pub(super) fn apply_debuff(
         &mut self,
         source: usize,
@@ -305,6 +316,19 @@ impl Battle<'_> {
             self.emit(
                 EventKind::StatusExpired(status.kind.status()),
                 Some(status.source),
+                Some(target),
+            );
+        }
+    }
+
+    pub(super) fn remove_debuff(&mut self, source: usize, target: usize, kind: DebuffKind) {
+        let debuffs = &mut self.units[target].debuffs;
+        let previous_len = debuffs.len();
+        debuffs.retain(|status| status.source != source || status.kind != kind);
+        if debuffs.len() < previous_len {
+            self.emit(
+                EventKind::StatusExpired(kind.status()),
+                Some(source),
                 Some(target),
             );
         }
