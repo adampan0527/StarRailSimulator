@@ -18,6 +18,7 @@ mod healing;
 mod herta;
 mod himeko;
 mod hook;
+mod huohuo;
 mod jiaoqiu;
 mod jing_yuan;
 mod kafka;
@@ -52,6 +53,7 @@ pub(super) use {
     feixiao::FeixiaoState,
     fu_xuan::FuXuanState,
     hanya::HanyaState,
+    huohuo::HuohuoState,
     jiaoqiu::Field as JiaoqiuField,
     jing_yuan::JingYuanState,
     march_hunt::MarchHuntState,
@@ -580,6 +582,15 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_extra_turn_start(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
+    fn on_ally_turn_opening(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _extra: bool,
+    ) {
+    }
+
     fn on_turn_start(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
     fn before_enemy_attack_seen(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
@@ -984,6 +995,7 @@ pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
                         | welt::FORM
                         | black_swan::FORM
                         | silver_wolf::FORM
+                        | huohuo::FORM
                         | seele::FORM
                         | sparkle::FORM
                 )))
@@ -1027,6 +1039,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1211" => Some(bailu::build),
         xueyi::FORM => Some(xueyi::build),
         "character.1215" => Some(hanya::build),
+        huohuo::FORM => Some(huohuo::build),
         "character.1218" => Some(jiaoqiu::build),
         feixiao::FORM => Some(feixiao::build),
         "character.1223" => Some(moze::build),

@@ -410,6 +410,16 @@ impl Battle<'_> {
         self.set_energy(source, target, energy);
     }
 
+    pub(super) fn notify_ally_turn_opening(&mut self, actor: usize, extra: bool) {
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(rules) = self.mechanics(owner)
+            {
+                rules.on_ally_turn_opening(self, owner, actor, extra);
+            }
+        }
+    }
+
     pub(super) fn notify_ally_action_started(
         &mut self,
         actor: usize,
