@@ -3,7 +3,7 @@ use crate::{
     fixture::{Ability, Element},
 };
 
-use super::Battle;
+use super::{Battle, combat_status::DebuffKind};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum AllyBuffKind {
@@ -253,6 +253,15 @@ impl Battle<'_> {
                 | AllyBuffKind::EffectResistance => continue,
             };
             *total = total.saturating_add(buff.value);
+        }
+        if let Some(enemy) = enemy {
+            for debuff in self.units[enemy]
+                .debuffs
+                .iter()
+                .filter(|debuff| debuff.source == source && debuff.kind == DebuffKind::Unnerved)
+            {
+                bonuses.crit_damage_bp = bonuses.crit_damage_bp.saturating_add(debuff.bp);
+            }
         }
         if self.units[source].hp > 0
             && let Some(mechanics) = self.mechanics(source)

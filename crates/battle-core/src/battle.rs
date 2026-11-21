@@ -25,10 +25,10 @@ pub use analysis::{
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use extra_turn::ExtraTurns;
 use official::{
-    AcheronState, BailuState, BlackSwanTarget, DrRatioState, FeixiaoState, FuXuanState,
-    GallagherState, HanyaState, Invigoration, JingYuanState, LuochaState, LynxResponse,
-    MarchHuntState, Mechanics, MishaState, MozeState, SeeleState, SkillPoints, SushangState,
-    TopazState, WeltState, XueyiState, YanqingState, YukongState,
+    AcheronState, AventurineState, BailuState, BlackSwanTarget, DrRatioState, FeixiaoState,
+    FuXuanState, GallagherState, HanyaState, Invigoration, JingYuanState, LuochaState,
+    LynxResponse, MarchHuntState, Mechanics, MishaState, MozeState, SeeleState, SkillPoints,
+    SushangState, TopazState, WeltState, XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     CombatPath, CombatType, OfficialCharacter, OfficialStats, supports_official_dpr,
@@ -135,6 +135,7 @@ struct UnitState {
     fu_xuan_state: FuXuanState,
     acheron_state: AcheronState,
     crimson_knots: u8,
+    aventurine_state: AventurineState,
     survival_triggered: bool,
     finished_turns: u32,
     next_attack_bonus_bp: u32,
@@ -244,6 +245,7 @@ impl<'a> Battle<'a> {
                     fu_xuan_state: FuXuanState::default(),
                     acheron_state: AcheronState::default(),
                     crimson_knots: 0,
+                    aventurine_state: AventurineState::default(),
                     survival_triggered: false,
                     finished_turns: 0,
                     next_attack_bonus_bp: 0,

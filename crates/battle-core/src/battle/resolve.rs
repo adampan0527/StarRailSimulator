@@ -49,6 +49,7 @@ struct DamageEvent {
 #[derive(Clone, Copy)]
 enum DamageScale {
     Attack,
+    Defense,
     StackedAttack {
         multiplier_bp: u32,
         defense_ignore_bp: u16,
@@ -70,6 +71,7 @@ impl DamageScale {
         let ratio = u64::from(multiplier_bp);
         match self {
             Self::Attack => u64::from(attack) * ratio,
+            Self::Defense => u64::from(defense) * ratio,
             Self::StackedAttack { multiplier_bp, .. } => {
                 u64::from(attack) * u64::from(multiplier_bp)
             }
@@ -450,9 +452,9 @@ impl Battle<'_> {
         }
         self.allies().any(|owner| {
             self.is_targetable(owner)
-                && self
-                    .mechanics(owner)
-                    .is_some_and(|mechanics| mechanics.block_enemy_control(self, owner, actor))
+                && self.mechanics(owner).is_some_and(|mechanics| {
+                    mechanics.block_enemy_control(self, owner, actor, target)
+                })
         })
     }
 
@@ -491,8 +493,8 @@ impl Battle<'_> {
         let resist_aura_bp = self
             .allies()
             .filter(|&ally| target < self.plan.ally_count && self.units[ally].hp > 0)
-            .filter_map(|ally| self.mechanics(ally))
-            .map(|mechanics| mechanics.effect_resistance_aura_bp())
+            .filter_map(|ally| self.mechanics(ally).map(|mechanics| (ally, mechanics)))
+            .map(|(ally, mechanics)| mechanics.effect_resistance_aura_bp(self, ally, target))
             .fold(0_u32, u32::saturating_add);
         let resistance_down = self.units[target]
             .debuffs
@@ -872,6 +874,13 @@ impl Battle<'_> {
             let was_shielded = self.shield_amount(target) > 0;
             self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
             self.enemy_action = Some(actor);
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.before_enemy_attack_seen(self, owner, target);
+                }
+            }
             self.hit(actor, target, Element::Physical, 10_000, 0);
             self.finish_enemy_action();
             if self.units[target].hp > 0 {
@@ -887,6 +896,7 @@ impl Battle<'_> {
                     mechanics.after_enemy_attack_seen(self, owner, actor, target, was_shielded);
                 }
             }
+            self.resolve_follow_ups();
         }
     }
 
@@ -1337,6 +1347,16 @@ impl Battle<'_> {
         source.element_damage_bp[element_index] = source.element_damage_bp[element_index]
             .saturating_add(self.units[actor].active_attack_bonus_bp);
         let mechanics = self.mechanics(actor);
+        let scale = if matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
+            && matches!(scale, DamageScale::Attack)
+            && mechanics
+                .as_ref()
+                .is_some_and(|rules| rules.scales_with_defense())
+        {
+            DamageScale::Defense
+        } else {
+            scale
+        };
         let mut hit_weakness = self.has_weakness(target, element);
         let mut toughness = toughness;
         if let Some(mechanics) = &mechanics {
@@ -1646,9 +1666,21 @@ impl Battle<'_> {
         let main_recipient = recipient(target, distribution.map_or(10_000, |(_, bp)| 10_000 - bp));
         let distributed_recipient = distribution.map(|(unit, bp)| recipient(unit, bp));
         let applied_buffs = self.offense_buffs(offense, |_| true);
+        let defense_critical = crit_rate_bp.and_then(|_| self.mechanics(actor));
+        let crit_rate_from_defense = |defense| {
+            defense_critical
+                .as_ref()
+                .map_or(0, |rules| rules.crit_rate_from_defense_bp(defense))
+        };
         // Compare the same roll with each counterfactual crit rate during attribution.
         let crit_roll = crit_rate_bp
-            .filter(|rate| rate.saturating_add(applied_buffs.crit_rate_bp) > 0)
+            .filter(|rate| {
+                rate.saturating_add(applied_buffs.crit_rate_bp)
+                    .saturating_add(crit_rate_from_defense(
+                        self.defense_with_buff(actor, applied_buffs.defense_bp),
+                    ))
+                    > 0
+            })
             .map(|rate| (rate, self.rng.below(10_000)));
         let damage_with = |recipient: DamageRecipient,
                            bonus: OffenseBuffs,
@@ -1656,14 +1688,18 @@ impl Battle<'_> {
             let mut defender = self.damage_target(actor, recipient.unit, element, &event, allow);
             defender.damage_share_bp = recipient.share_bp;
             defender.damage_reduction_bp = recipient.reduction_bp;
+            let defense = self.defense_with_buff(actor, bonus.defense_bp);
             let critical = crit_roll.is_some_and(|(rate, roll)| {
-                roll < u64::from(rate.saturating_add(bonus.crit_rate_bp))
+                roll < u64::from(
+                    rate.saturating_add(bonus.crit_rate_bp)
+                        .saturating_add(crit_rate_from_defense(defense)),
+                )
             });
             let amount = calculate(DamageView {
                 target: defender,
                 bonus,
                 attack: self.attack_with_buffs(actor, bonus),
-                defense: self.defense_with_buff(actor, bonus.defense_bp),
+                defense,
                 critical,
             });
             (amount, critical)

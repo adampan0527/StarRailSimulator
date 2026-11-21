@@ -90,7 +90,8 @@ type Status =
   | 'epiphany'
   | 'frozen'
   | 'weakness_implanted'
-  | 'ultimate_vulnerability';
+  | 'ultimate_vulnerability'
+  | 'unnerved';
 type EventKind =
   | {
       event:
@@ -108,7 +109,7 @@ type EventKind =
   | { event: 'action'; detail: Action }
   | { event: 'battle_ended'; detail: Outcome }
   | {
-      event: 'skill_points' | 'toughness' | 'crimson_knot';
+      event: 'skill_points' | 'toughness' | 'crimson_knot' | 'blind_bet';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }

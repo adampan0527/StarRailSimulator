@@ -212,7 +212,7 @@ impl Mechanics for Gepard {
         }
     }
 
-    fn effect_resistance_aura_bp(&self) -> u32 {
+    fn effect_resistance_aura_bp(&self, _: &Battle<'_>, _: usize, _: usize) -> u32 {
         if self.eidolon >= 4 {
             E4_EFFECT_RESISTANCE_BP
         } else {

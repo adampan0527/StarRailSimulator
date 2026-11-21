@@ -40,10 +40,11 @@ pub enum StatusKind {
     Epiphany,
     WeaknessImplanted,
     UltimateVulnerability,
+    Unnerved,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::UltimateVulnerability.index() + 1;
+    pub(crate) const COUNT: usize = Self::Unnerved.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -68,6 +69,7 @@ impl StatusKind {
             Self::Epiphany => 17,
             Self::WeaknessImplanted => 18,
             Self::UltimateVulnerability => 19,
+            Self::Unnerved => 20,
         }
     }
 }
@@ -113,6 +115,10 @@ pub enum EventKind {
         overflow_after: u8,
     },
     CrimsonKnot {
+        before: u8,
+        after: u8,
+    },
+    BlindBet {
         before: u8,
         after: u8,
     },

@@ -1,6 +1,7 @@
 mod acheron;
 mod arlan;
 mod asta;
+mod aventurine;
 mod bailu;
 mod black_swan;
 mod bronya;
@@ -44,6 +45,7 @@ mod yukong;
 
 pub(super) use {
     acheron::AcheronState,
+    aventurine::AventurineState,
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
     dr_ratio::DrRatioState,
@@ -442,6 +444,7 @@ pub(super) trait Mechanics: Send + Sync {
         _battle: &mut Battle<'_>,
         _owner: usize,
         _attacker: usize,
+        _target: usize,
     ) -> bool {
         false
     }
@@ -549,7 +552,12 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
-    fn effect_resistance_aura_bp(&self) -> u32 {
+    fn effect_resistance_aura_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _target: usize,
+    ) -> u32 {
         0
     }
 
@@ -573,6 +581,8 @@ pub(super) trait Mechanics: Send + Sync {
     fn on_extra_turn_start(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     fn on_turn_start(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
+
+    fn before_enemy_attack_seen(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
 
     fn after_enemy_attack_seen(
         &self,
@@ -779,6 +789,14 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn defense_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn scales_with_defense(&self) -> bool {
+        false
+    }
+
+    fn crit_rate_from_defense_bp(&self, _defense: u32) -> u32 {
         0
     }
 
@@ -1013,6 +1031,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         feixiao::FORM => Some(feixiao::build),
         "character.1223" => Some(moze::build),
         "character.1301" => Some(gallagher::build),
+        aventurine::FORM => Some(aventurine::build),
         "character.1305" => Some(dr_ratio::build),
         sparkle::FORM => Some(sparkle::build),
         black_swan::FORM => Some(black_swan::build),
