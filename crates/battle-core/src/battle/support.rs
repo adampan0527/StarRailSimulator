@@ -215,7 +215,27 @@ impl Battle<'_> {
     }
 
     pub(super) fn support_break_effect(&self, actor: usize) -> u32 {
-        self.ally_buff_total(actor, AllyBuffKind::BreakEffect)
+        let buffs = self.ally_buff_total(actor, AllyBuffKind::BreakEffect);
+        if !self.allies().contains(&actor) {
+            return buffs;
+        }
+        self.allies()
+            .filter(|&owner| self.is_targetable(owner))
+            .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
+            .fold(buffs, |total, (owner, rules)| {
+                total.saturating_add(rules.ally_break_effect_bonus_bp(self, owner))
+            })
+    }
+
+    pub(super) fn effective_break_effect(&self, actor: usize) -> u32 {
+        let own_bonus = self
+            .mechanics(actor)
+            .map_or(0, |rules| rules.break_effect_bonus_bp(self, actor));
+        self.plan.units[actor]
+            .stats
+            .break_effect_bp
+            .saturating_add(own_bonus)
+            .saturating_add(self.support_break_effect(actor))
     }
 
     pub(super) fn support_effect_resistance(&self, actor: usize) -> u32 {
@@ -266,6 +286,11 @@ impl Battle<'_> {
         if self.units[source].hp > 0
             && let Some(mechanics) = self.mechanics(source)
         {
+            if self.allies().contains(&target) && self.is_targetable(source) {
+                bonuses.break_effect_bp = bonuses
+                    .break_effect_bp
+                    .saturating_add(mechanics.ally_break_effect_bonus_bp(self, source));
+            }
             bonuses.max_hp_flat = bonuses
                 .max_hp_flat
                 .saturating_add(mechanics.ally_max_hp_bonus(self, source, target));
@@ -288,6 +313,9 @@ impl Battle<'_> {
                     .saturating_add(mechanics.ally_dot_damage_bonus_bp(self, source, target));
             }
             if let Some(enemy) = enemy {
+                bonuses.attack_bp = bonuses
+                    .attack_bp
+                    .saturating_add(mechanics.ally_target_attack_bonus_bp(self, source, enemy));
                 bonuses.damage_bp = bonuses.damage_bp.saturating_add(
                     mechanics.ally_target_damage_bonus_bp(self, source, target, enemy, kind),
                 );
