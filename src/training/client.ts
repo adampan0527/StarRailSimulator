@@ -117,6 +117,10 @@ type EventKind =
       detail: { before_halves: number; after_halves: number };
     }
   | {
+      event: 'jade_tiles';
+      detail: { suits: [number, number, number]; hidden_hand: boolean };
+    }
+  | {
       event: 'slashed_dream';
       detail: {
         before: number;

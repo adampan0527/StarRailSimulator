@@ -116,6 +116,10 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    JadeTiles {
+        suits: [u8; 3],
+        hidden_hand: bool,
+    },
     Damage {
         kind: DamageKind,
         amount: u32,

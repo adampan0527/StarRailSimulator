@@ -424,7 +424,12 @@ impl Mechanics for Sparkle {
         actor: usize,
         action: Action,
     ) {
-        if action != Action::Ultimate && battle.in_extra_turn(actor) {
+        if action != Action::Ultimate
+            && battle.in_extra_turn(actor)
+            && battle
+                .mechanics(actor)
+                .is_none_or(|rules| !rules.keeps_turn(action))
+        {
             battle.units[owner].sparkle_state.extra_turn_points_spent = 0;
             Self::restore_overflow(battle, owner);
         }
