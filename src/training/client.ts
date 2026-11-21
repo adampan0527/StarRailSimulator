@@ -91,7 +91,8 @@ type Status =
   | 'frozen'
   | 'weakness_implanted'
   | 'ultimate_vulnerability'
-  | 'unnerved';
+  | 'unnerved'
+  | 'thanatoplum_rebloom';
 type EventKind =
   | {
       event:

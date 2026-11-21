@@ -1399,16 +1399,14 @@ impl Battle<'_> {
             scale
         };
         let mut hit_weakness = self.has_weakness(target, element);
-        let mut toughness = toughness;
+        let mut personal_toughness_bp = 0;
         if let Some(mechanics) = &mechanics {
             if toughness > 0 {
                 hit_weakness |= mechanics.ignores_weakness(origin, kind)
                     || mechanics
                         .alternate_weakness(self, actor)
                         .is_some_and(|weakness| self.has_weakness(target, weakness));
-                let bonus_bp = mechanics.toughness_bonus_bp(self, actor, origin, kind);
-                let scaled = u64::from(toughness) * (10_000 + u64::from(bonus_bp)) / 10_000;
-                toughness = scaled.min(u64::from(u16::MAX)) as u16;
+                personal_toughness_bp = mechanics.toughness_bonus_bp(self, actor, origin, kind);
             }
             source.element_damage_bp[element_index] = source.element_damage_bp[element_index]
                 .saturating_add(mechanics.damage_bonus_bp(self, actor, target, origin, kind));
@@ -1488,6 +1486,18 @@ impl Battle<'_> {
 
         let before = self.units[target].toughness;
         if self.units[target].hp > 0 && hit_weakness && before > 0 && toughness > 0 {
+            let team_toughness_bp = if self.allies().contains(&actor) {
+                self.allies()
+                    .filter(|&owner| self.is_targetable(owner))
+                    .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
+                    .map(|(owner, rules)| u64::from(rules.ally_toughness_bonus_bp(self, owner)))
+                    .sum::<u64>()
+            } else {
+                0
+            };
+            let efficiency_bp = 10_000 + u64::from(personal_toughness_bp) + team_toughness_bp;
+            let toughness =
+                (u64::from(toughness) * efficiency_bp / 10_000).min(u64::from(u16::MAX)) as u16;
             let after = before.saturating_sub(toughness);
             self.set_toughness(actor, target, after);
             if origin.is_some()
@@ -1521,7 +1531,7 @@ impl Battle<'_> {
                         adjusted.break_effect_bp = adjusted
                             .break_effect_bp
                             .saturating_add(view.bonus.break_effect_bp);
-                        damage::weakness_break(adjusted, view.target, element)
+                        damage::weakness_break(adjusted, view.target, element, 10_000)
                     },
                 );
                 if self.units[target].hp > 0 {
@@ -1635,6 +1645,7 @@ impl Battle<'_> {
         );
     }
 
+    /// Deals damage from a break effect without causing another break or applying its statuses.
     pub(super) fn break_status_hit_scaled(
         &mut self,
         actor: usize,
@@ -1670,7 +1681,11 @@ impl Battle<'_> {
                 adjusted.break_effect_bp = adjusted
                     .break_effect_bp
                     .saturating_add(view.bonus.break_effect_bp);
-                damage::break_status(adjusted, view.target, element, ratio_bp)
+                if kind == DamageKind::WeaknessBreak {
+                    damage::weakness_break(adjusted, view.target, element, ratio_bp)
+                } else {
+                    damage::break_status(adjusted, view.target, element, ratio_bp)
+                }
             },
         );
     }
@@ -2075,7 +2090,11 @@ impl Battle<'_> {
     }
 
     pub(super) fn set_toughness(&mut self, actor: usize, target: usize, after: u16) {
-        let before = std::mem::replace(&mut self.units[target].toughness, after);
+        let state = &mut self.units[target];
+        let before = std::mem::replace(&mut state.toughness, after);
+        if before == 0 && after > 0 {
+            state.rebloom_spent = false;
+        }
         self.emit(
             EventKind::Toughness { before, after },
             Some(actor),

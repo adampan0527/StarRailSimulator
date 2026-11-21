@@ -71,7 +71,12 @@ pub(crate) fn direct(
     damage_after_reduction(numerator, denominator, target)
 }
 
-pub(crate) fn weakness_break(source: Stats, target: DamageTarget, element: Element) -> u32 {
+pub(crate) fn weakness_break(
+    source: Stats,
+    target: DamageTarget,
+    element: Element,
+    ratio_bp: u16,
+) -> u32 {
     let defense_points = defense_points(source.level);
     let base = if source.level == 80 {
         37_675_533
@@ -84,8 +89,9 @@ pub(crate) fn weakness_break(source: Stats, target: DamageTarget, element: Eleme
         * defense_points
         * resist_factor(target, element)
         * (BP + u128::from(target.vulnerability_bp))
-        * (BP + u128::from(source.break_effect_bp));
-    let denominator = BP.pow(4) * 40 * defense_factor(defense_points, target);
+        * (BP + u128::from(source.break_effect_bp))
+        * u128::from(ratio_bp);
+    let denominator = BP.pow(5) * 40 * defense_factor(defense_points, target);
     damage_after_reduction(numerator, denominator, target)
 }
 

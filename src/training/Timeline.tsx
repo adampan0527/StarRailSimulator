@@ -46,6 +46,7 @@ const statusNames = {
   weightless: '失重',
   weakness_implanted: '弱点植入',
   unnerved: '惊惶',
+  thanatoplum_rebloom: '残梅绽',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

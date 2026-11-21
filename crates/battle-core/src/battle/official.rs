@@ -33,6 +33,7 @@ mod moze;
 mod natasha;
 mod pela;
 mod qingque;
+mod ruan_mei;
 mod sampo;
 mod seele;
 mod serval;
@@ -62,6 +63,7 @@ pub(super) use {
     misha::MishaState,
     moze::MozeState,
     qingque::QingqueState,
+    ruan_mei::RuanMeiState,
     seele::SeeleState,
     sparkle::SparkleState,
     topaz::TopazState,
@@ -671,6 +673,19 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn ally_toughness_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        0
+    }
+
+    fn prevent_toughness_recovery(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _target: usize,
+    ) -> bool {
+        false
+    }
+
     fn on_toughness_reduced(
         &self,
         _battle: &mut Battle<'_>,
@@ -742,6 +757,10 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn ally_break_effect_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        0
+    }
+
     fn damage_bonus_from_break_effect_bp(&self, _break_effect_bp: u32) -> u32 {
         0
     }
@@ -783,6 +802,15 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn ally_attack_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
+    fn ally_target_attack_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _enemy: usize,
+    ) -> u32 {
         0
     }
 
@@ -1064,6 +1092,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1223" => Some(moze::build),
         "character.1301" => Some(gallagher::build),
         argenti::FORM => Some(argenti::build),
+        ruan_mei::FORM => Some(ruan_mei::build),
         aventurine::FORM => Some(aventurine::build),
         "character.1305" => Some(dr_ratio::build),
         sparkle::FORM => Some(sparkle::build),

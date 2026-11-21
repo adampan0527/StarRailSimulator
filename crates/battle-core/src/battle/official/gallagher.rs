@@ -5,7 +5,7 @@ use super::{
     Mechanics, OfficialAbility, OfficialCharacter, OfficialKit, SkillPoints,
 };
 use crate::{
-    Action, BattleError,
+    Action, BattleError, DamageKind,
     fixture::{Effect, Element, Target},
 };
 
@@ -62,13 +62,12 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
         .break_effect_bp
         .saturating_add(break_bonus(input.eidolon));
     let break_effect_to_healing_bp = trace(NOVEL_CONCOCTION).then_some(break_effect);
-    let toughness = |base: u16| base + if input.eidolon >= 6 { base / 5 } else { 0 };
     Ok(OfficialKit {
         max_energy_milli: 110_000,
         basic: fire_attack(
             Target::Enemy,
             multiplier(BASIC, basic[0])?,
-            toughness(10),
+            10,
             20_000,
             SkillPoints::Generate,
         ),
@@ -81,7 +80,7 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
         ultimate: fire_attack(
             Target::AllEnemies,
             multiplier(ULTIMATE, ultimate[0])?,
-            toughness(20),
+            20,
             5_000,
             SkillPoints::Unchanged,
         ),
@@ -89,7 +88,7 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
             enhanced_basic: fire_attack(
                 Target::Enemy,
                 multiplier(ENHANCED_BASIC, enhanced[0])?,
-                toughness(30),
+                30,
                 20_000,
                 SkillPoints::Generate,
             ),
@@ -181,6 +180,20 @@ impl Gallagher {
 }
 
 impl Mechanics for Gallagher {
+    fn toughness_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _action: Option<Action>,
+        kind: DamageKind,
+    ) -> u32 {
+        if kind == DamageKind::Direct {
+            break_bonus(self.eidolon)
+        } else {
+            0
+        }
+    }
+
     fn ability_override(
         &self,
         battle: &Battle<'_>,

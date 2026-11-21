@@ -123,6 +123,7 @@ struct UnitState {
     tingyun_state: TingyunState,
     sparkle_state: official::SparkleState,
     qingque_state: official::QingqueState,
+    ruan_mei_state: official::RuanMeiState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
     misha_state: MishaState,
@@ -138,6 +139,7 @@ struct UnitState {
     huohuo_state: HuohuoState,
     argenti_apotheosis: u8,
     crimson_knots: u8,
+    rebloom_spent: bool,
     aventurine_state: AventurineState,
     survival_triggered: bool,
     finished_turns: u32,
@@ -242,6 +244,7 @@ impl<'a> Battle<'a> {
                     tingyun_state: TingyunState::default(),
                     sparkle_state: official::SparkleState::default(),
                     qingque_state: official::QingqueState::default(),
+                    ruan_mei_state: official::RuanMeiState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
                     misha_state: MishaState::default(),
@@ -257,6 +260,7 @@ impl<'a> Battle<'a> {
                     huohuo_state: HuohuoState::default(),
                     argenti_apotheosis: 0,
                     crimson_knots: 0,
+                    rebloom_spent: false,
                     aventurine_state: AventurineState::default(),
                     survival_triggered: false,
                     finished_turns: 0,
@@ -897,6 +901,16 @@ impl<'a> Battle<'a> {
         if !self.thaw(actor) {
             let kit = &self.plan.units[actor].kit;
             if self.units[actor].toughness == 0 {
+                let extends_break = self.allies().any(|owner| {
+                    self.mechanics(owner)
+                        .is_some_and(|rules| rules.prevent_toughness_recovery(self, owner, actor))
+                });
+                if extends_break {
+                    if self.units[actor].hp > 0 {
+                        self.finish_turn(actor);
+                    }
+                    return;
+                }
                 self.set_toughness(actor, actor, kit.max_toughness());
             }
             self.reset_gauge(actor);
