@@ -23,10 +23,10 @@ pub use analysis::{
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
-    BailuState, BlackSwanTarget, DrRatioState, FeixiaoState, GallagherState, HanyaState,
-    Invigoration, JingYuanState, LuochaState, LynxResponse, MarchHuntState, Mechanics, MishaState,
-    MozeState, SkillPoints, SushangState, TopazState, WeltState, XueyiState, YanqingState,
-    YukongState,
+    AcheronState, BailuState, BlackSwanTarget, DrRatioState, FeixiaoState, GallagherState,
+    HanyaState, Invigoration, JingYuanState, LuochaState, LynxResponse, MarchHuntState, Mechanics,
+    MishaState, MozeState, SkillPoints, SushangState, TopazState, WeltState, XueyiState,
+    YanqingState, YukongState,
 };
 pub use official::{
     CombatPath, CombatType, OfficialCharacter, OfficialStats, supports_official_dpr,
@@ -128,6 +128,8 @@ struct UnitState {
     jiaoqiu_field: official::JiaoqiuField,
     dr_ratio_state: DrRatioState,
     feixiao_state: FeixiaoState,
+    acheron_state: AcheronState,
+    crimson_knots: u8,
     survival_triggered: bool,
     finished_turns: u32,
     next_attack_bonus_bp: u32,
@@ -168,6 +170,8 @@ pub struct Battle<'a> {
     dot_timing: DotTiming,
     pending_follow_ups: std::collections::VecDeque<resolve::FollowUp>,
     resolving_follow_up: bool,
+    observes_enemy_debuffs: bool,
+    enemy_debuff_targets: Option<Vec<usize>>,
 }
 
 impl<'a> Battle<'a> {
@@ -228,6 +232,8 @@ impl<'a> Battle<'a> {
                     jiaoqiu_field: official::JiaoqiuField::default(),
                     dr_ratio_state: DrRatioState::default(),
                     feixiao_state: FeixiaoState::default(),
+                    acheron_state: AcheronState::default(),
+                    crimson_knots: 0,
                     survival_triggered: false,
                     finished_turns: 0,
                     next_attack_bonus_bp: 0,
@@ -260,6 +266,10 @@ impl<'a> Battle<'a> {
             dot_timing: DotTiming::Other,
             pending_follow_ups: std::collections::VecDeque::new(),
             resolving_follow_up: false,
+            observes_enemy_debuffs: plan.units.iter().any(|unit| {
+                matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.observes_enemy_debuffs())
+            }),
+            enemy_debuff_targets: None,
         };
         battle.emit(EventKind::WaveStarted, None, None);
         for actor in battle.allies() {
@@ -342,6 +352,7 @@ impl<'a> Battle<'a> {
         self.decision_index += 1;
         self.action = Some(command.action);
         self.action_target = target;
+        let parent_debuff_targets = self.begin_debuff_action();
         self.begin_attack();
         self.emit(EventKind::Action(command.action), Some(actor), target);
         match skill_points {
@@ -369,8 +380,13 @@ impl<'a> Battle<'a> {
         if let Some(mechanics) = &mechanics {
             mechanics.after_action(self, actor, command.action, target);
         }
-        if ability.effects.iter().any(|effect| effect.deals_damage()) {
-            self.finish_attack(actor, command.action, target);
+        let attacking = ability.effects.iter().any(|effect| effect.deals_damage());
+        if attacking {
+            self.notify_attack(actor, command.action, target);
+        }
+        self.finish_debuff_action(actor, parent_debuff_targets);
+        if attacking {
+            self.resolve_follow_ups();
         }
         self.notify_ally_action_finished(actor, command.action);
         self.units[actor].active_attack_bonus_bp = 0;
@@ -747,9 +763,11 @@ impl<'a> Battle<'a> {
                         summon.gauge_quanta = GAUGE_FULL;
                         summon.advanced_to_front = false;
                     }
+                    let parent_debuff_targets = self.begin_debuff_action();
                     if let Some(mechanics) = self.mechanics(owner) {
                         mechanics.on_summon_turn(self, owner);
                     }
+                    self.finish_debuff_action(owner, parent_debuff_targets);
                     self.resolve_wave_or_end();
                     continue;
                 }
@@ -809,6 +827,7 @@ impl<'a> Battle<'a> {
                 self.set_toughness(actor, actor, kit.max_toughness());
             }
             self.reset_gauge(actor);
+            let parent_debuff_targets = self.begin_debuff_action();
             for owner in self.allies() {
                 if self.units[owner].hp > 0
                     && let Some(mechanics) = self.mechanics(owner)
@@ -819,6 +838,7 @@ impl<'a> Battle<'a> {
             if let Kit::Enemy(enemy) = kit {
                 self.resolve_enemy(actor, enemy);
             }
+            self.finish_debuff_action(actor, parent_debuff_targets);
         }
         self.finish_turn(actor);
     }

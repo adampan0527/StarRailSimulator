@@ -126,6 +126,7 @@ impl Battle<'_> {
                 shares_vulnerability,
             });
         }
+        self.record_enemy_debuff(target);
         true
     }
 

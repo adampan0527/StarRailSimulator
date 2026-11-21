@@ -14,6 +14,7 @@ pub(super) enum DebuffKind {
     DefenseDown,
     Vulnerability,
     DotVulnerability,
+    UltimateVulnerability,
     EffectResistanceDown,
     Besotted,
     AttackDown,
@@ -44,6 +45,7 @@ impl DebuffKind {
             Self::DefenseDown => StatusKind::DefenseDown,
             Self::Vulnerability => StatusKind::Vulnerability,
             Self::DotVulnerability => StatusKind::DotVulnerability,
+            Self::UltimateVulnerability => StatusKind::UltimateVulnerability,
             Self::EffectResistanceDown => StatusKind::EffectResistanceDown,
             Self::Besotted => StatusKind::Besotted,
             Self::AttackDown => StatusKind::AttackDown,
@@ -84,6 +86,33 @@ pub(super) struct Entanglement {
 }
 
 impl Battle<'_> {
+    pub(super) fn begin_debuff_action(&mut self) -> Option<Vec<usize>> {
+        let collector = self.observes_enemy_debuffs.then(Vec::new);
+        std::mem::replace(&mut self.enemy_debuff_targets, collector)
+    }
+
+    pub(super) fn record_enemy_debuff(&mut self, target: usize) {
+        if self.enemies().contains(&target)
+            && let Some(targets) = &mut self.enemy_debuff_targets
+            && !targets.contains(&target)
+        {
+            targets.push(target);
+        }
+    }
+
+    pub(super) fn finish_debuff_action(&mut self, source: usize, parent: Option<Vec<usize>>) {
+        let targets = std::mem::replace(&mut self.enemy_debuff_targets, parent);
+        if let Some(targets) = targets.filter(|targets| !targets.is_empty()) {
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.on_enemy_debuffs_applied(self, owner, source, &targets);
+                }
+            }
+        }
+    }
+
     pub(super) fn is_crowd_controlled(&self, unit: usize) -> bool {
         self.is_frozen(unit)
             || self.units[unit].entanglement.is_some()
@@ -111,7 +140,7 @@ impl Battle<'_> {
             source,
             kind,
             bp,
-            expires_after_turn: state.normal_turns + turns,
+            expires_after_turn: state.normal_turns.saturating_add(turns),
         };
         if let Some(current) = state
             .debuffs
@@ -122,6 +151,7 @@ impl Battle<'_> {
         } else {
             state.debuffs.push(updated);
         }
+        self.record_enemy_debuff(target);
         self.emit(
             EventKind::StatusApplied(kind.status()),
             Some(source),
@@ -435,6 +465,7 @@ impl Battle<'_> {
         } else {
             dots.push(status);
         }
+        self.record_enemy_debuff(target);
     }
 
     pub(super) fn tick_break_dots(&mut self, target: usize) {
@@ -472,6 +503,7 @@ impl Battle<'_> {
             origin,
             stacks: 1,
         });
+        self.record_enemy_debuff(target);
         self.emit(
             EventKind::StatusApplied(StatusKind::Entangled),
             Some(source),

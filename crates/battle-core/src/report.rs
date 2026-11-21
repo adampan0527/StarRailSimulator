@@ -38,10 +38,11 @@ pub enum StatusKind {
     Weightless,
     Arcana,
     Epiphany,
+    UltimateVulnerability,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Epiphany.index() + 1;
+    pub(crate) const COUNT: usize = Self::UltimateVulnerability.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -64,6 +65,7 @@ impl StatusKind {
             Self::Weightless => 15,
             Self::Arcana => 16,
             Self::Epiphany => 17,
+            Self::UltimateVulnerability => 18,
         }
     }
 }
@@ -98,6 +100,16 @@ pub enum EventKind {
     FlyingAureus {
         before_halves: u8,
         after_halves: u8,
+    },
+    SlashedDream {
+        before: u8,
+        after: u8,
+        overflow_before: u8,
+        overflow_after: u8,
+    },
+    CrimsonKnot {
+        before: u8,
+        after: u8,
     },
     Damage {
         kind: DamageKind,

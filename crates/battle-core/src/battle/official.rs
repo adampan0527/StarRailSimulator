@@ -1,3 +1,4 @@
+mod acheron;
 mod arlan;
 mod asta;
 mod bailu;
@@ -38,6 +39,7 @@ mod yanqing;
 mod yukong;
 
 pub(super) use {
+    acheron::AcheronState,
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
     dr_ratio::DrRatioState,
@@ -154,7 +156,8 @@ impl OfficialCharacter {
         let stats = &self.stats;
         if self.level != 80
             || self.eidolon > 6
-            || (self.energy_capacity == 0 && self.form_id != feixiao::FORM)
+            || (self.energy_capacity == 0
+                && !matches!(self.form_id.as_str(), acheron::FORM | feixiao::FORM))
             || self.energy_capacity > 999
             || stats.hp == 0
             || stats.hp > 100_000
@@ -296,6 +299,21 @@ pub(super) trait Mechanics: Send + Sync {
         None
     }
 
+    fn resolve_special_attack(&self, _battle: &mut Battle<'_>, _actor: usize, _target: usize) {}
+
+    fn observes_enemy_debuffs(&self) -> bool {
+        false
+    }
+
+    fn on_enemy_debuffs_applied(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _targets: &[usize],
+    ) {
+    }
+
     fn on_battle_start(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     fn on_summon_turn(&self, _battle: &mut Battle<'_>, _owner: usize) {}
@@ -435,6 +453,16 @@ pub(super) trait Mechanics: Send + Sync {
         base: u16,
     ) -> u16 {
         base
+    }
+
+    fn action_damage_factor_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _action: Option<Action>,
+        _kind: DamageKind,
+    ) -> u16 {
+        10_000
     }
 
     fn effect_hit_rate_aura_bp(&self) -> u32 {
@@ -760,6 +788,10 @@ pub(super) trait Mechanics: Send + Sync {
         false
     }
 
+    fn primary_attack_counts_as_ultimate(&self, action: Action) -> bool {
+        action == Action::Ultimate
+    }
+
     fn follow_up_counts_as_ultimate(&self) -> bool {
         false
     }
@@ -874,6 +906,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1301" => Some(gallagher::build),
         "character.1305" => Some(dr_ratio::build),
         black_swan::FORM => Some(black_swan::build),
+        acheron::FORM => Some(acheron::build),
         "character.1312" => Some(misha::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         march_hunt::FORM => Some(march_hunt::build),

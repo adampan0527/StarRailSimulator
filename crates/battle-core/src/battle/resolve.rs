@@ -126,6 +126,9 @@ enum FollowUpTargets {
 impl Battle<'_> {
     fn is_ultimate_damage(&self, actor: usize, event: &DamageEvent) -> bool {
         match (event.kind, &self.plan.units[actor].kit) {
+            (DamageKind::Direct, Kit::Official(kit)) => event
+                .origin
+                .is_some_and(|action| kit.mechanics.primary_attack_counts_as_ultimate(action)),
             (DamageKind::Direct, _) => event.origin == Some(Action::Ultimate),
             (DamageKind::FollowUp, Kit::Official(kit)) => {
                 kit.mechanics.follow_up_counts_as_ultimate()
@@ -246,6 +249,11 @@ impl Battle<'_> {
                         break;
                     }
                     self.attack_hit(actor, target, element, multiplier_bp, toughness);
+                }
+            }
+            Effect::DirectedAreaAttack => {
+                if let Some(mechanics) = self.mechanics(actor) {
+                    mechanics.resolve_special_attack(self, actor, target);
                 }
             }
             Effect::Shield { amount, turns } => {
@@ -582,16 +590,6 @@ impl Battle<'_> {
         });
     }
 
-    pub(super) fn finish_attack(
-        &mut self,
-        actor: usize,
-        origin: Action,
-        primary_target: Option<usize>,
-    ) {
-        self.notify_attack(actor, origin, primary_target);
-        self.resolve_follow_ups();
-    }
-
     pub(super) fn resolve_follow_ups(&mut self) {
         while let Some(follow_up) = self.pending_follow_ups.pop_front() {
             let FollowUp {
@@ -621,6 +619,7 @@ impl Battle<'_> {
                 continue;
             }
             let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
+            let parent_debuff_targets = self.begin_debuff_action();
             self.begin_attack();
             let mechanics = self.mechanics(actor);
             self.emit(EventKind::FollowUp, Some(actor), single);
@@ -693,6 +692,7 @@ impl Battle<'_> {
                 mechanics.after_follow_up(self, actor, origin);
             }
             self.notify_attack(actor, origin, single);
+            self.finish_debuff_action(actor, parent_debuff_targets);
             self.resolving_follow_up = was_follow_up;
         }
     }
@@ -720,7 +720,12 @@ impl Battle<'_> {
         );
     }
 
-    fn notify_attack(&mut self, actor: usize, origin: Action, primary_target: Option<usize>) {
+    pub(super) fn notify_attack(
+        &mut self,
+        actor: usize,
+        origin: Action,
+        primary_target: Option<usize>,
+    ) {
         let landed = !self.attack_targets.is_empty();
         for owner in self.allies() {
             if self.units[owner].hp > 0
@@ -861,6 +866,9 @@ impl Battle<'_> {
                 .map(|status| status.bp)
                 .fold(0_u32, u32::saturating_add),
         );
+        if self.is_ultimate_damage(actor, event) {
+            vulnerability = vulnerability.saturating_add(sum(DebuffKind::UltimateVulnerability));
+        }
         if event.kind == DamageKind::DamageOverTime {
             vulnerability = vulnerability.saturating_add(sum(DebuffKind::DotVulnerability));
         }
@@ -1056,6 +1064,7 @@ impl Battle<'_> {
         }
         let origin = Action::Basic;
         let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
+        let parent_debuff_targets = self.begin_debuff_action();
         self.begin_attack();
         self.emit(EventKind::FollowUp, Some(actor), Some(target));
         let neighbors: Vec<_> = self.adjacent_enemies(target).collect();
@@ -1085,7 +1094,9 @@ impl Battle<'_> {
             }
         }
         self.gain_energy(actor, actor, counter.energy_milli);
-        self.finish_attack(actor, origin, Some(target));
+        self.notify_attack(actor, origin, Some(target));
+        self.finish_debuff_action(actor, parent_debuff_targets);
+        self.resolve_follow_ups();
         self.resolving_follow_up = was_follow_up;
     }
 
@@ -1205,6 +1216,9 @@ impl Battle<'_> {
             multiplier_bp =
                 mechanics.damage_multiplier_bp(self, actor, target, origin, kind, multiplier_bp);
         }
+        let action_factor_bp = mechanics.as_ref().map_or(10_000, |mechanics| {
+            mechanics.action_damage_factor_bp(self, actor, origin, kind)
+        });
         let crit_rate = source
             .crit_rate_bp
             .saturating_add(self.units[actor].crit_rate_bonus_bp);
@@ -1249,6 +1263,12 @@ impl Battle<'_> {
                     multiplier_bp,
                 ) * u64::from(ratio_bp)
                     / 10_000;
+                let base_bp = if action_factor_bp == 10_000 {
+                    base_bp
+                } else {
+                    u64::try_from(u128::from(base_bp) * u128::from(action_factor_bp) / 10_000)
+                        .unwrap_or(u64::MAX)
+                };
                 damage::direct(adjusted, view.target, element, base_bp, view.critical)
             },
         );
@@ -1515,6 +1535,8 @@ impl Battle<'_> {
                             | DebuffKind::Weightless { .. }
                     ) || self.epiphany_applies(status.kind, target)
                         || status.kind == DebuffKind::ResistanceDown(element)
+                        || (status.kind == DebuffKind::UltimateVulnerability
+                            && self.is_ultimate_damage(actor, &event))
                         || (status.kind == DebuffKind::DotVulnerability
                             && kind == DamageKind::DamageOverTime)
                         || (status.kind == DebuffKind::Besotted
@@ -1757,6 +1779,9 @@ impl Battle<'_> {
             magnitude,
             expires_after_turn: state.normal_turns + turns,
         });
+        if status == StatusKind::Vulnerability {
+            self.record_enemy_debuff(target);
+        }
         self.emit(EventKind::StatusApplied(status), Some(actor), Some(target));
     }
 

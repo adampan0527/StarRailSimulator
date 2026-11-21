@@ -355,6 +355,7 @@ impl BlackSwan {
                 origin: state.map_or(origin, |arcana| arcana.origin),
                 all_elements: self.enhanced,
             });
+            battle.record_enemy_debuff(target);
             battle.emit(
                 EventKind::StatusApplied(StatusKind::Arcana),
                 Some(owner),

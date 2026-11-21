@@ -155,6 +155,7 @@ impl Topaz {
                 target,
                 debtor_stacks: 0,
             });
+            battle.record_enemy_debuff(target);
         }
     }
 
@@ -292,8 +293,9 @@ impl Mechanics for Topaz {
         if proof.target != target {
             return;
         }
-        if self.eidolon >= 1 && follow_up {
-            proof.debtor_stacks = (proof.debtor_stacks + 1).min(2);
+        let applied_debtor = self.eidolon >= 1 && follow_up && proof.debtor_stacks < 2;
+        if applied_debtor {
+            proof.debtor_stacks += 1;
         }
         if !state.numby_turn
             && let Some(summon) = &mut unit.summon_turn
@@ -304,6 +306,9 @@ impl Mechanics for Topaz {
             if talent + ultimate > 0 {
                 summon.advance(talent + ultimate);
             }
+        }
+        if applied_debtor {
+            battle.record_enemy_debuff(target);
         }
     }
 

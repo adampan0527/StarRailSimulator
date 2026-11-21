@@ -158,6 +158,7 @@ pub(crate) enum Effect {
         extra_hits: u8,
         extra_chance_bp: u32,
     },
+    DirectedAreaAttack,
     Shield {
         amount: u32,
         turns: u32,
@@ -184,6 +185,7 @@ impl Effect {
                 | Self::BlastAdjacent { .. }
                 | Self::RandomHits { .. }
                 | Self::RepeatingSingleHits { .. }
+                | Self::DirectedAreaAttack
         )
     }
 }

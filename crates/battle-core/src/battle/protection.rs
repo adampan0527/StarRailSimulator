@@ -167,6 +167,7 @@ impl Battle<'_> {
             return false;
         }
         self.units[target].frozen = Some(status);
+        self.record_enemy_debuff(target);
         self.emit(
             EventKind::StatusApplied(StatusKind::Frozen),
             Some(status.source),
