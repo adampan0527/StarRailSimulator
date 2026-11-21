@@ -103,7 +103,14 @@ impl Battle<'_> {
         bp: u32,
         turns: u32,
     ) -> bool {
-        if self.units[target].hp == 0 || self.resists_debuff(target) {
+        let control = matches!(
+            kind,
+            DebuffKind::BreakImprisonment | DebuffKind::SkillImprisonment
+        );
+        if self.units[target].hp == 0
+            || (control && self.resists_enemy_control(source, target))
+            || self.resists_debuff(target)
+        {
             return false;
         }
         let state = &mut self.units[target];
@@ -464,7 +471,7 @@ impl Battle<'_> {
         origin: Action,
         break_effect_bp: u32,
     ) {
-        if self.resists_debuff(target) {
+        if self.resists_enemy_control(source, target) || self.resists_debuff(target) {
             return;
         }
         self.units[target].entanglement = Some(Entanglement {

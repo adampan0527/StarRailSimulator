@@ -22,6 +22,13 @@ struct Hit {
     scale: DamageScale,
 }
 
+#[derive(Clone, Copy)]
+struct DamageRecipient {
+    unit: usize,
+    share_bp: u16,
+    reduction_bp: u32,
+}
+
 struct DamageView {
     target: DamageTarget,
     attack: u32,
@@ -354,7 +361,22 @@ impl Battle<'_> {
         *hp -= amount;
         if amount > 0 {
             self.emit(EventKind::HpSpent { amount }, Some(actor), Some(actor));
+            self.record_team_hp_loss(actor, amount);
             self.notify_ally_hp_loss(actor);
+        }
+    }
+
+    fn record_team_hp_loss(&mut self, target: usize, amount: u32) {
+        if !self.allies().contains(&target) || amount == 0 {
+            return;
+        }
+        for owner in self.allies() {
+            // Record a lethal loss before rescue or removal of its owner.
+            if (owner == target || self.units[owner].hp > 0)
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.record_team_hp_loss(self, owner, amount);
+            }
         }
     }
 
@@ -388,6 +410,18 @@ impl Battle<'_> {
                 .is_some_and(|mechanics| mechanics.prevent_debuff(self, target))
     }
 
+    pub(super) fn resists_enemy_control(&mut self, actor: usize, target: usize) -> bool {
+        if !self.enemies().contains(&actor) || !self.allies().contains(&target) {
+            return false;
+        }
+        self.allies().any(|owner| {
+            self.is_targetable(owner)
+                && self
+                    .mechanics(owner)
+                    .is_some_and(|mechanics| mechanics.block_enemy_control(self, owner, actor))
+        })
+    }
+
     pub(super) fn roll_effect(&mut self, actor: usize, target: usize, base_chance_bp: u32) -> bool {
         self.roll_status(actor, target, base_chance_bp, false)
     }
@@ -416,6 +450,9 @@ impl Battle<'_> {
         base_chance_bp: u32,
         control: bool,
     ) -> bool {
+        if control && base_chance_bp > 0 && self.resists_enemy_control(actor, target) {
+            return false;
+        }
         let hit_rate = self.effective_effect_hit_rate_bp(actor);
         let resist_aura_bp = self
             .allies()
@@ -753,7 +790,9 @@ impl Battle<'_> {
         if let Some(target) = target {
             let was_shielded = self.shield_amount(target) > 0;
             self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
+            self.enemy_action = Some(actor);
             self.hit(actor, target, Element::Physical, 10_000, 0);
+            self.finish_enemy_action();
             if self.units[target].hp > 0 {
                 self.gain_energy(actor, target, kit.hit_energy_milli);
                 if let Some(mechanics) = self.mechanics(target) {
@@ -766,6 +805,17 @@ impl Battle<'_> {
                 {
                     mechanics.after_enemy_attack_seen(self, owner, actor, target, was_shielded);
                 }
+            }
+        }
+    }
+
+    pub(super) fn finish_enemy_action(&mut self) {
+        self.enemy_action = None;
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.after_enemy_action(self, owner);
             }
         }
     }
@@ -908,6 +958,7 @@ impl Battle<'_> {
         DamageTarget {
             stats,
             damage_reduction_bp: 0,
+            damage_share_bp: 10_000,
             vulnerability_bp: vulnerability,
             defense_down_bp: sum(DebuffKind::DefenseDown)
                 .saturating_add(weightless_defense_down)
@@ -1205,6 +1256,9 @@ impl Battle<'_> {
             multiplier_bp =
                 mechanics.damage_multiplier_bp(self, actor, target, origin, kind, multiplier_bp);
         }
+        let flat_damage_bp = mechanics.as_ref().map_or(0, |mechanics| {
+            mechanics.flat_damage_base_bp(self, actor, origin, kind)
+        });
         let crit_rate = source
             .crit_rate_bp
             .saturating_add(self.units[actor].crit_rate_bonus_bp);
@@ -1241,14 +1295,16 @@ impl Battle<'_> {
                 adjusted.crit_damage_bp = adjusted
                     .crit_damage_bp
                     .saturating_add(view.bonus.crit_damage_bp);
-                let base_bp = scale.base_bp(
-                    view.attack,
-                    view.defense,
-                    source.hp.saturating_add(view.bonus.max_hp_flat),
-                    view.target.stats.hp,
-                    multiplier_bp,
-                ) * u64::from(ratio_bp)
-                    / 10_000;
+                let base_bp = scale
+                    .base_bp(
+                        view.attack,
+                        view.defense,
+                        source.hp.saturating_add(view.bonus.max_hp_flat),
+                        view.target.stats.hp,
+                        multiplier_bp,
+                    )
+                    .saturating_add(flat_damage_bp);
+                let base_bp = base_bp * u64::from(ratio_bp) / 10_000;
                 damage::direct(adjusted, view.target, element, base_bp, view.critical)
             },
         );
@@ -1462,32 +1518,25 @@ impl Battle<'_> {
             kind,
             follow_up: self.is_follow_up_damage(actor, origin, kind),
         };
-        let incoming_reduction_bp = self.mechanics(target).map_or(0, |mechanics| {
-            mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
-        });
-        let invigoration_bp = self.invigoration_damage_reduction_bp(target);
-        let base_remaining_bp =
-            (10_000 - incoming_reduction_bp.min(10_000)) * (10_000 - invigoration_bp) / 10_000;
-        let remaining_bp = if self.enemies().contains(&actor) {
-            self.allies()
-                .filter(|&owner| self.units[owner].hp > 0)
-                .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
-                .fold(base_remaining_bp, |bp, (owner, rules)| {
-                    bp * 10_000_u32.saturating_sub(rules.enemy_damage_reduction_bp(self, owner))
-                        / 10_000
-                })
-        } else {
-            base_remaining_bp
+        let distribution = self.damage_distribution(actor, target);
+        let recipient = |unit, share_bp| DamageRecipient {
+            unit,
+            share_bp,
+            reduction_bp: self.incoming_reduction_bp(actor, unit, kind),
         };
-        let reduction_bp = 10_000 - remaining_bp;
+        let main_recipient = recipient(target, distribution.map_or(10_000, |(_, bp)| 10_000 - bp));
+        let distributed_recipient = distribution.map(|(unit, bp)| recipient(unit, bp));
         let applied_buffs = self.offense_buffs(offense, |_| true);
         // Compare the same roll with each counterfactual crit rate during attribution.
         let crit_roll = crit_rate_bp
             .filter(|rate| rate.saturating_add(applied_buffs.crit_rate_bp) > 0)
             .map(|rate| (rate, self.rng.below(10_000)));
-        let damage_with = |bonus: OffenseBuffs, allow: &dyn Fn(usize) -> bool| {
-            let mut defender = self.damage_target(actor, target, element, &event, allow);
-            defender.damage_reduction_bp = reduction_bp;
+        let damage_with = |recipient: DamageRecipient,
+                           bonus: OffenseBuffs,
+                           allow: &dyn Fn(usize) -> bool| {
+            let mut defender = self.damage_target(actor, recipient.unit, element, &event, allow);
+            defender.damage_share_bp = recipient.share_bp;
+            defender.damage_reduction_bp = recipient.reduction_bp;
             let critical = crit_roll.is_some_and(|(rate, roll)| {
                 roll < u64::from(rate.saturating_add(bonus.crit_rate_bp))
             });
@@ -1500,7 +1549,11 @@ impl Battle<'_> {
             });
             (amount, critical)
         };
-        let (amount, critical) = damage_with(applied_buffs, &|_| true);
+        let (amount, critical) = damage_with(main_recipient, applied_buffs, &|_| true);
+        let distributed_damage = distributed_recipient.map(|recipient| {
+            let (amount, _) = damage_with(recipient, applied_buffs, &|_| true);
+            (recipient.unit, amount)
+        });
         if matches!(self.plan.units[target].kit, Kit::Dummy { .. }) {
             let state = &self.units[target];
             let assists: std::collections::BTreeSet<_> = state
@@ -1533,7 +1586,7 @@ impl Battle<'_> {
             let mut credits = Vec::new();
             if !assists.is_empty() {
                 let damage_by = |allow: &dyn Fn(usize) -> bool| {
-                    damage_with(self.offense_buffs(offense, allow), allow).0
+                    damage_with(main_recipient, self.offense_buffs(offense, allow), allow).0
                 };
                 let mut damage = damage_by(&|source| !assists.contains(&source));
                 for &owner in &assists {
@@ -1567,6 +1620,9 @@ impl Battle<'_> {
             });
         } else {
             self.deal_damage(actor, target, kind, amount, critical);
+            if let Some((recipient, amount)) = distributed_damage {
+                self.deal_damage(actor, recipient, kind, amount, critical);
+            }
         }
         if amount > 0
             && kind == DamageKind::DamageOverTime
@@ -1590,6 +1646,45 @@ impl Battle<'_> {
             }
         }
         critical
+    }
+
+    fn incoming_reduction_bp(&self, actor: usize, target: usize, kind: DamageKind) -> u32 {
+        let personal_bp = self.mechanics(target).map_or(0, |mechanics| {
+            mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
+        });
+        let invigoration_bp = self.invigoration_damage_reduction_bp(target);
+        let mut remaining_bp =
+            10_000_u32.saturating_sub(personal_bp) * (10_000 - invigoration_bp) / 10_000;
+        let enemy_source = self.enemies().contains(&actor);
+        let ally_target = self.allies().contains(&target);
+        if !enemy_source && !ally_target {
+            return 10_000 - remaining_bp;
+        }
+        for owner in self.allies().filter(|&owner| self.units[owner].hp > 0) {
+            if let Some(mechanics) = self.mechanics(owner) {
+                if enemy_source {
+                    let bp = mechanics.enemy_damage_reduction_bp(self, owner);
+                    remaining_bp = remaining_bp * 10_000_u32.saturating_sub(bp) / 10_000;
+                }
+                if ally_target {
+                    let bp = mechanics.ally_damage_reduction_bp(self, owner);
+                    remaining_bp = remaining_bp * 10_000_u32.saturating_sub(bp) / 10_000;
+                }
+            }
+        }
+        10_000 - remaining_bp
+    }
+
+    fn damage_distribution(&self, actor: usize, target: usize) -> Option<(usize, u16)> {
+        if !self.enemies().contains(&actor) || !self.allies().contains(&target) {
+            return None;
+        }
+        self.allies()
+            .filter(|&owner| owner != target && self.is_targetable(owner))
+            .find_map(|owner| {
+                let bp = self.mechanics(owner)?.damage_distribution_bp(self, owner);
+                (bp > 0).then_some((owner, bp.min(10_000)))
+            })
     }
 
     fn deal_damage(
@@ -1621,6 +1716,7 @@ impl Battle<'_> {
         if absorbed > 0 {
             self.deplete_shields(target, amount);
         }
+        self.record_team_hp_loss(target, hp_loss);
         if hp_loss > 0
             && let Some(mechanics) = self.mechanics(target)
         {
@@ -1638,12 +1734,16 @@ impl Battle<'_> {
             }
             if actor >= self.plan.ally_count
                 && target < self.plan.ally_count
-                && matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
-                && self.try_ally_rescue(target)
+                && (self.try_team_rescue(actor, target)
+                    || (matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
+                        && self.try_ally_rescue(target)))
             {
                 return;
             }
             self.emit(EventKind::UnitDefeated, Some(actor), Some(target));
+            if let Some(mechanics) = self.mechanics(target) {
+                mechanics.on_defeated(self, target);
+            }
             if actor < self.plan.ally_count {
                 self.gain_energy(actor, actor, KILL_ENERGY_MILLI);
                 if let Some(mechanics) = self.mechanics(actor) {
@@ -1681,6 +1781,15 @@ impl Battle<'_> {
             self.units[target].invigoration = None;
             self.units[target].ally_buffs.clear();
         }
+    }
+
+    fn try_team_rescue(&mut self, attacker: usize, target: usize) -> bool {
+        self.allies().any(|owner| {
+            (owner == target || self.is_targetable(owner))
+                && self.mechanics(owner).is_some_and(|mechanics| {
+                    mechanics.prevent_team_defeat(self, owner, attacker, target)
+                })
+        })
     }
 
     fn try_ally_rescue(&mut self, target: usize) -> bool {

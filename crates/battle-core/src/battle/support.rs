@@ -178,10 +178,18 @@ impl Battle<'_> {
     }
 
     pub(super) fn effective_max_hp(&self, actor: usize) -> u32 {
-        self.plan.units[actor]
+        let max_hp = self.plan.units[actor]
             .stats
             .hp
-            .saturating_add(self.ally_buff_total(actor, AllyBuffKind::MaxHpFlat))
+            .saturating_add(self.ally_buff_total(actor, AllyBuffKind::MaxHpFlat));
+        if !self.allies().contains(&actor) {
+            return max_hp;
+        }
+        self.allies()
+            .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
+            .fold(max_hp, |hp, (owner, rules)| {
+                hp.saturating_add(rules.ally_max_hp_bonus(self, owner, actor))
+            })
     }
 
     fn ally_buff_total(&self, actor: usize, kind: AllyBuffKind) -> u32 {
@@ -249,6 +257,9 @@ impl Battle<'_> {
         if self.units[source].hp > 0
             && let Some(mechanics) = self.mechanics(source)
         {
+            bonuses.max_hp_flat = bonuses
+                .max_hp_flat
+                .saturating_add(mechanics.ally_max_hp_bonus(self, source, target));
             bonuses.attack_bp = bonuses
                 .attack_bp
                 .saturating_add(mechanics.ally_attack_bonus_bp(self, source, target));
@@ -428,7 +439,7 @@ impl Battle<'_> {
     }
 }
 
-fn percentage_of(value: u32, bp: u32) -> u32 {
+pub(super) fn percentage_of(value: u32, bp: u32) -> u32 {
     let scaled = u64::from(value) * u64::from(bp) / 10_000;
     u32::try_from(scaled).unwrap_or(u32::MAX)
 }

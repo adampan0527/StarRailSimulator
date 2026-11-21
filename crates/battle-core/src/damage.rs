@@ -9,6 +9,7 @@ pub(crate) struct DamageTarget {
     pub defense_down_bp: u32,
     pub resistance_down_bp: u32,
     pub damage_reduction_bp: u32,
+    pub damage_share_bp: u16,
     pub toughness: u16,
     pub max_toughness: u16,
 }
@@ -29,9 +30,18 @@ fn defense_factor(source_defense: u128, target: DamageTarget) -> u128 {
 
 fn damage_after_reduction(numerator: u128, denominator: u128, target: DamageTarget) -> u32 {
     let reduction = u128::from(target.damage_reduction_bp).min(BP);
-    let denominator = denominator * BP;
-    let factor = BP - reduction;
-    let amount = numerator / denominator * factor + numerator % denominator * factor / denominator;
+    let reduction_factor = BP - reduction;
+    // Split the unmitigated hit before folding in the recipient's defensive stats.
+    let (scale, factor) = if u128::from(target.damage_share_bp) == BP {
+        (BP, reduction_factor)
+    } else {
+        (
+            BP * BP,
+            reduction_factor * u128::from(target.damage_share_bp),
+        )
+    };
+    let amount =
+        (numerator / denominator * factor + numerator % denominator * factor / denominator) / scale;
     u32::try_from(amount).unwrap_or(u32::MAX)
 }
 
