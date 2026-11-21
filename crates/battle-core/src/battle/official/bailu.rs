@@ -142,8 +142,9 @@ impl Bailu {
             u64::from(self.outgoing_healing_bp + eidolon_bonus) * MICROS / u64::from(BP);
         let amount = amount.scaled_amount(battle.hp(actor).1, bonus_micros, scale);
         let (hp, max_hp) = battle.hp(target);
+        let effective_heal = battle.incoming_healing_amount(target, amount);
         battle.heal_unit(actor, target, amount);
-        if self.max_hp_trace && amount > max_hp - hp {
+        if self.max_hp_trace && effective_heal > max_hp - hp {
             let base_hp = battle.plan.units[target].stats.base_hp;
             battle.apply_max_hp_increase(actor, target, base_hp * A2_MAX_HP_BP / BP, 2);
         }

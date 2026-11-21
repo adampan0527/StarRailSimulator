@@ -5,6 +5,7 @@ mod asta;
 mod aventurine;
 mod bailu;
 mod black_swan;
+mod blade;
 mod bronya;
 mod clara;
 mod dan_heng;
@@ -51,6 +52,7 @@ pub(super) use {
     aventurine::AventurineState,
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
+    blade::BladeState,
     dr_ratio::DrRatioState,
     feixiao::FeixiaoState,
     fu_xuan::FuXuanState,
@@ -726,6 +728,14 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn after_hp_loss(&self, _battle: &mut Battle<'_>, _actor: usize, _hp_lost: u32) {}
 
+    fn after_hp_spent(&self, _battle: &mut Battle<'_>, _actor: usize, _amount: u32) {}
+
+    fn incoming_healing_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn after_healing(&self, _battle: &mut Battle<'_>, _target: usize, _restored: u32) {}
+
     fn after_ally_hp_loss(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
 
     fn after_non_primary_critical_hit(
@@ -819,6 +829,10 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn scales_with_defense(&self) -> bool {
         false
+    }
+
+    fn follow_up_max_hp_multiplier_bp(&self) -> u16 {
+        0
     }
 
     fn crit_rate_from_defense_bp(&self, _defense: u32) -> u32 {
@@ -1012,6 +1026,7 @@ pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
                     "character.1005"
                         | welt::FORM
                         | black_swan::FORM
+                        | blade::FORM
                         | silver_wolf::FORM
                         | huohuo::FORM
                         | seele::FORM
@@ -1050,6 +1065,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         qingque::FORM => Some(qingque::build),
         "character.1202" => Some(tingyun::build),
         jing_yuan::FORM => Some(jing_yuan::build),
+        blade::FORM => Some(blade::build),
         luocha::FORM => Some(luocha::build),
         "character.1206" => Some(sushang::build),
         "character.1207" => Some(yukong::build),

@@ -85,6 +85,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '琼玉牌变化';
     case 'apotheosis':
       return '升格变化';
+    case 'blade_charge':
+      return '倏忽恩赐充能';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -125,6 +127,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'toughness':
     case 'crimson_knot':
     case 'apotheosis':
+    case 'blade_charge':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;

@@ -114,7 +114,8 @@ type EventKind =
         | 'toughness'
         | 'crimson_knot'
         | 'blind_bet'
-        | 'apotheosis';
+        | 'apotheosis'
+        | 'blade_charge';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }
