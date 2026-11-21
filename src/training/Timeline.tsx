@@ -37,6 +37,8 @@ const statusNames = {
   survival_response: '求生反应',
   wisemans_folly: '智者的短见',
   frozen: '冻结',
+  imprisoned: '禁锢',
+  weightless: '失重',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

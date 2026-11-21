@@ -83,14 +83,52 @@ fn official_saved_team_runs_fixed_dpr_with_resolved_loadouts() {
 
     let slots = [
         Some(arlan.into()),
-        Some("character.1004".into()),
+        Some("character.1217".into()),
         None,
         None,
     ];
     let mixed = archive.save_team(None, "有未接入角色", &slots).unwrap();
     let checked = archive.dpr_readiness(&mixed.id).unwrap();
-    assert_eq!(checked.unsupported_characters, ["瓦尔特"]);
+    assert_eq!(checked.unsupported_characters, ["藿藿"]);
     assert!(checked.result.is_none());
+}
+
+#[cfg(bundled_catalog)]
+#[test]
+fn welt_fixed_dpr_uses_default_and_saved_base_variant() {
+    let dir = TestData::new();
+    let welt = "character.1004";
+    let catalog_path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    );
+    let json = std::fs::read_to_string(catalog_path).unwrap();
+    let catalog = star_rail_profiles::Catalog::from_json(&json).unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let team = archive
+        .save_team(None, "瓦尔特靶场", &[Some(welt.into()), None, None, None])
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let enhanced = run();
+
+    let base = catalog.default_loadout_at(welt, "base", 80, 6).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog).unwrap();
+    let profile = profiles.profile(welt).unwrap();
+    assert_eq!(
+        profile.presets[&profile.current_preset].variant_id,
+        "novaflare"
+    );
+    profiles.save_preset(welt, "原版", &base, true).unwrap();
+
+    let original = run();
+    assert_eq!(original, run());
+    assert_eq!(original.characters[0].unit_id, welt);
+    assert!(original.total_damage > 0);
+    assert!(enhanced.total_damage > original.total_damage);
 }
 
 #[cfg(bundled_catalog)]

@@ -5,6 +5,12 @@ use super::{Battle, resolve::gauge_for};
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum DebuffKind {
     Slow,
+    BreakImprisonment,
+    SkillImprisonment,
+    Weightless {
+        defense_down_bp: u16,
+        resistance_down_bp: u16,
+    },
     DefenseDown,
     Vulnerability,
     DotVulnerability,
@@ -16,9 +22,21 @@ pub(super) enum DebuffKind {
 }
 
 impl DebuffKind {
+    pub(super) fn is_speed_down(self) -> bool {
+        matches!(
+            self,
+            Self::Slow
+                | Self::BreakImprisonment
+                | Self::SkillImprisonment
+                | Self::Weightless { .. }
+        )
+    }
+
     fn status(self) -> StatusKind {
         match self {
-            Self::Slow => StatusKind::Slow,
+            Self::Slow | Self::BreakImprisonment => StatusKind::Slow,
+            Self::SkillImprisonment => StatusKind::Imprisoned,
+            Self::Weightless { .. } => StatusKind::Weightless,
             Self::DefenseDown => StatusKind::DefenseDown,
             Self::Vulnerability => StatusKind::Vulnerability,
             Self::DotVulnerability => StatusKind::DotVulnerability,
@@ -97,18 +115,36 @@ impl Battle<'_> {
     }
 
     pub(super) fn apply_break_slow(&mut self, actor: usize, target: usize) -> bool {
-        self.apply_debuff(actor, target, DebuffKind::Slow, 1_000, 1)
+        self.apply_debuff(actor, target, DebuffKind::BreakImprisonment, 1_000, 1)
     }
 
     pub(super) fn apply_speed_down(&mut self, actor: usize, target: usize, bp: u32, turns: u32) {
         self.apply_debuff(actor, target, DebuffKind::Slow, bp, turns);
     }
 
+    pub(super) fn apply_skill_imprisonment(
+        &mut self,
+        source: usize,
+        target: usize,
+        slow_bp: u32,
+        delay_bp: u16,
+    ) {
+        if self.apply_debuff(source, target, DebuffKind::SkillImprisonment, slow_bp, 1) {
+            self.delay_action(source, target, delay_bp);
+        }
+    }
+
+    pub(super) fn has_weightless(&self, source: usize, target: usize) -> bool {
+        self.units[target].debuffs.iter().any(|status| {
+            status.source == source && matches!(status.kind, DebuffKind::Weightless { .. })
+        })
+    }
+
     pub(super) fn is_slowed(&self, target: usize) -> bool {
         self.units[target]
             .debuffs
             .iter()
-            .any(|status| status.kind == DebuffKind::Slow)
+            .any(|status| status.kind.is_speed_down())
     }
 
     pub(super) fn has_besotted_from(&self, target: usize, source: usize) -> bool {
