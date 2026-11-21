@@ -1015,6 +1015,57 @@ fn saved_team_replays_tile_attacks_with_energy_and_skill_point_support() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_lightning_lord_with_three_harmony_supports() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [jing_yuan, ruan_mei, robin, sunday] = [
+        "character.1204",
+        "character.1303",
+        "character.1309",
+        "character.1313",
+    ];
+    let team = archive
+        .save_team(
+            None,
+            "协奏与神君",
+            &[jing_yuan, ruan_mei, robin, sunday].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| {
+        hit.source_id == jing_yuan && hit.kind == DamageKind::FollowUp && hit.amount > 0
+    }));
+    assert!(hits().any(|hit| hit.source_id == robin && hit.kind == DamageKind::Additional));
+    for support in [ruan_mei, robin, sunday] {
+        assert!(hits().any(|hit| {
+            hit.source_id == jing_yuan
+                && hit
+                    .credits
+                    .iter()
+                    .any(|credit| credit.unit_id == support && credit.amount > 0)
+        }));
+    }
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
