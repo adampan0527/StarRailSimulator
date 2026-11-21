@@ -33,6 +33,7 @@ mod moze;
 mod natasha;
 mod pela;
 mod qingque;
+mod robin;
 mod ruan_mei;
 mod sampo;
 mod seele;
@@ -63,6 +64,7 @@ pub(super) use {
     misha::MishaState,
     moze::MozeState,
     qingque::QingqueState,
+    robin::RobinState,
     ruan_mei::RuanMeiState,
     seele::SeeleState,
     sparkle::SparkleState,
@@ -311,6 +313,11 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn can_use_skill(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         true
+    }
+
+    /// Suppresses scheduling and commands without preventing other units targeting the actor.
+    fn suspends_turn(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
+        false
     }
 
     /// An ordinary action can leave the current turn open for another command.
@@ -594,6 +601,10 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn control_resistance_bp(&self) -> u32 {
         0
+    }
+
+    fn immune_to_enemy_control(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
+        false
     }
 
     fn on_extra_turn_start(&self, _battle: &mut Battle<'_>, _actor: usize) {}
@@ -1098,6 +1109,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         sparkle::FORM => Some(sparkle::build),
         black_swan::FORM => Some(black_swan::build),
         acheron::FORM => Some(acheron::build),
+        robin::FORM => Some(robin::build),
         "character.1312" => Some(misha::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         march_hunt::FORM => Some(march_hunt::build),

@@ -31,6 +31,10 @@ pub(super) enum DebuffKind {
 }
 
 impl DebuffKind {
+    fn is_control(self) -> bool {
+        matches!(self, Self::BreakImprisonment | Self::SkillImprisonment)
+    }
+
     pub(super) fn is_speed_down(self) -> bool {
         matches!(
             self,
@@ -139,12 +143,10 @@ impl Battle<'_> {
     pub(super) fn is_crowd_controlled(&self, unit: usize) -> bool {
         self.is_frozen(unit)
             || self.units[unit].entanglement.is_some()
-            || self.units[unit].debuffs.iter().any(|status| {
-                matches!(
-                    status.kind,
-                    DebuffKind::BreakImprisonment | DebuffKind::SkillImprisonment
-                )
-            })
+            || self.units[unit]
+                .debuffs
+                .iter()
+                .any(|status| status.kind.is_control())
     }
 
     pub(super) fn apply_debuff(
@@ -155,12 +157,8 @@ impl Battle<'_> {
         bp: u32,
         turns: u32,
     ) -> bool {
-        let control = matches!(
-            kind,
-            DebuffKind::BreakImprisonment | DebuffKind::SkillImprisonment
-        );
         if self.units[target].hp == 0
-            || (control && self.resists_enemy_control(source, target))
+            || (kind.is_control() && self.resists_enemy_control(source, target))
             || self.resists_debuff(target)
         {
             return false;
@@ -382,6 +380,32 @@ impl Battle<'_> {
         }
         self.emit(EventKind::StatusCleared, Some(actor), Some(target));
         true
+    }
+
+    pub(super) fn cleanse_control(&mut self, actor: usize, target: usize) {
+        let expired: Vec<_> = self.units[target]
+            .debuffs
+            .extract_if(.., |status| status.kind.is_control())
+            .collect();
+        let mut cleared = self.clear_freeze(target) || !expired.is_empty();
+        for status in expired {
+            self.emit(
+                EventKind::StatusExpired(status.kind.status()),
+                Some(status.source),
+                Some(target),
+            );
+        }
+        if let Some(status) = self.units[target].entanglement.take() {
+            cleared = true;
+            self.emit(
+                EventKind::StatusExpired(StatusKind::Entangled),
+                Some(status.source),
+                Some(target),
+            );
+        }
+        if cleared {
+            self.emit(EventKind::StatusCleared, Some(actor), Some(target));
+        }
     }
 
     fn clear_periodic_debuff(&mut self, target: usize) -> bool {
