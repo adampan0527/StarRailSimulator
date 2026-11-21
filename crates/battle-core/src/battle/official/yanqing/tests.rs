@@ -12,6 +12,10 @@ fn yanqing(eidolon: u8, follow_up_chance: f64) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "ally.yanqing".into(),
         form_id: FORM.into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Hunt,
+            element: crate::Element::Ice,
+        },
         energy_capacity: 140,
         level: 80,
         stats: OfficialStats {
@@ -26,8 +30,7 @@ fn yanqing(eidolon: u8, follow_up_chance: f64) -> OfficialCharacter {
             speed_micros: 400_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
@@ -53,6 +56,10 @@ fn arlan() -> OfficialCharacter {
     let mut character = yanqing(0, 0.0);
     character.unit_id = "ally.arlan".into();
     character.form_id = "character.1008".into();
+    character.combat_type = crate::CombatType {
+        path: crate::CombatPath::Destruction,
+        element: crate::Element::Thunder,
+    };
     character.energy_capacity = 110;
     character.stats.base_speed_micros = 300_000_000;
     character.stats.speed_micros = 300_000_000;

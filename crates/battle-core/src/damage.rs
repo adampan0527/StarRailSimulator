@@ -51,7 +51,7 @@ pub(crate) fn direct(
     };
     let toughness = if target.toughness > 0 { 9_000 } else { BP };
     let numerator = u128::from(base_bp)
-        * (BP + u128::from(source.element_damage_bp))
+        * (BP + u128::from(source.element_damage_bp[element.index()]))
         * crit
         * defense_points
         * resist_factor(target, element)

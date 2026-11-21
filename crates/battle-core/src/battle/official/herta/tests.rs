@@ -23,6 +23,10 @@ fn character(eidolon: u8) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "ally.herta".into(),
         form_id: "character.1013".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Erudition,
+            element: crate::Element::Ice,
+        },
         level: 80,
         energy_capacity: 110,
         stats: OfficialStats {
@@ -37,8 +41,7 @@ fn character(eidolon: u8) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             energy_regeneration_bp: 10_000,
@@ -64,6 +67,7 @@ fn finite_plan(input: OfficialCharacter, hit_points: &[u32]) -> PreparedBattle {
         let mut stats = ICE_WEAK_ENEMY.stats;
         stats.hp = hp;
         plan.units.push(UnitPlan {
+            combat_type: None,
             id: format!("enemy.{i}"),
             kit: Kit::Enemy(&ICE_WEAK_ENEMY),
             stats,

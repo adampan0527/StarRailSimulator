@@ -16,6 +16,10 @@ fn hook(eidolon: u8) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "ally.hook".into(),
         form_id: FORM.into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Destruction,
+            element: crate::Element::Fire,
+        },
         energy_capacity: 120,
         level: 80,
         stats: OfficialStats {
@@ -30,8 +34,7 @@ fn hook(eidolon: u8) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
@@ -55,6 +58,10 @@ fn arlan() -> OfficialCharacter {
     let mut ally = hook(0);
     ally.unit_id = "ally.arlan".into();
     ally.form_id = "character.1008".into();
+    ally.combat_type = crate::CombatType {
+        path: crate::CombatPath::Destruction,
+        element: crate::Element::Thunder,
+    };
     ally.energy_capacity = 110;
     ally.skill_parameters = [
         ("skill.100801".into(), vec![0.5]),

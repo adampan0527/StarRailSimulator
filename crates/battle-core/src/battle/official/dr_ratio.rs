@@ -170,7 +170,7 @@ impl Mechanics for DrRatio {
                 if battle.roll_fixed(chance) {
                     battle.follow_up_single_or_random(
                         actor,
-                        target,
+                        Some(target),
                         action,
                         self.follow_up.clone(),
                     );

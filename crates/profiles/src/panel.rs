@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use star_rail_battle_core::TrainingAttributes;
+use star_rail_battle_core::{Element, TrainingAttributes};
 
 use crate::{Catalog, Error, Loadout, PropertyBonus};
 
@@ -22,7 +22,7 @@ pub struct CharacterStats {
     pub crit_damage: Option<f64>,
     pub element_damage: Option<f64>,
     #[serde(skip)]
-    pub(crate) thunder_damage: Option<f64>,
+    pub(crate) elemental_damage: [f64; Element::COUNT],
     pub break_effect: Option<f64>,
     pub elation: Option<f64>,
     pub healing_boost: Option<f64>,
@@ -92,7 +92,7 @@ impl Catalog {
             }
         }
 
-        let bonus = |key| bonuses.get(key).copied().unwrap_or_default();
+        let bonus = |key: &str| bonuses.get(key).copied().unwrap_or_default();
         let scaled = |key, ratio, flat| {
             base.get(key).map(|&base| ScaledStat {
                 base,
@@ -114,7 +114,10 @@ impl Catalog {
             element_damage: Some(
                 bonus(element_property.as_str()) + bonus("alldamagetypeaddedratio"),
             ),
-            thunder_damage: Some(bonus("thunderaddedratio") + bonus("alldamagetypeaddedratio")),
+            elemental_damage: Element::ALL.map(|element| {
+                bonus(format!("{}addedratio", element.id()).as_str())
+                    + bonus("alldamagetypeaddedratio")
+            }),
             break_effect: Some(bonus("breakdamageaddedratiobase")),
             elation: Some(bonus("elationdamageaddedratiobase")),
             healing_boost: Some(bonus("healratiobase")),

@@ -11,6 +11,10 @@ fn serval(eidolon: u8, enabled_traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "team.serval".into(),
         form_id: "character.1103".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Erudition,
+            element: crate::Element::Thunder,
+        },
         energy_capacity: 100,
         level: 80,
         stats: OfficialStats {
@@ -25,8 +29,7 @@ fn serval(eidolon: u8, enabled_traces: &[&str]) -> OfficialCharacter {
             speed_micros: 125_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             energy_regeneration_bp: 10_000,

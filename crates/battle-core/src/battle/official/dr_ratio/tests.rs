@@ -20,6 +20,10 @@ fn dr_ratio(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: RATIO.into(),
         form_id: FORM.into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Hunt,
+            element: crate::Element::Imaginary,
+        },
         energy_capacity: 140,
         level: 80,
         stats: OfficialStats {
@@ -34,8 +38,7 @@ fn dr_ratio(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 400_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             energy_regeneration_bp: 10_000,
@@ -58,6 +61,7 @@ fn yanqing() -> OfficialCharacter {
     let mut ally = dr_ratio(0, &[]);
     ally.unit_id = YANQING.into();
     ally.form_id = "character.1209".into();
+    ally.combat_type.element = crate::Element::Ice;
     ally.stats.base_speed_micros = 500_000_000;
     ally.stats.speed_micros = 500_000_000;
     ally.skill_parameters = [
@@ -77,6 +81,10 @@ fn jiaoqiu() -> OfficialCharacter {
     let mut ally = dr_ratio(0, &[]);
     ally.unit_id = JIAOQIU.into();
     ally.form_id = "character.1218".into();
+    ally.combat_type = crate::CombatType {
+        path: crate::CombatPath::Nihility,
+        element: crate::Element::Fire,
+    };
     ally.energy_capacity = 100;
     ally.stats.base_speed_micros = 500_000_000;
     ally.stats.speed_micros = 500_000_000;

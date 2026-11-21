@@ -18,6 +18,7 @@ mod kafka;
 mod luka;
 mod luocha;
 mod lynx;
+mod march_hunt;
 mod march_preservation;
 mod misha;
 mod moze;
@@ -37,6 +38,7 @@ pub(super) use {
     dr_ratio::DrRatioState,
     hanya::HanyaState,
     jiaoqiu::Field as JiaoqiuField,
+    march_hunt::MarchHuntState,
     misha::MishaState,
     moze::MozeState,
     topaz::TopazState,
@@ -66,8 +68,7 @@ pub struct OfficialStats {
     pub speed_micros: u64,
     pub crit_rate_bp: u32,
     pub crit_damage_bp: u32,
-    pub element_damage_bp: u32,
-    pub thunder_damage_bp: Option<u32>,
+    pub element_damage_bp: [u32; Element::COUNT],
     pub break_effect_bp: u32,
     pub effect_hit_rate_bp: u32,
     pub energy_regeneration_bp: u32,
@@ -75,10 +76,47 @@ pub struct OfficialStats {
     pub effect_resistance_bp: u32,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum CombatPath {
+    Destruction,
+    Hunt,
+    Erudition,
+    Harmony,
+    Nihility,
+    Preservation,
+    Abundance,
+    Remembrance,
+    Elation,
+}
+
+impl CombatPath {
+    pub fn from_id(id: &str) -> Option<Self> {
+        Some(match id {
+            "destruction" => Self::Destruction,
+            "hunt" => Self::Hunt,
+            "erudition" => Self::Erudition,
+            "harmony" => Self::Harmony,
+            "nihility" => Self::Nihility,
+            "preservation" => Self::Preservation,
+            "abundance" => Self::Abundance,
+            "remembrance" => Self::Remembrance,
+            "elation" => Self::Elation,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct CombatType {
+    pub path: CombatPath,
+    pub element: Element,
+}
+
 /// Frozen effective character parameters from the supported game data version.
 pub struct OfficialCharacter {
     pub unit_id: String,
     pub form_id: String,
+    pub combat_type: CombatType,
     pub energy_capacity: u32,
     pub level: u16,
     pub stats: OfficialStats,
@@ -124,8 +162,6 @@ impl OfficialCharacter {
             || [
                 stats.crit_rate_bp,
                 stats.crit_damage_bp,
-                stats.element_damage_bp,
-                stats.thunder_damage_bp.unwrap_or_default(),
                 stats.break_effect_bp,
                 stats.effect_hit_rate_bp,
                 stats.energy_regeneration_bp,
@@ -133,6 +169,7 @@ impl OfficialCharacter {
                 stats.effect_resistance_bp,
             ]
             .into_iter()
+            .chain(stats.element_damage_bp)
             .any(|ratio| ratio > 100_000)
         {
             return Err(BattleError::InvalidInput(format!(
@@ -155,7 +192,6 @@ impl OfficialCharacter {
             crit_rate_bp: stats.crit_rate_bp,
             crit_damage_bp: stats.crit_damage_bp,
             element_damage_bp: stats.element_damage_bp,
-            thunder_damage_bp: stats.thunder_damage_bp,
             break_effect_bp: stats.break_effect_bp,
             effect_hit_rate_bp: stats.effect_hit_rate_bp,
             effect_resistance_bp: stats.effect_resistance_bp,
@@ -461,6 +497,20 @@ pub(super) trait Mechanics: Send + Sync {
         false
     }
 
+    fn alternate_weakness(&self, _battle: &Battle<'_>, _actor: usize) -> Option<Element> {
+        None
+    }
+
+    fn toughness_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _action: Option<Action>,
+        _kind: DamageKind,
+    ) -> u32 {
+        0
+    }
+
     fn on_toughness_reduced(
         &self,
         _battle: &mut Battle<'_>,
@@ -517,6 +567,14 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn break_effect_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn damage_bonus_from_break_effect_bp(&self, _break_effect_bp: u32) -> u32 {
+        0
+    }
+
+    fn ally_speed_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
         0
     }
 
@@ -752,6 +810,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1305" => Some(dr_ratio::build),
         "character.1312" => Some(misha::build),
         "dan_heng.hunt" => Some(dan_heng::build),
+        march_hunt::FORM => Some(march_hunt::build),
         "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),
         "character.1209" => Some(yanqing::build),

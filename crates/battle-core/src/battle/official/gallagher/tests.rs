@@ -21,6 +21,10 @@ fn gallagher(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "ally.gallagher".into(),
         form_id: "character.1301".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Abundance,
+            element: crate::Element::Fire,
+        },
         level: 80,
         energy_capacity: 110,
         stats: OfficialStats {
@@ -35,8 +39,7 @@ fn gallagher(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             energy_regeneration_bp: 10_000,
@@ -60,6 +63,10 @@ fn clara() -> OfficialCharacter {
     let mut input = gallagher(0, &[]);
     input.unit_id = "ally.clara".into();
     input.form_id = "character.1107".into();
+    input.combat_type = crate::CombatType {
+        path: crate::CombatPath::Destruction,
+        element: crate::Element::Physical,
+    };
     input.stats.base_speed_micros = 160_000_000;
     input.stats.speed_micros = 160_000_000;
     input.skill_parameters = [

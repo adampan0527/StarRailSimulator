@@ -17,6 +17,10 @@ fn luka(eidolon: u8, idle_speed: u64, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: FORM.into(),
         form_id: FORM.into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Nihility,
+            element: crate::Element::Physical,
+        },
         level: 80,
         energy_capacity: 130,
         stats: OfficialStats {
@@ -34,8 +38,7 @@ fn luka(eidolon: u8, idle_speed: u64, traces: &[&str]) -> OfficialCharacter {
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
             energy_regeneration_bp: 10_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             healing_bp: 0,
         },

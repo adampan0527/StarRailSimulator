@@ -140,7 +140,7 @@ fn targets_burden(
                 })
         }
         Target::AllEnemies => true,
-        Target::SelfOnly | Target::Ally | Target::AllAllies => false,
+        Target::SelfOnly | Target::Ally | Target::OtherAlly | Target::AllAllies => false,
     }
 }
 

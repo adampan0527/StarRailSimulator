@@ -231,7 +231,7 @@ impl Mechanics for Moze {
             && !battle.in_follow_up()
             && let Some(target) = battle.current_target()
         {
-            battle.follow_up_single_or_random(owner, target, origin, self.follow_up.clone());
+            battle.follow_up_single_or_random(owner, Some(target), origin, self.follow_up.clone());
         }
     }
 

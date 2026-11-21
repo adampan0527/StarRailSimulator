@@ -9,6 +9,10 @@ fn bailu(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "ally.bailu".into(),
         form_id: "character.1211".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Abundance,
+            element: crate::Element::Thunder,
+        },
         energy_capacity: 100,
         level: 80,
         stats: OfficialStats {
@@ -23,8 +27,7 @@ fn bailu(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: Some(0),
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
@@ -47,6 +50,10 @@ fn natasha() -> OfficialCharacter {
     let mut ally = bailu(0, &[]);
     ally.unit_id = "ally.natasha".into();
     ally.form_id = "natasha.abundance".into();
+    ally.combat_type = crate::CombatType {
+        path: crate::CombatPath::Abundance,
+        element: crate::Element::Physical,
+    };
     ally.energy_capacity = 90;
     ally.stats.attack = 1_500;
     ally.stats.base_speed_micros = 95_000_000;
@@ -65,6 +72,10 @@ fn gepard() -> OfficialCharacter {
     let mut ally = natasha();
     ally.unit_id = "ally.gepard".into();
     ally.form_id = "character.1104".into();
+    ally.combat_type = crate::CombatType {
+        path: crate::CombatPath::Preservation,
+        element: crate::Element::Ice,
+    };
     ally.energy_capacity = 100;
     ally.skill_parameters = [
         ("skill.110401".into(), vec![0.5]),

@@ -24,6 +24,10 @@ fn asta(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: ASTA.into(),
         form_id: FORM.into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Harmony,
+            element: crate::Element::Fire,
+        },
         energy_capacity: 120,
         level: 80,
         stats: OfficialStats {
@@ -38,8 +42,7 @@ fn asta(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
@@ -62,6 +65,10 @@ fn himeko() -> OfficialCharacter {
     let mut input = asta(0, &[]);
     input.unit_id = HIMEKO.into();
     input.form_id = "character.1003".into();
+    input.combat_type = crate::CombatType {
+        path: crate::CombatPath::Erudition,
+        element: crate::Element::Fire,
+    };
     input.skill_parameters = [
         ("skill.100301".into(), vec![0.5]),
         ("skill.100302".into(), vec![1.0, 0.4]),
@@ -76,6 +83,10 @@ fn arlan() -> OfficialCharacter {
     let mut input = asta(0, &[]);
     input.unit_id = ARLAN.into();
     input.form_id = "character.1008".into();
+    input.combat_type = crate::CombatType {
+        path: crate::CombatPath::Destruction,
+        element: crate::Element::Thunder,
+    };
     input.energy_capacity = 110;
     input.skill_parameters = [
         ("skill.100801".into(), vec![0.5]),

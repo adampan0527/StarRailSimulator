@@ -222,6 +222,10 @@ mod tests {
         OfficialCharacter {
             unit_id: "ally.arlan".into(),
             form_id: "character.1008".into(),
+            combat_type: crate::CombatType {
+                path: crate::CombatPath::Destruction,
+                element: crate::Element::Thunder,
+            },
             energy_capacity: 110,
             level: 80,
             stats: OfficialStats {
@@ -236,8 +240,7 @@ mod tests {
                 speed_micros: 200_000_000,
                 crit_rate_bp: 0,
                 crit_damage_bp: 5_000,
-                element_damage_bp: 0,
-                thunder_damage_bp: None,
+                element_damage_bp: [0; crate::Element::COUNT],
                 break_effect_bp: 0,
                 effect_hit_rate_bp: 0,
                 energy_regeneration_bp: 10_000,

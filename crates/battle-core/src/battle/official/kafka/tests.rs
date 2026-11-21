@@ -28,6 +28,10 @@ fn kafka(enhanced: bool, eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: KAFKA.into(),
         form_id: FORM.into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Nihility,
+            element: crate::Element::Thunder,
+        },
         energy_capacity: 120,
         level: 80,
         stats: OfficialStats {
@@ -42,8 +46,7 @@ fn kafka(enhanced: bool, eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 100_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
@@ -69,6 +72,10 @@ fn arlan() -> OfficialCharacter {
     let mut input = kafka(false, 0, &[]);
     input.unit_id = ARLAN.into();
     input.form_id = "character.1008".into();
+    input.combat_type = crate::CombatType {
+        path: crate::CombatPath::Destruction,
+        element: crate::Element::Thunder,
+    };
     input.energy_capacity = 110;
     input.stats.speed_micros = 200_000_000;
     input.skill_parameters = [
@@ -85,6 +92,10 @@ fn serval() -> OfficialCharacter {
     let mut input = kafka(false, 0, &[]);
     input.unit_id = SERVAL.into();
     input.form_id = "character.1103".into();
+    input.combat_type = crate::CombatType {
+        path: crate::CombatPath::Erudition,
+        element: crate::Element::Thunder,
+    };
     input.energy_capacity = 100;
     input.stats.speed_micros = 180_000_000;
     input.skill_parameters = [
@@ -101,6 +112,10 @@ fn pela() -> OfficialCharacter {
     let mut input = kafka(false, 0, &[]);
     input.unit_id = "team.pela".into();
     input.form_id = "character.1106".into();
+    input.combat_type = crate::CombatType {
+        path: crate::CombatPath::Nihility,
+        element: crate::Element::Ice,
+    };
     input.energy_capacity = 110;
     input.skill_parameters = [
         ("skill.110601".into(), vec![0.5]),
