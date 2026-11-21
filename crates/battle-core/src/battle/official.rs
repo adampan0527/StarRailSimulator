@@ -26,6 +26,7 @@ mod natasha;
 mod pela;
 mod sampo;
 mod serval;
+mod silver_wolf;
 mod sushang;
 mod tingyun;
 mod topaz;
@@ -771,7 +772,8 @@ pub fn supports_official_dpr(form_id: &str) -> bool {
 pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
     supports_official_dpr(form_id)
         && (variant == "base"
-            || (variant == "novaflare" && matches!(form_id, welt::FORM | "character.1005")))
+            || (variant == "novaflare"
+                && matches!(form_id, welt::FORM | silver_wolf::FORM | "character.1005")))
 }
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
@@ -787,6 +789,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1003" => Some(himeko::build),
         welt::FORM => Some(welt::build),
         "character.1005" => Some(kafka::build),
+        silver_wolf::FORM => Some(silver_wolf::build),
         "character.1008" => Some(arlan::build),
         "character.1009" => Some(asta::build),
         "character.1013" => Some(herta::build),

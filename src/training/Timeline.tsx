@@ -39,6 +39,7 @@ const statusNames = {
   frozen: '冻结',
   imprisoned: '禁锢',
   weightless: '失重',
+  weakness_implanted: '弱点植入',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

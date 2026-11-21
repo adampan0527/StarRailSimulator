@@ -86,7 +86,8 @@ type Status =
   | 'wisemans_folly'
   | 'frozen'
   | 'imprisoned'
-  | 'weightless';
+  | 'weightless'
+  | 'weakness_implanted';
 type EventKind =
   | {
       event:
