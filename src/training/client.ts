@@ -115,7 +115,9 @@ type EventKind =
         | 'toughness'
         | 'crimson_knot'
         | 'blind_bet'
-        | 'apotheosis';
+        | 'apotheosis'
+        | 'syzygy'
+        | 'moonlight';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }

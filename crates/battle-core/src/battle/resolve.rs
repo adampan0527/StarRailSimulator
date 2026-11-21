@@ -264,6 +264,22 @@ impl Battle<'_> {
                     self.attack_hit(actor, neighbor, element, multiplier_bp, toughness);
                 }
             }
+            Effect::MaxHpBlastAdjacent {
+                element,
+                multiplier_bp,
+                toughness,
+            } => {
+                for neighbor in self.adjacent_enemies(target) {
+                    self.attack_hit_scaled(
+                        actor,
+                        neighbor,
+                        element,
+                        u32::from(multiplier_bp),
+                        toughness,
+                        DamageScale::MaxHp,
+                    );
+                }
+            }
             Effect::RandomHits {
                 element,
                 multiplier_bp,
@@ -403,13 +419,38 @@ impl Battle<'_> {
     }
 
     pub(super) fn spend_hp(&mut self, actor: usize, amount: u32, minimum_remaining: u32) {
-        let hp = &mut self.units[actor].hp;
+        self.spend_ally_hp(actor, actor, amount, minimum_remaining);
+    }
+
+    pub(super) fn spend_ally_hp(
+        &mut self,
+        source: usize,
+        target: usize,
+        amount: u32,
+        minimum_remaining: u32,
+    ) -> u32 {
+        let hp = &mut self.units[target].hp;
         let amount = amount.min(hp.saturating_sub(minimum_remaining));
         *hp -= amount;
         if amount > 0 {
-            self.emit(EventKind::HpSpent { amount }, Some(actor), Some(actor));
-            self.record_team_hp_loss(actor, amount);
-            self.notify_ally_hp_loss(actor);
+            self.emit(EventKind::HpSpent { amount }, Some(source), Some(target));
+            self.record_team_hp_loss(target, amount);
+            self.notify_ally_health_event(target, None);
+            self.notify_ally_hp_loss(target);
+        }
+        amount
+    }
+
+    fn notify_ally_health_event(&mut self, target: usize, attack_index: Option<u32>) {
+        if !self.allies().contains(&target) {
+            return;
+        }
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.on_ally_health_event(self, owner, target, attack_index);
+            }
         }
     }
 
@@ -920,6 +961,7 @@ impl Battle<'_> {
         };
         if let Some(target) = target {
             let was_shielded = self.shield_amount(target) > 0;
+            self.begin_attack();
             self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
             self.enemy_action = Some(actor);
             for owner in self.allies() {
@@ -2033,6 +2075,12 @@ impl Battle<'_> {
             self.deplete_shields(target, amount);
         }
         self.record_team_hp_loss(target, hp_loss);
+        if amount > 0 {
+            let attack_index = (self.enemy_action == Some(actor)
+                && matches!(kind, DamageKind::Direct | DamageKind::FollowUp))
+            .then_some(self.attack_index);
+            self.notify_ally_health_event(target, attack_index);
+        }
         if hp_loss > 0
             && let Some(mechanics) = self.mechanics(target)
         {
