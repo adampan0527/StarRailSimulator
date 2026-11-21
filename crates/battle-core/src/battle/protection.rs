@@ -163,7 +163,7 @@ impl Battle<'_> {
     }
 
     fn apply_freeze(&mut self, target: usize, status: Freeze) -> bool {
-        if self.resists_debuff(target) {
+        if self.resists_enemy_control(status.source, target) || self.resists_debuff(target) {
             return false;
         }
         self.units[target].frozen = Some(status);

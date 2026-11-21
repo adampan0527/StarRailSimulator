@@ -25,10 +25,10 @@ pub use analysis::{
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use extra_turn::ExtraTurns;
 use official::{
-    BailuState, BlackSwanTarget, DrRatioState, FeixiaoState, GallagherState, HanyaState,
-    Invigoration, JingYuanState, LuochaState, LynxResponse, MarchHuntState, Mechanics, MishaState,
-    MozeState, SeeleState, SkillPoints, SushangState, TopazState, WeltState, XueyiState,
-    YanqingState, YukongState,
+    BailuState, BlackSwanTarget, DrRatioState, FeixiaoState, FuXuanState, GallagherState,
+    HanyaState, Invigoration, JingYuanState, LuochaState, LynxResponse, MarchHuntState, Mechanics,
+    MishaState, MozeState, SeeleState, SkillPoints, SushangState, TopazState, WeltState,
+    XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     CombatPath, CombatType, OfficialCharacter, OfficialStats, supports_official_dpr,
@@ -131,6 +131,7 @@ struct UnitState {
     jiaoqiu_field: official::JiaoqiuField,
     dr_ratio_state: DrRatioState,
     feixiao_state: FeixiaoState,
+    fu_xuan_state: FuXuanState,
     survival_triggered: bool,
     finished_turns: u32,
     next_attack_bonus_bp: u32,
@@ -169,6 +170,7 @@ pub struct Battle<'a> {
     attack_targets: Vec<usize>,
     attack_index: u32,
     enemy_turn: Option<usize>,
+    enemy_action: Option<usize>,
     dot_timing: DotTiming,
     pending_follow_ups: std::collections::VecDeque<resolve::PendingAttack>,
     resolving_follow_up: bool,
@@ -233,6 +235,7 @@ impl<'a> Battle<'a> {
                     jiaoqiu_field: official::JiaoqiuField::default(),
                     dr_ratio_state: DrRatioState::default(),
                     feixiao_state: FeixiaoState::default(),
+                    fu_xuan_state: FuXuanState::default(),
                     survival_triggered: false,
                     finished_turns: 0,
                     next_attack_bonus_bp: 0,
@@ -263,6 +266,7 @@ impl<'a> Battle<'a> {
             attack_targets: Vec::new(),
             attack_index: 0,
             enemy_turn: None,
+            enemy_action: None,
             dot_timing: DotTiming::Other,
             pending_follow_ups: std::collections::VecDeque::new(),
             resolving_follow_up: false,

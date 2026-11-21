@@ -7,6 +7,7 @@ mod clara;
 mod dan_heng;
 mod dr_ratio;
 mod feixiao;
+mod fu_xuan;
 mod gallagher;
 mod gepard;
 mod guinaifen;
@@ -44,6 +45,7 @@ pub(super) use {
     black_swan::BlackSwanTarget,
     dr_ratio::DrRatioState,
     feixiao::FeixiaoState,
+    fu_xuan::FuXuanState,
     hanya::HanyaState,
     jiaoqiu::Field as JiaoqiuField,
     jing_yuan::JingYuanState,
@@ -407,6 +409,54 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn on_ally_defeat(&self, _battle: &mut Battle<'_>, _owner: usize) {}
+
+    fn on_defeated(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn after_enemy_action(&self, _battle: &mut Battle<'_>, _owner: usize) {}
+
+    fn record_team_hp_loss(&self, _battle: &mut Battle<'_>, _owner: usize, _hp_lost: u32) {}
+
+    fn block_enemy_control(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _attacker: usize,
+    ) -> bool {
+        false
+    }
+
+    fn prevent_team_defeat(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _attacker: usize,
+        _target: usize,
+    ) -> bool {
+        false
+    }
+
+    fn ally_max_hp_bonus(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
+    fn ally_damage_reduction_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        0
+    }
+
+    fn damage_distribution_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u16 {
+        0
+    }
+
+    // A flat contribution to the same hit's base damage, in damage units times 10,000.
+    fn flat_damage_base_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _action: Option<Action>,
+        _kind: DamageKind,
+    ) -> u64 {
+        0
+    }
 
     fn on_ally_targeted(
         &self,
@@ -898,6 +948,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         luocha::FORM => Some(luocha::build),
         "character.1206" => Some(sushang::build),
         "character.1207" => Some(yukong::build),
+        fu_xuan::FORM => Some(fu_xuan::build),
         "character.1210" => Some(guinaifen::build),
         "character.1211" => Some(bailu::build),
         xueyi::FORM => Some(xueyi::build),
