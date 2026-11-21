@@ -20,6 +20,7 @@ pub(super) enum DebuffKind {
     Besotted,
     Unnerved,
     ThanatoplumRebloom,
+    Standoff,
     AttackDown,
     AllResistanceDown,
     ResistanceDown(Element),
@@ -54,6 +55,7 @@ impl DebuffKind {
             Self::Besotted => StatusKind::Besotted,
             Self::Unnerved => StatusKind::Unnerved,
             Self::ThanatoplumRebloom => StatusKind::ThanatoplumRebloom,
+            Self::Standoff => StatusKind::Standoff,
             Self::AttackDown => StatusKind::AttackDown,
             Self::AllResistanceDown | Self::ResistanceDown(_) => StatusKind::ResistanceDown,
             Self::Epiphany { .. } => StatusKind::Epiphany,
@@ -176,6 +178,22 @@ impl Battle<'_> {
         bp: u32,
     ) {
         self.store_debuff(source, target, kind, bp, None);
+    }
+
+    pub(super) fn implant_weakness(
+        &mut self,
+        source: usize,
+        target: usize,
+        element: Element,
+        turns: u32,
+    ) {
+        self.store_debuff(
+            source,
+            target,
+            DebuffKind::ImplantedWeakness(element),
+            0,
+            Some(turns),
+        );
     }
 
     fn store_debuff(

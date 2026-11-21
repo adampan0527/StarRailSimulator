@@ -42,10 +42,11 @@ pub enum StatusKind {
     UltimateVulnerability,
     Unnerved,
     ThanatoplumRebloom,
+    Standoff,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::ThanatoplumRebloom.index() + 1;
+    pub(crate) const COUNT: usize = Self::Standoff.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -72,6 +73,7 @@ impl StatusKind {
             Self::UltimateVulnerability => 19,
             Self::Unnerved => 20,
             Self::ThanatoplumRebloom => 21,
+            Self::Standoff => 22,
         }
     }
 }
@@ -129,6 +131,10 @@ pub enum EventKind {
         hidden_hand: bool,
     },
     Apotheosis {
+        before: u8,
+        after: u8,
+    },
+    PocketTrickshot {
         before: u8,
         after: u8,
     },

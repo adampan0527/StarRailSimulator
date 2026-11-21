@@ -47,6 +47,7 @@ const statusNames = {
   weakness_implanted: '弱点植入',
   unnerved: '惊惶',
   thanatoplum_rebloom: '残梅绽',
+  standoff: '绝命对峙',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
@@ -86,6 +87,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '琼玉牌变化';
     case 'apotheosis':
       return '升格变化';
+    case 'pocket_trickshot':
+      return '优势口袋变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -126,6 +129,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'toughness':
     case 'crimson_knot':
     case 'apotheosis':
+    case 'pocket_trickshot':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;

@@ -5,6 +5,7 @@ mod asta;
 mod aventurine;
 mod bailu;
 mod black_swan;
+mod boothill;
 mod bronya;
 mod clara;
 mod dan_heng;
@@ -52,6 +53,7 @@ pub(super) use {
     aventurine::AventurineState,
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
+    boothill::BoothillState,
     dr_ratio::DrRatioState,
     feixiao::FeixiaoState,
     fu_xuan::FuXuanState,
@@ -315,6 +317,19 @@ pub(super) trait Mechanics: Send + Sync {
 
     /// An ordinary action can leave the current turn open for another command.
     fn keeps_turn(&self, _action: Action) -> bool {
+        false
+    }
+
+    fn forced_action_target(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _action: Action,
+    ) -> Option<usize> {
+        None
+    }
+
+    fn taunts_enemy(&self, _battle: &Battle<'_>, _owner: usize, _enemy: usize) -> bool {
         false
     }
 
@@ -641,6 +656,16 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn incoming_vulnerability_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _kind: DamageKind,
+    ) -> u32 {
+        0
+    }
+
     fn bonus_attack_flat(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         0
     }
@@ -755,6 +780,11 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn break_effect_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         0
+    }
+
+    /// Critical rate and critical damage provided by the resolved break effect.
+    fn crit_from_break_effect_bp(&self, _break_effect_bp: u32) -> (u32, u32) {
+        (0, 0)
     }
 
     fn ally_break_effect_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
@@ -1099,6 +1129,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         black_swan::FORM => Some(black_swan::build),
         acheron::FORM => Some(acheron::build),
         "character.1312" => Some(misha::build),
+        boothill::FORM => Some(boothill::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         march_hunt::FORM => Some(march_hunt::build),
         "march_7th.preservation" => Some(march_preservation::build),
