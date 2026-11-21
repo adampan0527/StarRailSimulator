@@ -340,7 +340,7 @@ impl Mechanics for Kafka {
         _killer: usize,
         target: usize,
     ) {
-        if self.plunder && battle.has_shock(target) {
+        if self.plunder && battle.has_elemental_dot(target, THUNDER) {
             battle.gain_energy(owner, owner, PLUNDER_ENERGY_MILLI);
         }
     }

@@ -23,14 +23,14 @@ pub use analysis::{
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
-    BailuState, DrRatioState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse,
-    Mechanics, MishaState, MozeState, SkillPoints, SushangState, XueyiState, YanqingState,
-    YukongState,
+    BailuState, BlackSwanTarget, DrRatioState, GallagherState, HanyaState, Invigoration,
+    LuochaState, LynxResponse, Mechanics, MishaState, MozeState, SkillPoints, SushangState,
+    XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
 };
-use periodic::{ActiveSkillDot, LukaState};
+use periodic::{ActiveSkillDot, DotTiming, LukaState, SpecialDotTrigger};
 use protection::{CounterState, Freeze, Shield};
 use setup::Kit;
 pub use setup::PreparedBattle;
@@ -71,6 +71,7 @@ struct UnitState {
     charged_skill: bool,
     burning_targets_at_action_start: Vec<usize>,
     kafka_follow_up_charges: u8,
+    black_swan: BlackSwanTarget,
     luka_state: LukaState,
     himeko_charge: u8,
     moze_state: MozeState,
@@ -123,6 +124,9 @@ pub struct Battle<'a> {
     action: Option<Action>,
     action_target: Option<usize>,
     attack_targets: Vec<usize>,
+    attack_index: u32,
+    enemy_turn: Option<usize>,
+    dot_timing: DotTiming,
     pending_follow_ups: std::collections::VecDeque<resolve::FollowUp>,
     resolving_follow_up: bool,
 }
@@ -161,6 +165,7 @@ impl<'a> Battle<'a> {
                     charged_skill: false,
                     burning_targets_at_action_start: Vec::new(),
                     kafka_follow_up_charges: 0,
+                    black_swan: BlackSwanTarget::default(),
                     luka_state: LukaState::default(),
                     himeko_charge: 0,
                     moze_state: MozeState::default(),
@@ -205,6 +210,9 @@ impl<'a> Battle<'a> {
             action: None,
             action_target: None,
             attack_targets: Vec::new(),
+            attack_index: 0,
+            enemy_turn: None,
+            dot_timing: DotTiming::Other,
             pending_follow_ups: std::collections::VecDeque::new(),
             resolving_follow_up: false,
         };
@@ -283,7 +291,7 @@ impl<'a> Battle<'a> {
         self.decision_index += 1;
         self.action = Some(command.action);
         self.action_target = target;
-        self.attack_targets.clear();
+        self.begin_attack();
         self.emit(EventKind::Action(command.action), Some(actor), target);
         match skill_points {
             SkillPoints::Generate => {
@@ -564,6 +572,11 @@ impl<'a> Battle<'a> {
         &self.attack_targets
     }
 
+    fn begin_attack(&mut self) {
+        self.attack_targets.clear();
+        self.attack_index += 1;
+    }
+
     fn take_once_per_battle(&mut self, actor: usize) -> bool {
         !std::mem::replace(&mut self.units[actor].survival_triggered, true)
     }
@@ -662,38 +675,51 @@ impl<'a> Battle<'a> {
                     return;
                 }
                 Kit::Enemy(_) | Kit::Dummy { .. } => {
-                    self.tick_shocks(actor);
-                    self.tick_skill_dots(actor);
-                    self.tick_break_dots(actor);
-                    self.tick_entanglement(actor);
-                    if self.units[actor].hp == 0 {
-                        self.resolve_wave_or_end();
-                        continue;
-                    }
-                    if self.thaw(actor) {
-                        self.finish_turn(actor);
-                        self.resolve_wave_or_end();
-                        continue;
-                    }
-                    if self.units[actor].toughness == 0 {
-                        self.set_toughness(actor, actor, kit.max_toughness());
-                    }
-                    self.reset_gauge(actor);
-                    for owner in self.allies() {
-                        if self.units[owner].hp > 0
-                            && let Some(mechanics) = self.mechanics(owner)
-                        {
-                            mechanics.on_enemy_turn_start(self, owner, actor);
-                        }
-                    }
-                    if let Kit::Enemy(enemy) = kit {
-                        self.resolve_enemy(actor, enemy);
-                    }
-                    self.finish_turn(actor);
+                    self.enemy_turn = Some(actor);
+                    self.resolve_enemy_turn(actor);
+                    self.enemy_turn = None;
                     self.resolve_wave_or_end();
                 }
             }
         }
+    }
+
+    fn resolve_enemy_turn(&mut self, actor: usize) {
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.on_enemy_turn_opening(self, owner, actor);
+            }
+        }
+        self.dot_timing = DotTiming::TurnStart(actor);
+        self.tick_shocks(actor);
+        self.tick_skill_dots(actor);
+        self.tick_break_dots(actor);
+        self.trigger_special_dots(actor, SpecialDotTrigger::TurnStart);
+        self.dot_timing = DotTiming::Other;
+        self.tick_entanglement(actor);
+        if self.units[actor].hp == 0 {
+            return;
+        }
+        if !self.thaw(actor) {
+            let kit = &self.plan.units[actor].kit;
+            if self.units[actor].toughness == 0 {
+                self.set_toughness(actor, actor, kit.max_toughness());
+            }
+            self.reset_gauge(actor);
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.on_enemy_turn_start(self, owner, actor);
+                }
+            }
+            if let Kit::Enemy(enemy) = kit {
+                self.resolve_enemy(actor, enemy);
+            }
+        }
+        self.finish_turn(actor);
     }
 
     fn resolve_wave_or_end(&mut self) {

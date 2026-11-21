@@ -84,6 +84,8 @@ type Status =
   | 'entangled'
   | 'survival_response'
   | 'wisemans_folly'
+  | 'arcana'
+  | 'epiphany'
   | 'frozen';
 type EventKind =
   | {

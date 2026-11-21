@@ -161,7 +161,7 @@ impl Serval {
             if battle.hp(enemy).0 == 0 {
                 continue;
             }
-            if self.eidolon >= 4 && !battle.has_shock(enemy) {
+            if self.eidolon >= 4 && !battle.has_elemental_dot(enemy, Element::Thunder) {
                 battle.apply_skill_shock(
                     actor,
                     enemy,
@@ -203,7 +203,7 @@ impl Mechanics for Serval {
             _ => {}
         }
         for enemy in battle.enemies() {
-            if battle.hp(enemy).0 > 0 && battle.has_shock(enemy) {
+            if battle.hp(enemy).0 > 0 && battle.has_elemental_dot(enemy, Element::Thunder) {
                 battle.secondary_hit(
                     actor,
                     enemy,
@@ -227,7 +227,7 @@ impl Mechanics for Serval {
         _action: Option<Action>,
         _kind: DamageKind,
     ) -> u32 {
-        if self.eidolon >= 6 && battle.has_shock(target) {
+        if self.eidolon >= 6 && battle.has_elemental_dot(target, Element::Thunder) {
             3_000
         } else {
             0

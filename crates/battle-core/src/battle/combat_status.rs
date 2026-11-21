@@ -13,6 +13,10 @@ pub(super) enum DebuffKind {
     AttackDown,
     AllResistanceDown,
     ResistanceDown(Element),
+    Epiphany {
+        only_on_turn: bool,
+        effect_resistance_down_bp: u16,
+    },
 }
 
 impl DebuffKind {
@@ -26,6 +30,7 @@ impl DebuffKind {
             Self::Besotted => StatusKind::Besotted,
             Self::AttackDown => StatusKind::AttackDown,
             Self::AllResistanceDown | Self::ResistanceDown(_) => StatusKind::ResistanceDown,
+            Self::Epiphany { .. } => StatusKind::Epiphany,
         }
     }
 }
@@ -184,6 +189,12 @@ impl Battle<'_> {
         self.debuff_count(target) > 0
     }
 
+    pub(super) fn has_epiphany_from(&self, source: usize, target: usize) -> bool {
+        self.units[target].debuffs.iter().any(|status| {
+            status.source == source && matches!(status.kind, DebuffKind::Epiphany { .. })
+        })
+    }
+
     pub(super) fn debuff_count(&self, target: usize) -> usize {
         let state = &self.units[target];
         let special = self
@@ -198,6 +209,7 @@ impl Battle<'_> {
             + state.shocks.len()
             + usize::from(state.entanglement.is_some())
             + state.break_dots.len()
+            + usize::from(state.black_swan.arcana.is_some())
             + self.standalone_skill_dot_count(target)
             + special
     }
@@ -236,6 +248,12 @@ impl Battle<'_> {
             state.skill_dots.remove(0);
         } else if !state.break_dots.is_empty() {
             state.break_dots.remove(0);
+        } else if let Some(arcana) = state.black_swan.arcana.take() {
+            self.emit(
+                EventKind::StatusExpired(StatusKind::Arcana),
+                Some(arcana.source),
+                Some(target),
+            );
         } else {
             return false;
         }

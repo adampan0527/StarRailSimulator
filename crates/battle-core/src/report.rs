@@ -34,10 +34,12 @@ pub enum StatusKind {
     Entangled,
     SurvivalResponse,
     WisemansFolly,
+    Arcana,
+    Epiphany,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::WisemansFolly.index() + 1;
+    pub(crate) const COUNT: usize = Self::Epiphany.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -56,6 +58,8 @@ impl StatusKind {
             Self::Entangled => 11,
             Self::SurvivalResponse => 12,
             Self::WisemansFolly => 13,
+            Self::Arcana => 14,
+            Self::Epiphany => 15,
         }
     }
 }
