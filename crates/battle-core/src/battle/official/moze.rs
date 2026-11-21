@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     Action, BattleError, DamageKind,
-    fixture::{Effect, Element, SKILL_POINT_CAP, Target},
+    fixture::{Effect, Element, Target},
 };
 
 use super::{
@@ -239,7 +239,7 @@ impl Mechanics for Moze {
         let unit = &mut battle.units[actor];
         if self.nightfeather && unit.moze_state.last_refund_turn != Some(unit.normal_turns) {
             unit.moze_state.last_refund_turn = Some(unit.normal_turns);
-            battle.set_skill_points(actor, (battle.skill_points + 1).min(SKILL_POINT_CAP));
+            battle.restore_skill_points(actor, 1);
         }
     }
 

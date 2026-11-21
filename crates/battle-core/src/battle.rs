@@ -121,6 +121,7 @@ struct UnitState {
     asta_state: AstaState,
     bronya_state: BronyaState,
     tingyun_state: TingyunState,
+    sparkle_state: official::SparkleState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
     misha_state: MishaState,
@@ -225,6 +226,7 @@ impl<'a> Battle<'a> {
                     asta_state: AstaState::default(),
                     bronya_state: BronyaState::default(),
                     tingyun_state: TingyunState::default(),
+                    sparkle_state: official::SparkleState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
                     misha_state: MishaState::default(),
@@ -356,7 +358,7 @@ impl<'a> Battle<'a> {
         self.emit(EventKind::Action(command.action), Some(actor), target);
         match skill_points {
             SkillPoints::Generate => {
-                self.set_skill_points(actor, (self.skill_points + 1).min(SKILL_POINT_CAP))
+                self.restore_skill_points(actor, 1);
             }
             SkillPoints::Spend => self.spend_skill_points(actor, 1),
             SkillPoints::Unchanged => {}
@@ -414,6 +416,7 @@ impl<'a> Battle<'a> {
             decision_index: self.decision_index,
             ordinary_actor_id: self.ordinary_actor().map(str::to_owned),
             skill_points: self.skill_points,
+            skill_point_cap: self.skill_point_cap(),
             random_draws: self.rng.draws,
             enemy_hp_lost: self.enemy_hp_lost,
             units: (0..self.enemies().end)
@@ -890,6 +893,22 @@ impl<'a> Battle<'a> {
         self.units[actor].advanced_to_front = false;
     }
 
+    fn skill_point_cap(&self) -> u8 {
+        SKILL_POINT_CAP
+            + self
+                .allies()
+                .filter(|&actor| self.is_targetable(actor))
+                .map(|actor| self.plan.units[actor].kit.skill_point_cap_bonus())
+                .sum::<u8>()
+    }
+
+    // Only the caller decides whether overflow is banked or discarded.
+    fn restore_skill_points(&mut self, actor: usize, points: u8) -> u8 {
+        let restored = points.min(self.skill_point_cap().saturating_sub(self.skill_points));
+        self.set_skill_points(actor, self.skill_points + restored);
+        restored
+    }
+
     fn set_skill_points(&mut self, actor: usize, after: u8) {
         let before = std::mem::replace(&mut self.skill_points, after);
         if before != after {
@@ -903,7 +922,7 @@ impl<'a> Battle<'a> {
             if self.units[owner].hp > 0
                 && let Some(mechanics) = self.mechanics(owner)
             {
-                mechanics.on_ally_skill_points_spent(self, owner, points);
+                mechanics.on_ally_skill_points_spent(self, owner, actor, points);
             }
         }
     }

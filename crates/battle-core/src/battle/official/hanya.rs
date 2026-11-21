@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     Action, BattleError,
-    fixture::{Ability, Effect, Element, SKILL_POINT_CAP, Target},
+    fixture::{Ability, Effect, Element, Target},
 };
 
 #[cfg(test)]
@@ -253,7 +253,7 @@ impl Mechanics for Hanya {
         if mark.refunds >= self.burden_refund_limit {
             state.burden = None;
         }
-        battle.set_skill_points(owner, (battle.skill_points + 1).min(SKILL_POINT_CAP));
+        battle.restore_skill_points(owner, 1);
         if self.scrivener {
             battle.apply_ally_buff(owner, actor, AllyBuffKind::AttackPercent, 1_000, 1);
         }
@@ -267,7 +267,7 @@ impl Mechanics for Hanya {
         if let Some(mark) = state.burden.filter(|mark| mark.target == target) {
             state.burden = None;
             if self.netherworld && mark.refunds <= 1 {
-                battle.set_skill_points(owner, (battle.skill_points + 1).min(SKILL_POINT_CAP));
+                battle.restore_skill_points(owner, 1);
             }
         }
         if self.eidolon >= 1

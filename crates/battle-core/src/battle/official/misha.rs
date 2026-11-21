@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     Action, BattleError, DamageKind,
-    fixture::{Effect, Element, SKILL_POINT_CAP, Target},
+    fixture::{Effect, Element, Target},
 };
 
 use super::{
@@ -165,7 +165,13 @@ impl MishaState {
 }
 
 impl Mechanics for Misha {
-    fn on_ally_skill_points_spent(&self, battle: &mut Battle<'_>, owner: usize, points: u8) {
+    fn on_ally_skill_points_spent(
+        &self,
+        battle: &mut Battle<'_>,
+        owner: usize,
+        _actor: usize,
+        points: u8,
+    ) {
         battle.units[owner].misha_state.add_hits(points);
         battle.gain_energy(owner, owner, self.talent_energy_milli * u32::from(points));
     }
@@ -241,7 +247,7 @@ impl Mechanics for Misha {
             Action::Basic => {}
             Action::Skill => {
                 if std::mem::take(&mut state.e6_refund_ready) {
-                    battle.set_skill_points(actor, (battle.skill_points + 1).min(SKILL_POINT_CAP));
+                    battle.restore_skill_points(actor, 1);
                 }
             }
             Action::Ultimate => {

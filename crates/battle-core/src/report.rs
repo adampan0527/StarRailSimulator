@@ -188,6 +188,7 @@ pub struct Snapshot {
     pub decision_index: u32,
     pub ordinary_actor_id: Option<String>,
     pub skill_points: u8,
+    pub skill_point_cap: u8,
     pub random_draws: u32,
     /// Actual enemy HP removed; excludes overkill and damage to shields.
     pub enemy_hp_lost: u32,

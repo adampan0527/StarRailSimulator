@@ -38,7 +38,8 @@ export function BattlePanel({ battle, playing, busy, issue, onAct }: Props) {
         <div className="battle-summary" role="status">
           <strong>{actorLabel}</strong>
           <span className="numeric">
-            <span className="muted">战技点</span> {snapshot.skill_points} / 5
+            <span className="muted">战技点</span> {snapshot.skill_points} /{' '}
+            {snapshot.skill_point_cap ?? 5}
           </span>
           <span className="numeric">
             <span className="muted">行动值</span> {av(snapshot.av_micros)} AV

@@ -136,6 +136,14 @@ enum FollowUpTargets {
     SingleOrRandom(Option<usize>),
 }
 
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub(super) struct DamageTargetAura {
+    pub(super) vulnerability_bp: u32,
+    // The damage formula combines DEF reduction and ignore, and RES reduction and penetration.
+    pub(super) defense_down_bp: u32,
+    pub(super) resistance_down_bp: u32,
+}
+
 impl Battle<'_> {
     fn is_ultimate_damage(&self, actor: usize, event: &DamageEvent) -> bool {
         match (event.kind, &self.plan.units[actor].kit) {
@@ -532,8 +540,14 @@ impl Battle<'_> {
     }
 
     pub(super) fn advance(&mut self, actor: usize, bp: u16) {
-        let remaining = self.units[actor].gauge_quanta.saturating_sub(gauge_for(bp));
-        self.shift_gauge(actor, actor, remaining, remaining == 0);
+        self.advance_ally(actor, actor, bp);
+    }
+
+    pub(super) fn advance_ally(&mut self, source: usize, target: usize, bp: u16) {
+        let remaining = self.units[target]
+            .gauge_quanta
+            .saturating_sub(gauge_for(bp));
+        self.shift_gauge(source, target, remaining, remaining == 0);
     }
 
     pub(super) fn random_index(&mut self, contenders: usize) -> usize {
@@ -924,30 +938,31 @@ impl Battle<'_> {
         target: usize,
         element: Element,
         event: &DamageEvent,
-    ) -> (u32, u32) {
+    ) -> DamageTargetAura {
         if self.units[owner].hp == 0 || !self.enemies().contains(&target) {
-            return (0, 0);
+            return DamageTargetAura::default();
         }
-        self.mechanics(owner).map_or((0, 0), |mechanics| {
-            let ultimate = self.is_ultimate_damage(actor, event);
-            let follow_up = self.is_follow_up_damage(actor, event.origin, event.kind);
-            let mut vulnerability = 0_u32;
-            if ultimate {
-                vulnerability = mechanics.ultimate_vulnerability_bp(self, owner, target);
-            }
-            if follow_up {
-                vulnerability = vulnerability
-                    .saturating_add(mechanics.follow_up_vulnerability_bp(self, owner, target));
-            }
-            (
-                vulnerability,
-                mechanics
-                    .all_resistance_down_bp(self, owner, target)
+        self.mechanics(owner)
+            .map_or(DamageTargetAura::default(), |mechanics| {
+                let mut aura = mechanics.damage_target_aura(self, owner, actor);
+                if self.is_ultimate_damage(actor, event) {
+                    aura.vulnerability_bp = aura
+                        .vulnerability_bp
+                        .saturating_add(mechanics.ultimate_vulnerability_bp(self, owner, target));
+                }
+                if self.is_follow_up_damage(actor, event.origin, event.kind) {
+                    aura.vulnerability_bp = aura
+                        .vulnerability_bp
+                        .saturating_add(mechanics.follow_up_vulnerability_bp(self, owner, target));
+                }
+                aura.resistance_down_bp = aura
+                    .resistance_down_bp
+                    .saturating_add(mechanics.all_resistance_down_bp(self, owner, target))
                     .saturating_add(
                         mechanics.elemental_resistance_down_bp(self, owner, target, element),
-                    ),
-            )
-        })
+                    );
+                aura
+            })
     }
 
     fn damage_target(
@@ -989,12 +1004,13 @@ impl Battle<'_> {
         if event.kind == DamageKind::WeaknessBreak {
             vulnerability = vulnerability.saturating_add(sum(DebuffKind::Besotted));
         }
+        let mut field_defense_down = 0_u32;
         let mut field_resistance_down = 0_u32;
         for owner in self.allies().filter(|&owner| allow_source(owner)) {
-            let (source_vulnerability, resistance_down) =
-                self.target_auras_from(owner, actor, target, element, event);
-            vulnerability = vulnerability.saturating_add(source_vulnerability);
-            field_resistance_down = field_resistance_down.saturating_add(resistance_down);
+            let aura = self.target_auras_from(owner, actor, target, element, event);
+            vulnerability = vulnerability.saturating_add(aura.vulnerability_bp);
+            field_defense_down = field_defense_down.saturating_add(aura.defense_down_bp);
+            field_resistance_down = field_resistance_down.saturating_add(aura.resistance_down_bp);
         }
         let mut weightless_defense_down = 0_u32;
         let mut weightless_resistance_down = 0_u32;
@@ -1039,6 +1055,7 @@ impl Battle<'_> {
             defense_down_bp: sum(DebuffKind::DefenseDown)
                 .saturating_add(sum(DebuffKind::DefenseBug))
                 .saturating_add(weightless_defense_down)
+                .saturating_add(field_defense_down)
                 .saturating_add(personal_defense_ignore)
                 .saturating_add(u32::from(event.defense_ignore_bp)),
             resistance_down_bp: sum_matching(&|kind| kind.reduces_resistance_to(element))
@@ -1662,7 +1679,8 @@ impl Battle<'_> {
                 )
                 .chain(self.allies().filter(|&owner| {
                     self.offense_buffs_from(owner, offense) != OffenseBuffs::default()
-                        || self.target_auras_from(owner, actor, target, element, &event) != (0, 0)
+                        || self.target_auras_from(owner, actor, target, element, &event)
+                            != DamageTargetAura::default()
                 }))
                 .filter(|&source| source != actor && source < self.plan.ally_count)
                 .collect();

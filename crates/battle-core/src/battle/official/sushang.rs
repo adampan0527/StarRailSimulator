@@ -4,7 +4,7 @@ use super::super::Battle;
 use super::{Mechanics, OfficialAbility, OfficialCharacter, OfficialKit, SkillPoints};
 use crate::{
     Action, BattleError, DamageKind,
-    fixture::{Effect, Element, SKILL_POINT_CAP, Target},
+    fixture::{Effect, Element, Target},
 };
 
 #[cfg(test)]
@@ -156,10 +156,7 @@ impl Sushang {
             }
         }
         if self.eidolon >= 1 && started_broken {
-            battle.set_skill_points(
-                actor,
-                battle.skill_points.saturating_add(1).min(SKILL_POINT_CAP),
-            );
+            battle.restore_skill_points(actor, 1);
         }
     }
 

@@ -2,7 +2,7 @@ use std::{cmp::Reverse, sync::Arc};
 
 use crate::{
     Action, BattleError, DamageKind,
-    fixture::{Effect, Element, SKILL_POINT_CAP, Target},
+    fixture::{Effect, Element, Target},
 };
 
 use super::super::{Battle, resolve::FollowUpAttack, support::AllyBuffKind};
@@ -117,7 +117,7 @@ impl Bronya {
             && turn >= battle.units[actor].bronya_state.skill_point_ready_at
             && battle.roll_fixed(5_000)
         {
-            battle.set_skill_points(actor, (battle.skill_points + 1).min(SKILL_POINT_CAP));
+            battle.restore_skill_points(actor, 1);
             battle.units[actor].bronya_state.skill_point_ready_at = turn + 2;
         }
     }
