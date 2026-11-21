@@ -11,6 +11,10 @@ fn tingyun(eidolon: u8) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "ally.tingyun".into(),
         form_id: FORM.into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Harmony,
+            element: crate::Element::Thunder,
+        },
         energy_capacity: 130,
         level: 80,
         stats: OfficialStats {
@@ -25,8 +29,7 @@ fn tingyun(eidolon: u8) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
@@ -49,6 +52,10 @@ fn herta() -> OfficialCharacter {
     let mut input = tingyun(0);
     input.unit_id = "ally.herta".into();
     input.form_id = "character.1013".into();
+    input.combat_type = crate::CombatType {
+        path: crate::CombatPath::Erudition,
+        element: crate::Element::Ice,
+    };
     input.energy_capacity = 110;
     input.stats.attack = 1_200;
     input.stats.base_attack = 800;
@@ -68,6 +75,10 @@ fn natasha() -> OfficialCharacter {
     let mut input = herta();
     input.unit_id = "ally.natasha".into();
     input.form_id = "natasha.abundance".into();
+    input.combat_type = crate::CombatType {
+        path: crate::CombatPath::Abundance,
+        element: crate::Element::Physical,
+    };
     input.energy_capacity = 90;
     input.skill_parameters = [
         ("skill.110501".into(), vec![0.5]),
@@ -192,8 +203,8 @@ fn benediction_expires_at_the_end_of_the_third_recipient_turn() {
 fn both_additional_damage_triggers_use_the_recipients_own_lightning_and_crit() {
     let mut carry = herta();
     carry.stats.crit_rate_bp = 10_000;
-    carry.stats.element_damage_bp = 8_000;
-    carry.stats.thunder_damage_bp = Some(3_000);
+    carry.stats.element_damage_bp[carry.combat_type.element.index()] = 8_000;
+    carry.stats.element_damage_bp[crate::Element::Thunder.index()] = 3_000;
     let plan = prepared(&[tingyun(4), carry]);
     let mut battle = Battle::start(&plan, LogMode::Detailed);
     act(

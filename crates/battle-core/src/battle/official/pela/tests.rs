@@ -9,6 +9,7 @@ use super::{A2, A4, A6, BASIC, SKILL, TALENT, ULTIMATE};
 
 fn character(
     id: &str,
+    combat_type: crate::CombatType,
     energy_capacity: u32,
     eidolon: u8,
     traces: &[&str],
@@ -17,6 +18,7 @@ fn character(
     OfficialCharacter {
         unit_id: id.into(),
         form_id: id.into(),
+        combat_type,
         energy_capacity,
         level: 80,
         stats: OfficialStats {
@@ -31,8 +33,7 @@ fn character(
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             energy_regeneration_bp: 10_000,
@@ -51,6 +52,10 @@ fn character(
 fn pela(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     character(
         "character.1106",
+        crate::CombatType {
+            path: crate::CombatPath::Nihility,
+            element: crate::Element::Ice,
+        },
         110,
         eidolon,
         traces,
@@ -66,6 +71,10 @@ fn pela(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
 fn arlan() -> OfficialCharacter {
     character(
         "character.1008",
+        crate::CombatType {
+            path: crate::CombatPath::Destruction,
+            element: crate::Element::Thunder,
+        },
         110,
         0,
         &[],

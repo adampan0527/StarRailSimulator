@@ -23,6 +23,10 @@ fn character(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: ACTOR.into(),
         form_id: "character.1101".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Harmony,
+            element: crate::Element::Wind,
+        },
         energy_capacity: 120,
         level: 80,
         stats: OfficialStats {
@@ -37,8 +41,7 @@ fn character(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
@@ -61,6 +64,10 @@ fn companion(speed: u64) -> OfficialCharacter {
     let mut input = character(0, &[]);
     input.unit_id = COMPANION.into();
     input.form_id = "character.1013".into();
+    input.combat_type = crate::CombatType {
+        path: crate::CombatPath::Erudition,
+        element: crate::Element::Ice,
+    };
     input.energy_capacity = 110;
     input.stats.base_speed_micros = speed * 1_000_000;
     input.stats.speed_micros = input.stats.base_speed_micros;

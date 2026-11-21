@@ -5,7 +5,7 @@ use crate::{
     fixture::{self, AllyKit, Element, EnemyKit, Stats},
 };
 
-use super::official::{self, OfficialCharacter, OfficialKit};
+use super::official::{self, CombatType, OfficialCharacter, OfficialKit};
 
 #[derive(Clone)]
 pub(super) enum Kit {
@@ -44,6 +44,7 @@ impl Kit {
 #[derive(Clone)]
 pub(super) struct UnitPlan {
     pub id: String,
+    pub combat_type: Option<CombatType>,
     pub kit: Kit,
     pub stats: Stats,
     pub starting_energy_milli: u32,
@@ -87,6 +88,7 @@ impl PreparedBattle {
             let starting_energy_milli = kit.max_energy_milli / 2;
             units.push(UnitPlan {
                 id: character.unit_id.clone(),
+                combat_type: Some(character.combat_type),
                 kit: Kit::Official(Arc::new(kit)),
                 stats,
                 starting_energy_milli,
@@ -155,6 +157,7 @@ impl PreparedBattle {
                 )));
             }
             units.push(UnitPlan {
+                combat_type: None,
                 id,
                 kit: Kit::Ally(kit),
                 stats,
@@ -167,6 +170,7 @@ impl PreparedBattle {
                 let id = add_id(&enemy.unit_id)?;
                 let kit = fixture::enemy(&enemy.enemy_id, enemy.level)?;
                 units.push(UnitPlan {
+                    combat_type: None,
                     id,
                     kit: Kit::Enemy(kit),
                     stats: kit.stats,
@@ -203,6 +207,7 @@ impl PreparedBattle {
                 .iter()
                 .enumerate()
                 .map(|(position, &max_toughness)| UnitPlan {
+                    combat_type: None,
                     // The colon keeps internal analysis IDs distinct from input unit IDs.
                     id: format!("dpr:{}", position + 1),
                     kit: Kit::Dummy { max_toughness },

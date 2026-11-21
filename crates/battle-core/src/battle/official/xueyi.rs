@@ -136,20 +136,23 @@ impl Mechanics for Xueyi {
         4_000 * u32::from(state.finished_turns < state.xueyi_state.break_effect_expires_after_turn)
     }
 
+    fn damage_bonus_from_break_effect_bp(&self, break_effect_bp: u32) -> u32 {
+        if self.clairvoyant_loom {
+            break_effect_bp.min(24_000)
+        } else {
+            0
+        }
+    }
+
     fn damage_bonus_bp(
         &self,
         battle: &Battle<'_>,
-        actor: usize,
+        _actor: usize,
         target: usize,
         action: Option<Action>,
         kind: DamageKind,
     ) -> u32 {
         let mut bonus = 0;
-        if self.clairvoyant_loom {
-            let break_effect = battle.plan.units[actor].stats.break_effect_bp
-                + self.break_effect_bonus_bp(battle, actor);
-            bonus += break_effect.min(24_000);
-        }
         if kind == DamageKind::FollowUp && self.eidolon >= 1 {
             bonus += 4_000;
         }

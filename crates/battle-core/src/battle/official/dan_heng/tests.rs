@@ -13,6 +13,10 @@ fn character(eidolon: u8, crit_rate_bp: u32) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "ally.dan_heng".into(),
         form_id: "dan_heng.hunt".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Hunt,
+            element: crate::Element::Wind,
+        },
         level: 80,
         energy_capacity: 100,
         stats: OfficialStats {
@@ -27,8 +31,7 @@ fn character(eidolon: u8, crit_rate_bp: u32) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             healing_bp: 0,
@@ -192,6 +195,10 @@ fn support_plan(eidolon: u8) -> PreparedBattle {
     let support = OfficialCharacter {
         unit_id: "ally.support".into(),
         form_id: "character.1013".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Erudition,
+            element: crate::Element::Ice,
+        },
         energy_capacity: 110,
         stats: OfficialStats {
             speed_micros: 250_000_000,

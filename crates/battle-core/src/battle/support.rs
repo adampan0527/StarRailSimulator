@@ -9,6 +9,7 @@ use super::Battle;
 pub(super) enum AllyBuffKind {
     AttackFlat,
     AttackPercent,
+    BreakEffect,
     CritDamage,
     Damage,
     DefensePercent,
@@ -54,6 +55,7 @@ pub(super) struct TingyunState {
 pub(super) struct OffenseBuffs {
     pub attack_bp: u32,
     pub attack_flat: u32,
+    pub break_effect_bp: u32,
     pub max_hp_flat: u32,
     pub defense_bp: u32,
     pub damage_bp: u32,
@@ -73,6 +75,7 @@ impl OffenseBuffs {
     fn add(&mut self, buff: Self) {
         self.attack_bp = self.attack_bp.saturating_add(buff.attack_bp);
         self.attack_flat = self.attack_flat.saturating_add(buff.attack_flat);
+        self.break_effect_bp = self.break_effect_bp.saturating_add(buff.break_effect_bp);
         self.max_hp_flat = self.max_hp_flat.saturating_add(buff.max_hp_flat);
         self.defense_bp = self.defense_bp.saturating_add(buff.defense_bp);
         self.damage_bp = self.damage_bp.saturating_add(buff.damage_bp);
@@ -190,10 +193,20 @@ impl Battle<'_> {
     }
 
     pub(super) fn support_speed(&self, actor: usize) -> (u64, u64) {
+        let auras: u64 = self
+            .allies()
+            .filter(|&owner| self.units[owner].hp > 0)
+            .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
+            .map(|(owner, rules)| u64::from(rules.ally_speed_bonus_bp(self, owner, actor)))
+            .sum();
         (
             u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedFlat)),
-            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedPercent)),
+            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedPercent)) + auras,
         )
+    }
+
+    pub(super) fn support_break_effect(&self, actor: usize) -> u32 {
+        self.ally_buff_total(actor, AllyBuffKind::BreakEffect)
     }
 
     pub(super) fn support_effect_resistance(&self, actor: usize) -> u32 {
@@ -220,6 +233,7 @@ impl Battle<'_> {
             let total = match buff.kind {
                 AllyBuffKind::AttackFlat => &mut bonuses.attack_flat,
                 AllyBuffKind::AttackPercent => &mut bonuses.attack_bp,
+                AllyBuffKind::BreakEffect => &mut bonuses.break_effect_bp,
                 AllyBuffKind::CritDamage => &mut bonuses.crit_damage_bp,
                 AllyBuffKind::Damage => &mut bonuses.damage_bp,
                 AllyBuffKind::DefensePercent => &mut bonuses.defense_bp,

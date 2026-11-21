@@ -16,7 +16,7 @@ pub(crate) const KILL_ENERGY_MILLI: u32 = 10_000;
 pub(crate) const BREAK_BASE_AT_LEVEL_30: u32 = 100;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Element {
+pub enum Element {
     Physical,
     Wind,
     Ice,
@@ -27,7 +27,32 @@ pub(crate) enum Element {
 }
 
 impl Element {
-    pub(crate) const COUNT: usize = 7;
+    pub const COUNT: usize = 7;
+    pub const ALL: [Self; Self::COUNT] = [
+        Self::Physical,
+        Self::Wind,
+        Self::Ice,
+        Self::Thunder,
+        Self::Fire,
+        Self::Imaginary,
+        Self::Quantum,
+    ];
+
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::Physical => "physical",
+            Self::Wind => "wind",
+            Self::Ice => "ice",
+            Self::Thunder => "thunder",
+            Self::Fire => "fire",
+            Self::Imaginary => "imaginary",
+            Self::Quantum => "quantum",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|element| element.id() == id)
+    }
 
     pub const fn index(self) -> usize {
         match self {
@@ -67,8 +92,7 @@ pub(crate) struct Stats {
     pub resist_bp: [u16; Element::COUNT],
     pub crit_rate_bp: u32,
     pub crit_damage_bp: u32,
-    pub element_damage_bp: u32,
-    pub thunder_damage_bp: Option<u32>,
+    pub element_damage_bp: [u32; Element::COUNT],
     pub break_effect_bp: u32,
     pub effect_hit_rate_bp: u32,
     pub effect_resistance_bp: u32,
@@ -98,6 +122,7 @@ pub(crate) enum Target {
     SelfOnly,
     Enemy,
     Ally,
+    OtherAlly,
     AllEnemies,
     AllAllies,
 }
@@ -125,6 +150,14 @@ pub(crate) enum Effect {
         toughness: u16,
         count: u8,
     },
+    RepeatingSingleHits {
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+        initial_hits: u8,
+        extra_hits: u8,
+        extra_chance_bp: u32,
+    },
     Shield {
         amount: u32,
         turns: u32,
@@ -150,6 +183,7 @@ impl Effect {
                 | Self::MaxHpHit { .. }
                 | Self::BlastAdjacent { .. }
                 | Self::RandomHits { .. }
+                | Self::RepeatingSingleHits { .. }
         )
     }
 }
@@ -208,8 +242,7 @@ const fn ally_stats(attack: u32, speed: u64) -> Stats {
         resist_bp: [0; Element::COUNT],
         crit_rate_bp: 0,
         crit_damage_bp: 5_000,
-        element_damage_bp: 0,
-        thunder_damage_bp: None,
+        element_damage_bp: [0; Element::COUNT],
         break_effect_bp: 0,
         effect_hit_rate_bp: 0,
         effect_resistance_bp: 0,

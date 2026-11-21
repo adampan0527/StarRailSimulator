@@ -1,4 +1,7 @@
-use star_rail_battle_core::{OfficialCharacter, OfficialStats, supports_official_dpr_variant};
+use star_rail_battle_core::{
+    CombatPath, CombatType, Element, OfficialCharacter, OfficialStats,
+    supports_official_dpr_variant,
+};
 
 use crate::{Catalog, Error, FrozenCharacter, ScaledStat};
 
@@ -23,6 +26,10 @@ impl Catalog {
         }
         self.validate_loadout(id, loadout)?;
         let character = self.character(id)?;
+        let path = CombatPath::from_id(&character.path)
+            .ok_or_else(|| Error::invalid("character.path", id))?;
+        let element = Element::from_id(&character.element)
+            .ok_or_else(|| Error::invalid("character.element", id))?;
         let capacity = character
             .resource
             .capacity
@@ -65,8 +72,7 @@ impl Catalog {
             speed_micros: (speed.total * 1_000_000.0).round() as u64,
             crit_rate_bp: ratio(panel.crit_rate),
             crit_damage_bp: ratio(panel.crit_damage),
-            element_damage_bp: ratio(panel.element_damage),
-            thunder_damage_bp: Some(ratio(panel.thunder_damage)),
+            element_damage_bp: panel.elemental_damage.map(|value| ratio(Some(value))),
             effect_hit_rate_bp: ratio(panel.effect_hit_rate),
             effect_resistance_bp: ratio(panel.effect_resistance),
             break_effect_bp: ratio(panel.break_effect),
@@ -85,6 +91,7 @@ impl Catalog {
         Ok(Some(OfficialCharacter {
             unit_id: id.clone(),
             form_id: id.clone(),
+            combat_type: CombatType { path, element },
             energy_capacity: capacity,
             level: config.level,
             stats,

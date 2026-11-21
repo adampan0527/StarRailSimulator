@@ -28,6 +28,10 @@ fn moze(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: MOZE.into(),
         form_id: FORM.into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Hunt,
+            element: crate::Element::Thunder,
+        },
         energy_capacity: 120,
         level: 80,
         stats: OfficialStats {
@@ -42,8 +46,7 @@ fn moze(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: Some(0),
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
@@ -66,6 +69,10 @@ fn natasha() -> OfficialCharacter {
     let mut ally = moze(0, &[]);
     ally.unit_id = NATASHA.into();
     ally.form_id = "natasha.abundance".into();
+    ally.combat_type = crate::CombatType {
+        path: crate::CombatPath::Abundance,
+        element: crate::Element::Physical,
+    };
     ally.energy_capacity = 90;
     ally.stats.base_speed_micros = 125_000_000;
     ally.stats.speed_micros = 125_000_000;
@@ -83,6 +90,10 @@ fn serval() -> OfficialCharacter {
     let mut ally = natasha();
     ally.unit_id = SERVAL.into();
     ally.form_id = "character.1103".into();
+    ally.combat_type = crate::CombatType {
+        path: crate::CombatPath::Erudition,
+        element: crate::Element::Thunder,
+    };
     ally.energy_capacity = 100;
     ally.skill_parameters = [
         ("skill.110301".into(), vec![0.5]),

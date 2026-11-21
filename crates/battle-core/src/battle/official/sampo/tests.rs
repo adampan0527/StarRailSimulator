@@ -13,6 +13,10 @@ fn sampo(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "team.sampo".into(),
         form_id: "character.1108".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Nihility,
+            element: crate::Element::Wind,
+        },
         energy_capacity: 120,
         level: 80,
         stats: OfficialStats {
@@ -27,8 +31,7 @@ fn sampo(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 125_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 6_000,
             energy_regeneration_bp: 10_000,
@@ -50,6 +53,10 @@ fn arlan() -> OfficialCharacter {
     let mut character = sampo(0, &[]);
     character.unit_id = "team.arlan".into();
     character.form_id = "character.1008".into();
+    character.combat_type = crate::CombatType {
+        path: crate::CombatPath::Destruction,
+        element: crate::Element::Thunder,
+    };
     character.energy_capacity = 110;
     character.stats.base_speed_micros = 110_000_000;
     character.stats.speed_micros = 110_000_000;

@@ -114,7 +114,7 @@ enum FollowUpTargets {
     All,
     Single(usize),
     Random { hit_count: u8 },
-    SingleOrRandom(usize),
+    SingleOrRandom(Option<usize>),
 }
 
 impl Battle<'_> {
@@ -134,7 +134,7 @@ impl Battle<'_> {
                     Target::SelfOnly => actor..actor + 1,
                     Target::AllAllies => self.allies(),
                     Target::AllEnemies => self.enemies(),
-                    Target::Ally | Target::Enemy => continue,
+                    Target::Ally | Target::OtherAlly | Target::Enemy => continue,
                 };
                 for target in targets {
                     if !matches!(ability.target, Target::AllAllies) || self.is_targetable(target) {
@@ -198,6 +198,23 @@ impl Battle<'_> {
                         break;
                     };
                     self.attack_hit(actor, selected, element, multiplier_bp, toughness);
+                }
+            }
+            Effect::RepeatingSingleHits {
+                element,
+                multiplier_bp,
+                toughness,
+                initial_hits,
+                extra_hits,
+                extra_chance_bp,
+            } => {
+                for hit in 0..initial_hits + extra_hits {
+                    if !self.is_targetable(target)
+                        || (hit >= initial_hits && !self.roll_fixed(extra_chance_bp))
+                    {
+                        break;
+                    }
+                    self.attack_hit(actor, target, element, multiplier_bp, toughness);
                 }
             }
             Effect::Shield { amount, turns } => {
@@ -501,7 +518,7 @@ impl Battle<'_> {
     pub(super) fn follow_up_single_or_random(
         &mut self,
         actor: usize,
-        target: usize,
+        target: Option<usize>,
         origin: Action,
         attack: FollowUpAttack,
     ) {
@@ -528,7 +545,9 @@ impl Battle<'_> {
             let single = match targets {
                 FollowUpTargets::All | FollowUpTargets::Random { .. } => None,
                 FollowUpTargets::Single(unit) => Some(unit),
-                FollowUpTargets::SingleOrRandom(unit) if self.is_targetable(unit) => Some(unit),
+                FollowUpTargets::SingleOrRandom(Some(unit)) if self.is_targetable(unit) => {
+                    Some(unit)
+                }
                 FollowUpTargets::SingleOrRandom(_) => {
                     let Some(unit) = self.random_living_enemy() else {
                         continue;
@@ -1007,19 +1026,23 @@ impl Battle<'_> {
             }
         }
         let mut source = self.plan.units[actor].stats;
-        if element == Element::Thunder
-            && let Some(bp) = source.thunder_damage_bp
-        {
-            source.element_damage_bp = bp;
-        }
-        source.element_damage_bp = source
-            .element_damage_bp
+        let element_index = element.index();
+        source.element_damage_bp[element_index] = source.element_damage_bp[element_index]
             .saturating_add(self.units[actor].active_attack_bonus_bp);
-        let mut ignores_weakness = false;
-        if let Some(mechanics) = self.mechanics(actor) {
-            ignores_weakness = mechanics.ignores_weakness(origin, kind);
-            source.element_damage_bp = source
-                .element_damage_bp
+        let mechanics = self.mechanics(actor);
+        let mut hit_weakness = self.has_weakness(target, element);
+        let mut toughness = toughness;
+        if let Some(mechanics) = &mechanics {
+            if toughness > 0 {
+                hit_weakness |= mechanics.ignores_weakness(origin, kind)
+                    || mechanics
+                        .alternate_weakness(self, actor)
+                        .is_some_and(|weakness| self.has_weakness(target, weakness));
+                let bonus_bp = mechanics.toughness_bonus_bp(self, actor, origin, kind);
+                let scaled = u64::from(toughness) * (10_000 + u64::from(bonus_bp)) / 10_000;
+                toughness = scaled.min(u64::from(u16::MAX)) as u16;
+            }
+            source.element_damage_bp[element_index] = source.element_damage_bp[element_index]
                 .saturating_add(mechanics.damage_bonus_bp(self, actor, target, origin, kind));
             source.crit_rate_bp = source
                 .crit_rate_bp
@@ -1049,9 +1072,17 @@ impl Battle<'_> {
             },
             |view| {
                 let mut adjusted = source;
-                adjusted.element_damage_bp = adjusted
-                    .element_damage_bp
-                    .saturating_add(view.bonus.damage_bp);
+                let converted_damage = mechanics.as_ref().map_or(0, |mechanics| {
+                    mechanics.damage_bonus_from_break_effect_bp(
+                        source
+                            .break_effect_bp
+                            .saturating_add(view.bonus.break_effect_bp),
+                    )
+                });
+                adjusted.element_damage_bp[element_index] = adjusted.element_damage_bp
+                    [element_index]
+                    .saturating_add(view.bonus.damage_bp)
+                    .saturating_add(converted_damage);
                 adjusted.crit_damage_bp = adjusted
                     .crit_damage_bp
                     .saturating_add(view.bonus.crit_damage_bp);
@@ -1067,7 +1098,6 @@ impl Battle<'_> {
             },
         );
 
-        let hit_weakness = ignores_weakness || self.has_weakness(target, element);
         let before = self.units[target].toughness;
         if self.units[target].hp > 0 && hit_weakness && before > 0 && toughness > 0 {
             let after = before.saturating_sub(toughness);
@@ -1097,7 +1127,13 @@ impl Battle<'_> {
                         assisted_by: None,
                         from_break: true,
                     },
-                    |view| damage::weakness_break(source, view.target, element),
+                    |view| {
+                        let mut adjusted = source;
+                        adjusted.break_effect_bp = adjusted
+                            .break_effect_bp
+                            .saturating_add(view.bonus.break_effect_bp);
+                        damage::weakness_break(adjusted, view.target, element)
+                    },
                 );
                 if self.units[target].hp > 0 {
                     let delayed = self.units[target].gauge_quanta + gauge_for(BREAK_DELAY_BP);
@@ -1105,21 +1141,19 @@ impl Battle<'_> {
                     if source.level == 80
                         && let Some(action) = origin
                     {
+                        let break_effect = source
+                            .break_effect_bp
+                            .saturating_add(self.support_break_effect(actor));
                         match element {
                             Element::Ice if self.roll_status(actor, target, 15_000, true) => {
                                 self.apply_break_freeze(actor, target, action);
                             }
                             Element::Thunder => self.apply_break_shock(actor, target, action),
                             Element::Quantum if self.roll_status(actor, target, 15_000, true) => {
-                                self.apply_entanglement(
-                                    actor,
-                                    target,
-                                    action,
-                                    source.break_effect_bp,
-                                );
+                                self.apply_entanglement(actor, target, action, break_effect);
                             }
                             Element::Imaginary if self.roll_status(actor, target, 15_000, true) => {
-                                self.apply_imprisonment(actor, target, source.break_effect_bp);
+                                self.apply_imprisonment(actor, target, break_effect);
                             }
                             Element::Wind | Element::Physical | Element::Fire
                                 if self.roll_effect(actor, target, 15_000) =>
@@ -1238,7 +1272,13 @@ impl Battle<'_> {
                 assisted_by: None,
                 from_break: true,
             },
-            |view| damage::break_status(source, view.target, element, ratio_bp),
+            |view| {
+                let mut adjusted = source;
+                adjusted.break_effect_bp = adjusted
+                    .break_effect_bp
+                    .saturating_add(view.bonus.break_effect_bp);
+                damage::break_status(adjusted, view.target, element, ratio_bp)
+            },
         );
     }
 

@@ -10,6 +10,10 @@ fn character(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: SUSHANG.into(),
         form_id: "character.1206".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Hunt,
+            element: crate::Element::Physical,
+        },
         level: 80,
         energy_capacity: 120,
         stats: OfficialStats {
@@ -24,8 +28,7 @@ fn character(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 200_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             healing_bp: 0,
@@ -48,6 +51,10 @@ fn dan_heng() -> OfficialCharacter {
     let mut character = character(0, &[]);
     character.unit_id = "ally.dan_heng".into();
     character.form_id = "dan_heng.hunt".into();
+    character.combat_type = crate::CombatType {
+        path: crate::CombatPath::Hunt,
+        element: crate::Element::Wind,
+    };
     character.energy_capacity = 100;
     character.stats.base_speed_micros = 190_000_000;
     character.stats.speed_micros = 190_000_000;

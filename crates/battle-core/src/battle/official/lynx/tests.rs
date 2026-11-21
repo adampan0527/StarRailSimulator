@@ -14,6 +14,10 @@ fn lynx(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: "ally.lynx".into(),
         form_id: "character.1110".into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Abundance,
+            element: crate::Element::Quantum,
+        },
         energy_capacity: 100,
         level: 80,
         stats: OfficialStats {
@@ -28,8 +32,7 @@ fn lynx(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 125_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             energy_regeneration_bp: 10_000,
@@ -52,6 +55,10 @@ fn arlan() -> OfficialCharacter {
     let mut ally = lynx(0, &[]);
     ally.unit_id = "ally.arlan".into();
     ally.form_id = "character.1008".into();
+    ally.combat_type = crate::CombatType {
+        path: crate::CombatPath::Destruction,
+        element: crate::Element::Thunder,
+    };
     ally.energy_capacity = 110;
     ally.stats.speed_micros = 100_000_000;
     ally.stats.base_speed_micros = 100_000_000;

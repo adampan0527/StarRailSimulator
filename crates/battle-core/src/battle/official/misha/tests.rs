@@ -13,6 +13,10 @@ fn misha(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: MISHA.into(),
         form_id: FORM.into(),
+        combat_type: crate::CombatType {
+            path: crate::CombatPath::Destruction,
+            element: crate::Element::Ice,
+        },
         energy_capacity: 100,
         level: 80,
         stats: OfficialStats {
@@ -27,8 +31,7 @@ fn misha(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             speed_micros: 150_000_000,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
-            element_damage_bp: 0,
-            thunder_damage_bp: None,
+            element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
@@ -51,6 +54,10 @@ fn arlan() -> OfficialCharacter {
     let mut ally = misha(0, &[]);
     ally.unit_id = ARLAN.into();
     ally.form_id = "character.1008".into();
+    ally.combat_type = crate::CombatType {
+        path: crate::CombatPath::Destruction,
+        element: crate::Element::Thunder,
+    };
     ally.energy_capacity = 110;
     ally.stats.speed_micros = 200_000_000;
     ally.skill_parameters = [
@@ -67,6 +74,10 @@ fn herta() -> OfficialCharacter {
     let mut ally = misha(0, &[]);
     ally.unit_id = HERTA.into();
     ally.form_id = "character.1013".into();
+    ally.combat_type = crate::CombatType {
+        path: crate::CombatPath::Erudition,
+        element: crate::Element::Ice,
+    };
     ally.energy_capacity = 110;
     ally.stats.speed_micros = 180_000_000;
     ally.skill_parameters = [

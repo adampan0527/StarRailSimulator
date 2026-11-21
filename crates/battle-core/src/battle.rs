@@ -23,11 +23,13 @@ pub use analysis::{
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
-    BailuState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse, Mechanics,
-    MishaState, MozeState, SkillPoints, SushangState, XueyiState, YanqingState, YukongState,
+    BailuState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse,
+    MarchHuntState, Mechanics, MishaState, MozeState, SkillPoints, SushangState, XueyiState,
+    YanqingState, YukongState,
 };
 pub use official::{
-    OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
+    CombatPath, CombatType, OfficialCharacter, OfficialStats, supports_official_dpr,
+    supports_official_dpr_variant,
 };
 use periodic::{ActiveSkillDot, LukaState};
 use protection::{CounterState, Freeze, Shield};
@@ -72,6 +74,7 @@ struct UnitState {
     kafka_follow_up_charges: u8,
     luka_state: LukaState,
     himeko_charge: u8,
+    march_hunt_state: MarchHuntState,
     moze_state: MozeState,
     xueyi_state: XueyiState,
     sushang_state: SushangState,
@@ -161,6 +164,7 @@ impl<'a> Battle<'a> {
                     kafka_follow_up_charges: 0,
                     luka_state: LukaState::default(),
                     himeko_charge: 0,
+                    march_hunt_state: MarchHuntState::default(),
                     moze_state: MozeState::default(),
                     xueyi_state: XueyiState::default(),
                     sushang_state: SushangState::default(),
@@ -271,7 +275,13 @@ impl<'a> Battle<'a> {
             .ok_or(BattleError::InvalidActor)?;
         let (ability, skill_points) = self.check_action(actor, command.action)?;
         let target = match (ability.target, command.target_id.as_deref()) {
-            (Target::Ally, Some(id)) => self.find_target(self.allies(), id)?,
+            (Target::Ally | Target::OtherAlly, Some(id)) => {
+                let target = self.find_target(self.allies(), id)?;
+                if matches!(ability.target, Target::OtherAlly) && target == Some(actor) {
+                    return Err(BattleError::InvalidTarget);
+                }
+                target
+            }
             (Target::Enemy, Some(id)) => self.find_target(self.enemies(), id)?,
             (Target::SelfOnly | Target::AllAllies | Target::AllEnemies, None) => None,
             _ => return Err(BattleError::InvalidTarget),
@@ -447,12 +457,15 @@ impl<'a> Battle<'a> {
         };
         match ability.target {
             Target::SelfOnly | Target::AllAllies | Target::AllEnemies => add(None),
-            Target::Ally | Target::Enemy => {
+            Target::Ally | Target::OtherAlly | Target::Enemy => {
                 let range = match ability.target {
-                    Target::Ally => self.allies(),
+                    Target::Ally | Target::OtherAlly => self.allies(),
                     _ => self.enemies(),
                 };
-                for unit in range.filter(|&unit| self.is_targetable(unit)) {
+                for unit in range.filter(|&unit| {
+                    self.is_targetable(unit)
+                        && (!matches!(ability.target, Target::OtherAlly) || unit != actor)
+                }) {
                     add(Some(unit));
                 }
             }
@@ -515,7 +528,7 @@ impl<'a> Battle<'a> {
     ) {
         let targets = match (targeting, target) {
             (Target::SelfOnly, None) => source..source + 1,
-            (Target::Ally, Some(unit)) => unit..unit + 1,
+            (Target::Ally | Target::OtherAlly, Some(unit)) => unit..unit + 1,
             (Target::AllAllies, None) => self.allies(),
             _ => return,
         };

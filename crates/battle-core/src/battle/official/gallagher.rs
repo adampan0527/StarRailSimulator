@@ -35,6 +35,7 @@ struct Gallagher {
     skill_heal_micros: u64,
     talent_heal_micros: u64,
     healing_bonus_bp: u32,
+    break_effect_to_healing_bp: Option<u32>,
     besotted_bp: u32,
     besotted_turns: u32,
     attack_down_bp: u32,
@@ -60,11 +61,7 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
         .stats
         .break_effect_bp
         .saturating_add(break_bonus(input.eidolon));
-    let converted_healing_bp = if trace(NOVEL_CONCOCTION) {
-        (break_effect / 2).min(7_500)
-    } else {
-        0
-    };
+    let break_effect_to_healing_bp = trace(NOVEL_CONCOCTION).then_some(break_effect);
     let toughness = |base: u16| base + if input.eidolon >= 6 { base / 5 } else { 0 };
     Ok(OfficialKit {
         max_energy_milli: 110_000,
@@ -98,7 +95,8 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
             ),
             skill_heal_micros: flat_heal(SKILL, skill[0])?,
             talent_heal_micros: flat_heal(TALENT, talent[1])?,
-            healing_bonus_bp: input.stats.healing_bp.saturating_add(converted_healing_bp),
+            healing_bonus_bp: input.stats.healing_bp,
+            break_effect_to_healing_bp,
             besotted_bp: ratio_bp(TALENT, talent[0])?,
             besotted_turns: duration(ULTIMATE, ultimate[1])? + u32::from(input.eidolon >= 4),
             attack_down_bp: ratio_bp(ENHANCED_BASIC, enhanced[1])?,
@@ -171,7 +169,11 @@ impl Gallagher {
         if battle.hp(target).0 == 0 {
             return;
         }
-        let scaled = u128::from(base_micros) * (u128::from(BP) + u128::from(self.healing_bonus_bp));
+        let converted_healing_bp = self.break_effect_to_healing_bp.map_or(0, |break_effect| {
+            (break_effect.saturating_add(battle.support_break_effect(owner)) / 2).min(7_500)
+        });
+        let healing_bp = self.healing_bonus_bp.saturating_add(converted_healing_bp);
+        let scaled = u128::from(base_micros) * (u128::from(BP) + u128::from(healing_bp));
         let amount =
             u32::try_from(scaled / (u128::from(MICROS) * u128::from(BP))).unwrap_or(u32::MAX);
         battle.heal_unit(owner, target, amount);
