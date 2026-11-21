@@ -81,15 +81,14 @@ fn official_saved_team_runs_fixed_dpr_with_resolved_loadouts() {
     );
     assert_eq!(run(), first);
 
-    let slots = [
-        Some(arlan.into()),
-        Some("character.1217".into()),
-        None,
-        None,
-    ];
-    let mixed = archive.save_team(None, "有未接入角色", &slots).unwrap();
+    let acheron = "character.1308";
+    let mut edit = archive.profile(acheron).unwrap().edit;
+    edit.affinitive_eidolon = true;
+    archive.save(acheron, edit).unwrap();
+    let slots = [Some(arlan.into()), Some(acheron.into()), None, None];
+    let mixed = archive.save_team(None, "有未接入配置", &slots).unwrap();
     let checked = archive.dpr_readiness(&mixed.id).unwrap();
-    assert_eq!(checked.unsupported_characters, ["藿藿"]);
+    assert_eq!(checked.unsupported_characters, ["黄泉"]);
     assert!(checked.result.is_none());
 }
 
@@ -951,6 +950,60 @@ fn saved_team_replays_slashed_dream_and_sparkles_assists() {
                 .any(|credit| credit.unit_id == aventurine && credit.amount > 0)
     }));
     assert!(hits().any(|hit| hit.source_id == aventurine && hit.amount > 0));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_tile_attacks_with_energy_and_skill_point_support() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [qingque, sparkle, huohuo, argenti] = [
+        "character.1201",
+        "character.1306",
+        "character.1217",
+        "character.1302",
+    ];
+    for (actor, eidolon) in [(qingque, 4), (sparkle, 4)] {
+        let mut edit = archive.profile(actor).unwrap().edit;
+        edit.eidolon = eidolon;
+        archive.save(actor, edit).unwrap();
+    }
+    let team = archive
+        .save_team(
+            None,
+            "琼玉牌与回能支援",
+            &[qingque, sparkle, huohuo, argenti].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| hit.source_id == qingque && hit.kind == DamageKind::FollowUp));
+    assert!(hits().any(|hit| hit.source_id == argenti && hit.action == Action::EnhancedUltimate));
+    for support in [sparkle, huohuo] {
+        assert!(hits().any(|hit| {
+            [qingque, argenti].contains(&hit.source_id.as_str())
+                && hit
+                    .credits
+                    .iter()
+                    .any(|credit| credit.unit_id == support && credit.amount > 0)
+        }));
+    }
     assert_eq!(
         result.total_damage,
         result
