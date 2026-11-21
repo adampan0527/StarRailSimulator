@@ -13,6 +13,7 @@ export const damageNames: Record<DamageKind, string> = {
   damage_over_time: '持续伤害',
   additional: '附加伤害',
   follow_up: '追加攻击',
+  true_damage: '真实伤害',
 };
 
 export const outcomeNames: Record<Outcome, string> = {
@@ -55,6 +56,10 @@ function eventTitle({ kind }: BattleEvent): string {
       return '战斗开始';
     case 'turn_started':
       return '回合开始';
+    case 'extra_turn_started':
+      return '额外回合开始';
+    case 'triggered_skill':
+      return '自动施放战技';
     case 'action':
       return actionNames[kind.detail];
     case 'enemy_attack':

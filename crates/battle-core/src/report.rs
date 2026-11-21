@@ -78,6 +78,7 @@ pub enum DamageKind {
     DamageOverTime,
     Additional,
     FollowUp,
+    TrueDamage,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -85,6 +86,8 @@ pub enum DamageKind {
 pub enum EventKind {
     WaveStarted,
     TurnStarted,
+    ExtraTurnStarted,
+    TriggeredSkill,
     Action(Action),
     FollowUp,
     EnemyAttack,

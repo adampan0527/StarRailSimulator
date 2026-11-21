@@ -365,10 +365,10 @@ impl Mechanics for Topaz {
         _target: usize,
         action: Option<Action>,
         kind: DamageKind,
-        base: u16,
-    ) -> u16 {
+        base: u32,
+    ) -> u32 {
         if Self::is_enhanced_numby_attack(battle, actor, action, kind) {
-            base + self.enhanced_multiplier_bp
+            base + u32::from(self.enhanced_multiplier_bp)
         } else {
             base
         }

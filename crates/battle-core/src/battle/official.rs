@@ -28,6 +28,7 @@ mod moze;
 mod natasha;
 mod pela;
 mod sampo;
+mod seele;
 mod serval;
 mod silver_wolf;
 mod sushang;
@@ -49,6 +50,7 @@ pub(super) use {
     march_hunt::MarchHuntState,
     misha::MishaState,
     moze::MozeState,
+    seele::SeeleState,
     topaz::TopazState,
     welt::WeltState,
     xueyi::XueyiState,
@@ -373,6 +375,26 @@ pub(super) trait Mechanics: Send + Sync {
         base
     }
 
+    fn aggro_multiplier_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        10_000
+    }
+
+    fn defense_ignore_bp(&self, _battle: &Battle<'_>, _actor: usize, _target: usize) -> u32 {
+        0
+    }
+
+    fn capture_ultimate_damage(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _amount: u32,
+        _assists: &[(usize, u32)],
+    ) {
+    }
+
+    fn on_triggered_skill(&self, _battle: &mut Battle<'_>, _actor: usize, _target: usize) {}
+
     fn after_defeat(&self, _battle: &mut Battle<'_>, _actor: usize, _target: usize) {}
 
     fn on_enemy_defeat(
@@ -433,8 +455,8 @@ pub(super) trait Mechanics: Send + Sync {
         _target: usize,
         _action: Option<Action>,
         _kind: DamageKind,
-        base: u16,
-    ) -> u16 {
+        base: u32,
+    ) -> u32 {
         base
     }
 
@@ -466,6 +488,8 @@ pub(super) trait Mechanics: Send + Sync {
     fn control_resistance_bp(&self) -> u32 {
         0
     }
+
+    fn on_extra_turn_start(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     fn on_turn_start(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
@@ -833,7 +857,11 @@ pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
             || (variant == "novaflare"
                 && matches!(
                     form_id,
-                    "character.1005" | welt::FORM | black_swan::FORM | silver_wolf::FORM
+                    "character.1005"
+                        | welt::FORM
+                        | black_swan::FORM
+                        | silver_wolf::FORM
+                        | seele::FORM
                 )))
 }
 
@@ -855,6 +883,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1009" => Some(asta::build),
         "character.1013" => Some(herta::build),
         "character.1101" => Some(bronya::build),
+        seele::FORM => Some(seele::build),
         "character.1103" => Some(serval::build),
         "character.1104" => Some(gepard::build),
         "character.1106" => Some(pela::build),

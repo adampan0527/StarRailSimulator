@@ -306,8 +306,8 @@ impl Mechanics for Feixiao {
         target: usize,
         action: Option<Action>,
         kind: DamageKind,
-        multiplier_bp: u16,
-    ) -> u16 {
+        multiplier_bp: u32,
+    ) -> u32 {
         if !is_primary_ultimate(action, kind) {
             return multiplier_bp;
         }
@@ -315,17 +315,16 @@ impl Mechanics for Feixiao {
         let multiplier_bp = if strikes_resolved >= ULTIMATE_STRIKES {
             multiplier_bp
         } else if battle.units[target].toughness == 0 {
-            self.broken_multiplier_bp
+            u32::from(self.broken_multiplier_bp)
         } else {
-            self.unbroken_multiplier_bp
+            u32::from(self.unbroken_multiplier_bp)
         };
         let e1_stacks = if self.eidolon >= 1 {
             strikes_resolved.min(E1_CAP)
         } else {
             0
         };
-        (u32::from(multiplier_bp) * (10 + u32::from(e1_stacks)) / 10).min(u32::from(u16::MAX))
-            as u16
+        (multiplier_bp.saturating_mul(10 + u32::from(e1_stacks)) / 10).min(u32::from(u16::MAX))
     }
 
     fn ignores_weakness(&self, action: Option<Action>, kind: DamageKind) -> bool {
