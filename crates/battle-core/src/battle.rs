@@ -23,9 +23,9 @@ pub use analysis::{
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
-    BailuState, DrRatioState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse,
-    MarchHuntState, Mechanics, MishaState, MozeState, SkillPoints, SushangState, TopazState,
-    WeltState, XueyiState, YanqingState, YukongState,
+    BailuState, DrRatioState, FeixiaoState, GallagherState, HanyaState, Invigoration, LuochaState,
+    LynxResponse, MarchHuntState, Mechanics, MishaState, MozeState, SkillPoints, SushangState,
+    TopazState, WeltState, XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     CombatPath, CombatType, OfficialCharacter, OfficialStats, supports_official_dpr,
@@ -124,6 +124,7 @@ struct UnitState {
     luocha_state: LuochaState,
     jiaoqiu_field: official::JiaoqiuField,
     dr_ratio_state: DrRatioState,
+    feixiao_state: FeixiaoState,
     survival_triggered: bool,
     finished_turns: u32,
     next_attack_bonus_bp: u32,
@@ -218,6 +219,7 @@ impl<'a> Battle<'a> {
                     luocha_state: LuochaState::default(),
                     jiaoqiu_field: official::JiaoqiuField::default(),
                     dr_ratio_state: DrRatioState::default(),
+                    feixiao_state: FeixiaoState::default(),
                     survival_triggered: false,
                     finished_turns: 0,
                     next_attack_bonus_bp: 0,
@@ -357,7 +359,7 @@ impl<'a> Battle<'a> {
             mechanics.after_action(self, actor, command.action, target);
         }
         if ability.effects.iter().any(|effect| effect.deals_damage()) {
-            self.finish_attack(actor, command.action);
+            self.finish_attack(actor, command.action, target);
         }
         self.notify_ally_action_finished(actor, command.action);
         self.units[actor].active_attack_bonus_bp = 0;
@@ -471,8 +473,15 @@ impl<'a> Battle<'a> {
             return Err(BattleError::InvalidActor);
         }
         if action == Action::Ultimate {
-            if self.units[actor].energy_milli < kit.max_energy_milli() {
-                return Err(BattleError::InsufficientEnergy);
+            match self
+                .mechanics(actor)
+                .and_then(|mechanics| mechanics.alternate_ultimate_resource_ready(self, actor))
+            {
+                Some(false) => return Err(BattleError::InsufficientUltimateResource),
+                None if self.units[actor].energy_milli < kit.max_energy_milli() => {
+                    return Err(BattleError::InsufficientEnergy);
+                }
+                _ => {}
             }
         } else {
             if self.ordinary_actor != Some(actor)

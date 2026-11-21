@@ -146,6 +146,7 @@ pub enum BattleError {
     IllegalTiming,
     InsufficientSkillPoints,
     InsufficientEnergy,
+    InsufficientUltimateResource,
     InvalidTarget,
 }
 
@@ -169,6 +170,7 @@ impl fmt::Display for BattleError {
             Self::IllegalTiming => output.write_str("ordinary action is outside the actor's turn"),
             Self::InsufficientSkillPoints => output.write_str("not enough skill points"),
             Self::InsufficientEnergy => output.write_str("not enough energy"),
+            Self::InsufficientUltimateResource => output.write_str("not enough Ultimate resource"),
             Self::InvalidTarget => output.write_str("target does not match the action"),
         }
     }

@@ -30,11 +30,16 @@ impl Catalog {
             .ok_or_else(|| Error::invalid("character.path", id))?;
         let element = Element::from_id(&character.element)
             .ok_or_else(|| Error::invalid("character.element", id))?;
-        let capacity = character
-            .resource
-            .capacity
-            .filter(|_| character.resource.kind == "energy")
-            .ok_or_else(|| Error::invalid("character.resource", id))?;
+        let energy_capacity = match (
+            id.as_str(),
+            character.resource.kind.as_str(),
+            character.resource.capacity,
+        ) {
+            ("character.1220", "flying_aureus", Some(12)) => 0,
+            ("character.1220", _, _) => return Err(Error::invalid("character.resource", id)),
+            (_, "energy", Some(capacity)) => capacity,
+            _ => return Err(Error::invalid("character.resource", id)),
+        };
         let variant = &character.variants[&loadout.variant_id];
         let mut skill_parameters = std::collections::BTreeMap::new();
         for (skill_id, skill) in &variant.skills {
@@ -92,7 +97,7 @@ impl Catalog {
             unit_id: id.clone(),
             form_id: id.clone(),
             combat_type: CombatType { path, element },
-            energy_capacity: capacity,
+            energy_capacity,
             level: config.level,
             stats,
             skill_parameters,
