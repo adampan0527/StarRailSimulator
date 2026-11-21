@@ -24,8 +24,8 @@ pub use analysis::{
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
     BailuState, BlackSwanTarget, DrRatioState, GallagherState, HanyaState, Invigoration,
-    LuochaState, LynxResponse, MarchHuntState, Mechanics, MishaState, MozeState, SkillPoints,
-    SushangState, TopazState, WeltState, XueyiState, YanqingState, YukongState,
+    JingYuanState, LuochaState, LynxResponse, MarchHuntState, Mechanics, MishaState, MozeState,
+    SkillPoints, SushangState, TopazState, WeltState, XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     CombatPath, CombatType, OfficialCharacter, OfficialStats, supports_official_dpr,
@@ -110,6 +110,7 @@ struct UnitState {
     march_hunt_state: MarchHuntState,
     moze_state: MozeState,
     topaz_state: TopazState,
+    jing_yuan_state: JingYuanState,
     xueyi_state: XueyiState,
     sushang_state: SushangState,
     yanqing_state: YanqingState,
@@ -208,6 +209,7 @@ impl<'a> Battle<'a> {
                     march_hunt_state: MarchHuntState::default(),
                     moze_state: MozeState::default(),
                     topaz_state: TopazState::default(),
+                    jing_yuan_state: JingYuanState::default(),
                     xueyi_state: XueyiState::default(),
                     sushang_state: SushangState::default(),
                     yanqing_state: YanqingState::default(),

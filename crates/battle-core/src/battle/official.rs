@@ -15,6 +15,7 @@ mod herta;
 mod himeko;
 mod hook;
 mod jiaoqiu;
+mod jing_yuan;
 mod kafka;
 mod luka;
 mod luocha;
@@ -41,6 +42,7 @@ pub(super) use {
     dr_ratio::DrRatioState,
     hanya::HanyaState,
     jiaoqiu::Field as JiaoqiuField,
+    jing_yuan::JingYuanState,
     march_hunt::MarchHuntState,
     misha::MishaState,
     moze::MozeState,
@@ -828,6 +830,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1111" => Some(luka::build),
         "character.1112" => Some(topaz::build),
         "character.1202" => Some(tingyun::build),
+        jing_yuan::FORM => Some(jing_yuan::build),
         luocha::FORM => Some(luocha::build),
         "character.1206" => Some(sushang::build),
         "character.1207" => Some(yukong::build),
