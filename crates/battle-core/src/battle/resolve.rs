@@ -63,6 +63,10 @@ enum DamageScale {
     },
     MaxHp,
     AttackAndDefense(u16),
+    AttackAndMaxHp {
+        max_hp_bp: u16,
+        flat_base_bp: u64,
+    },
     TargetHpCapped(u16),
 }
 
@@ -85,6 +89,14 @@ impl DamageScale {
             Self::MaxHp => u64::from(source_hp) * ratio,
             Self::AttackAndDefense(defense_bp) => {
                 u64::from(attack) * ratio + u64::from(defense) * u64::from(defense_bp)
+            }
+            Self::AttackAndMaxHp {
+                max_hp_bp,
+                flat_base_bp,
+            } => {
+                u64::from(attack) * ratio
+                    + u64::from(source_hp) * u64::from(max_hp_bp)
+                    + flat_base_bp
             }
             Self::TargetHpCapped(cap_bp) => {
                 (u64::from(target_hp) * ratio).min(u64::from(attack) * u64::from(cap_bp))
@@ -387,10 +399,57 @@ impl Battle<'_> {
             .flatten()
     }
 
+    pub(super) fn attack_hit_with_max_hp(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        multipliers_bp: (u16, u16),
+        flat_base_bp: u64,
+        toughness: u16,
+    ) {
+        let (attack_bp, max_hp_bp) = multipliers_bp;
+        self.attack_hit_scaled(
+            actor,
+            target,
+            element,
+            u32::from(attack_bp),
+            toughness,
+            DamageScale::AttackAndMaxHp {
+                max_hp_bp,
+                flat_base_bp,
+            },
+        );
+    }
+
     pub(super) fn heal_unit(&mut self, actor: usize, target: usize, amount: u32) {
+        let amount = self.incoming_healing_amount(target, amount);
+        let restored = self.restore_hp_unmodified(actor, target, amount);
+        if restored > 0
+            && let Some(rules) = self.mechanics(target)
+        {
+            rules.after_healing(self, target, restored);
+        }
+    }
+
+    /// Effective incoming heal before capping to missing HP.
+    pub(super) fn incoming_healing_amount(&self, target: usize, amount: u32) -> u32 {
+        let bonus_bp = self
+            .mechanics(target)
+            .map_or(0, |rules| rules.incoming_healing_bonus_bp(self, target));
+        amount.saturating_add(percentage_of(amount, bonus_bp))
+    }
+
+    /// Used when an effect sets current HP independently of incoming healing modifiers.
+    pub(super) fn restore_hp_unmodified(
+        &mut self,
+        actor: usize,
+        target: usize,
+        amount: u32,
+    ) -> u32 {
         // A zero-HP target can be rescued, but a departed unit is off the field.
         if self.units[target].departed {
-            return;
+            return 0;
         }
         let (hp, max_hp) = self.hp(target);
         let restored = amount.min(max_hp - hp);
@@ -400,17 +459,33 @@ impl Battle<'_> {
             Some(actor),
             Some(target),
         );
+        restored
     }
 
     pub(super) fn spend_hp(&mut self, actor: usize, amount: u32, minimum_remaining: u32) {
-        let hp = &mut self.units[actor].hp;
+        self.spend_ally_hp(actor, actor, amount, minimum_remaining);
+    }
+
+    /// Consumes the target's HP directly and returns the actual loss.
+    pub(super) fn spend_ally_hp(
+        &mut self,
+        source: usize,
+        target: usize,
+        amount: u32,
+        minimum_remaining: u32,
+    ) -> u32 {
+        let hp = &mut self.units[target].hp;
         let amount = amount.min(hp.saturating_sub(minimum_remaining));
         *hp -= amount;
         if amount > 0 {
-            self.emit(EventKind::HpSpent { amount }, Some(actor), Some(actor));
-            self.record_team_hp_loss(actor, amount);
-            self.notify_ally_hp_loss(actor);
+            self.emit(EventKind::HpSpent { amount }, Some(source), Some(target));
+            if let Some(rules) = self.mechanics(target) {
+                rules.after_hp_spent(self, target, amount);
+            }
+            self.record_team_hp_loss(target, amount);
+            self.notify_ally_hp_loss(target);
         }
+        amount
     }
 
     fn record_team_hp_loss(&mut self, target: usize, amount: u32) {
@@ -1454,7 +1529,19 @@ impl Battle<'_> {
         source.element_damage_bp[element_index] = source.element_damage_bp[element_index]
             .saturating_add(self.units[actor].active_attack_bonus_bp);
         let mechanics = self.mechanics(actor);
-        let scale = if matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
+        let follow_up_max_hp_bp = if kind == DamageKind::FollowUp {
+            mechanics
+                .as_ref()
+                .map_or(0, |rules| rules.follow_up_max_hp_multiplier_bp())
+        } else {
+            0
+        };
+        let scale = if follow_up_max_hp_bp > 0 && matches!(scale, DamageScale::Attack) {
+            DamageScale::AttackAndMaxHp {
+                max_hp_bp: follow_up_max_hp_bp,
+                flat_base_bp: 0,
+            }
+        } else if matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
             && matches!(scale, DamageScale::Attack)
             && mechanics
                 .as_ref()

@@ -138,6 +138,10 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    BladeCharge {
+        before: u8,
+        after: u8,
+    },
     Damage {
         kind: DamageKind,
         amount: u32,

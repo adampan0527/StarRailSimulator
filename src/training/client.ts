@@ -117,7 +117,8 @@ type EventKind =
         | 'crimson_knot'
         | 'blind_bet'
         | 'apotheosis'
-        | 'pocket_trickshot';
+        | 'pocket_trickshot'
+        | 'blade_charge';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }
