@@ -24,6 +24,13 @@ impl Kit {
         }
     }
 
+    pub fn skill_point_cap_bonus(&self) -> u8 {
+        match self {
+            Self::Official(kit) => kit.mechanics.skill_point_cap_bonus(),
+            Self::Ally(_) | Self::Enemy(_) | Self::Dummy { .. } => 0,
+        }
+    }
+
     pub fn max_toughness(&self) -> u16 {
         match self {
             Self::Ally(_) | Self::Official(_) => 0,
@@ -66,7 +73,7 @@ impl PreparedBattle {
         seed: u32,
         starting_skill_points: u8,
     ) -> Result<Self, BattleError> {
-        if !(1..=4).contains(&team.len()) || starting_skill_points > fixture::SKILL_POINT_CAP {
+        if !(1..=4).contains(&team.len()) {
             return Err(BattleError::InvalidInput(
                 "fixed DPR team size or skill points".into(),
             ));
@@ -93,6 +100,16 @@ impl PreparedBattle {
                 stats,
                 starting_energy_milli,
             });
+        }
+        let skill_point_cap = fixture::SKILL_POINT_CAP
+            + units
+                .iter()
+                .map(|unit| unit.kit.skill_point_cap_bonus())
+                .sum::<u8>();
+        if starting_skill_points > skill_point_cap {
+            return Err(BattleError::InvalidInput(
+                "fixed DPR starting skill points".into(),
+            ));
         }
         let plan = Self {
             units,

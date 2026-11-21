@@ -164,6 +164,7 @@ export type BattleView = {
     decision_index: number;
     ordinary_actor_id: string | null;
     skill_points: number;
+    skill_point_cap?: number;
     enemy_hp_lost: number;
     units: Unit[];
   };

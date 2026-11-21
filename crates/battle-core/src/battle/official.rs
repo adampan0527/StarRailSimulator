@@ -33,6 +33,7 @@ mod sampo;
 mod seele;
 mod serval;
 mod silver_wolf;
+mod sparkle;
 mod sushang;
 mod tingyun;
 mod topaz;
@@ -55,6 +56,7 @@ pub(super) use {
     misha::MishaState,
     moze::MozeState,
     seele::SeeleState,
+    sparkle::SparkleState,
     topaz::TopazState,
     welt::WeltState,
     xueyi::XueyiState,
@@ -66,6 +68,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use super::{
     Battle,
     periodic::{DotEvent, SpecialDotTrigger},
+    resolve::DamageTargetAura,
 };
 use crate::{
     Action, BattleError, DamageKind,
@@ -787,7 +790,18 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_ally_energy_full(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
-    fn on_ally_skill_points_spent(&self, _battle: &mut Battle<'_>, _owner: usize, _points: u8) {}
+    fn skill_point_cap_bonus(&self) -> u8 {
+        0
+    }
+
+    fn on_ally_skill_points_spent(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _points: u8,
+    ) {
+    }
 
     fn before_ally_action(
         &self,
@@ -906,6 +920,15 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn damage_target_aura(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _attacker: usize,
+    ) -> DamageTargetAura {
+        DamageTargetAura::default()
+    }
+
     fn all_resistance_down_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
         0
     }
@@ -944,6 +967,7 @@ pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
                         | black_swan::FORM
                         | silver_wolf::FORM
                         | seele::FORM
+                        | sparkle::FORM
                 )))
 }
 
@@ -990,6 +1014,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1223" => Some(moze::build),
         "character.1301" => Some(gallagher::build),
         "character.1305" => Some(dr_ratio::build),
+        sparkle::FORM => Some(sparkle::build),
         black_swan::FORM => Some(black_swan::build),
         acheron::FORM => Some(acheron::build),
         "character.1312" => Some(misha::build),
