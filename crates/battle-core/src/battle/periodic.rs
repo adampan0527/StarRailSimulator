@@ -8,12 +8,38 @@ pub(super) struct DotEvent {
     pub target: usize,
     pub element: Element,
     pub from_break: bool,
+    pub origin: Action,
+    pub timing: DotTiming,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum DotTiming {
+    TurnStart(usize),
+    Detonation,
+    Other,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum SpecialDotTrigger {
+    TurnStart,
+    Detonation {
+        matching_element: Option<Element>,
+        ratio_bp: u16,
+        origin: Action,
+    },
 }
 
 #[derive(Clone, Copy)]
 pub(super) enum DotScale {
     Attack(u16),
-    TargetHp { hp_bp: u16, attack_cap_bp: u16 },
+    StackedAttack {
+        multiplier_bp: u32,
+        defense_ignore_bp: u16,
+    },
+    TargetHp {
+        hp_bp: u16,
+        attack_cap_bp: u16,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -120,6 +146,10 @@ impl Battle<'_> {
     pub(super) fn has_elemental_dot(&self, target: usize, element: Element) -> bool {
         (element == Element::Thunder && self.has_shock(target))
             || self.dot_stacks(target, element) > 0
+            || self.units[target]
+                .black_swan
+                .arcana
+                .is_some_and(|arcana| arcana.matches_element(self, target, element))
     }
 
     pub(super) fn dot_stacks(&self, target: usize, element: Element) -> u8 {
@@ -140,7 +170,23 @@ impl Battle<'_> {
                     1
                 }
             });
-        skills.chain(breaks).fold(0_u8, u8::saturating_add)
+        let arcana = unit
+            .black_swan
+            .arcana
+            .filter(|_| element == Element::Wind)
+            .map_or(0, |arcana| u8::try_from(arcana.stacks).unwrap_or(u8::MAX));
+        skills.chain(breaks).fold(arcana, u8::saturating_add)
+    }
+
+    pub(super) fn trigger_special_dots(&mut self, target: usize, trigger: SpecialDotTrigger) {
+        for owner in self.allies() {
+            if self.hp(target).0 == 0 {
+                return;
+            }
+            if let Some(mechanics) = self.mechanics(owner) {
+                mechanics.trigger_special_dot(self, owner, target, trigger);
+            }
+        }
     }
 
     pub(super) fn tick_skill_dots(&mut self, target: usize) {
@@ -199,6 +245,8 @@ impl Battle<'_> {
         if self.hp(actor).0 == 0 {
             return;
         }
+        let had_special_dot = self.units[target].black_swan.arcana.is_some();
+        let previous_timing = std::mem::replace(&mut self.dot_timing, DotTiming::Detonation);
         if element.is_none_or(|element| element == Element::Thunder) {
             self.detonate_shocks(target, ratio_bp, origin);
         }
@@ -226,5 +274,18 @@ impl Battle<'_> {
         {
             self.break_dot_hit(dot.source, target, dot.element, origin, ratio_bp);
         }
+        // New statuses can be applied by damage listeners. Only statuses present
+        // at the start of the detonation belong to this batch.
+        if had_special_dot {
+            self.trigger_special_dots(
+                target,
+                SpecialDotTrigger::Detonation {
+                    matching_element: element,
+                    ratio_bp,
+                    origin,
+                },
+            );
+        }
+        self.dot_timing = previous_timing;
     }
 }

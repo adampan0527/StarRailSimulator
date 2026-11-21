@@ -84,9 +84,11 @@ type Status =
   | 'entangled'
   | 'survival_response'
   | 'wisemans_folly'
-  | 'frozen'
   | 'imprisoned'
-  | 'weightless';
+  | 'weightless'
+  | 'arcana'
+  | 'epiphany'
+  | 'frozen';
 type EventKind =
   | {
       event:

@@ -1,6 +1,7 @@
 mod arlan;
 mod asta;
 mod bailu;
+mod black_swan;
 mod bronya;
 mod clara;
 mod dan_heng;
@@ -36,6 +37,7 @@ mod yukong;
 
 pub(super) use {
     bailu::{BailuState, Invigoration},
+    black_swan::BlackSwanTarget,
     dr_ratio::DrRatioState,
     hanya::HanyaState,
     jiaoqiu::Field as JiaoqiuField,
@@ -50,7 +52,10 @@ pub(super) use {
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use super::{Battle, periodic::DotEvent};
+use super::{
+    Battle,
+    periodic::{DotEvent, SpecialDotTrigger},
+};
 use crate::{
     Action, BattleError, DamageKind,
     fixture::{Ability, Effect, Element, Stats, Target},
@@ -688,6 +693,17 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_enemy_dot_damage(&self, _battle: &mut Battle<'_>, _owner: usize, _event: DotEvent) {}
 
+    fn on_enemy_turn_opening(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
+
+    fn trigger_special_dot(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _target: usize,
+        _trigger: SpecialDotTrigger,
+    ) {
+    }
+
     fn on_enemy_turn_start(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
 
     fn on_wave_start(&self, _battle: &mut Battle<'_>, _owner: usize) {}
@@ -755,6 +771,16 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn elemental_resistance_down_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _target: usize,
+        _element: Element,
+    ) -> u32 {
+        0
+    }
+
     fn attack_reduction_bp(&self, _battle: &Battle<'_>, _owner: usize, _enemy: usize) -> u32 {
         0
     }
@@ -771,7 +797,8 @@ pub fn supports_official_dpr(form_id: &str) -> bool {
 pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
     supports_official_dpr(form_id)
         && (variant == "base"
-            || (variant == "novaflare" && matches!(form_id, welt::FORM | "character.1005")))
+            || (variant == "novaflare"
+                && matches!(form_id, "character.1005" | welt::FORM | black_swan::FORM)))
 }
 
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
@@ -812,6 +839,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1223" => Some(moze::build),
         "character.1301" => Some(gallagher::build),
         "character.1305" => Some(dr_ratio::build),
+        black_swan::FORM => Some(black_swan::build),
         "character.1312" => Some(misha::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         march_hunt::FORM => Some(march_hunt::build),

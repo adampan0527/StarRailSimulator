@@ -36,6 +36,7 @@ struct DamageEvent {
     origin: Option<Action>,
     assisted_by: Option<usize>,
     from_break: bool,
+    defense_ignore_bp: u16,
 }
 
 impl DamageEvent {
@@ -47,6 +48,10 @@ impl DamageEvent {
 #[derive(Clone, Copy)]
 enum DamageScale {
     Attack,
+    StackedAttack {
+        multiplier_bp: u32,
+        defense_ignore_bp: u16,
+    },
     MaxHp,
     AttackAndDefense(u16),
     TargetHpCapped(u16),
@@ -64,6 +69,9 @@ impl DamageScale {
         let ratio = u64::from(multiplier_bp);
         match self {
             Self::Attack => u64::from(attack) * ratio,
+            Self::StackedAttack { multiplier_bp, .. } => {
+                u64::from(attack) * u64::from(multiplier_bp)
+            }
             Self::MaxHp => u64::from(source_hp) * ratio,
             Self::AttackAndDefense(defense_bp) => {
                 u64::from(attack) * ratio + u64::from(defense) * u64::from(defense_bp)
@@ -75,6 +83,7 @@ impl DamageScale {
     }
 }
 
+#[derive(Clone, Copy)]
 pub(super) struct PeriodicHit {
     pub element: Element,
     pub damage: DotScale,
@@ -410,8 +419,14 @@ impl Battle<'_> {
         let resistance_down = self.units[target]
             .debuffs
             .iter()
-            .filter(|status| status.kind == DebuffKind::EffectResistanceDown)
-            .map(|status| status.bp)
+            .filter_map(|status| match status.kind {
+                DebuffKind::EffectResistanceDown => Some(status.bp),
+                DebuffKind::Epiphany {
+                    effect_resistance_down_bp,
+                    ..
+                } => Some(u32::from(effect_resistance_down_bp)),
+                _ => None,
+            })
             .fold(0_u32, u32::saturating_add);
         let personal_resistance = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.effect_resistance_bonus_bp(self, target)
@@ -579,7 +594,7 @@ impl Battle<'_> {
                 continue;
             }
             let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
-            self.attack_targets.clear();
+            self.begin_attack();
             let mechanics = self.mechanics(actor);
             self.emit(EventKind::FollowUp, Some(actor), single);
             if let FollowUpTargets::Random { hit_count } = targets {
@@ -736,6 +751,7 @@ impl Battle<'_> {
         owner: usize,
         actor: usize,
         target: usize,
+        element: Element,
         event: &DamageEvent,
     ) -> (u32, u32) {
         if self.units[owner].hp == 0 || !self.enemies().contains(&target) {
@@ -754,7 +770,11 @@ impl Battle<'_> {
             }
             (
                 vulnerability,
-                mechanics.all_resistance_down_bp(self, owner, target),
+                mechanics
+                    .all_resistance_down_bp(self, owner, target)
+                    .saturating_add(
+                        mechanics.elemental_resistance_down_bp(self, owner, target, element),
+                    ),
             )
         })
     }
@@ -781,6 +801,16 @@ impl Battle<'_> {
             .filter(|status| allow_source(status.source))
             .map_or(0, |status| status.magnitude);
         let mut vulnerability = legacy_vulnerability.saturating_add(sum(DebuffKind::Vulnerability));
+        vulnerability = vulnerability.saturating_add(
+            state
+                .debuffs
+                .iter()
+                .filter(|status| {
+                    allow_source(status.source) && self.epiphany_applies(status.kind, target)
+                })
+                .map(|status| status.bp)
+                .fold(0_u32, u32::saturating_add),
+        );
         if event.kind == DamageKind::DamageOverTime {
             vulnerability = vulnerability.saturating_add(sum(DebuffKind::DotVulnerability));
         }
@@ -790,7 +820,7 @@ impl Battle<'_> {
         let mut field_resistance_down = 0_u32;
         for owner in self.allies().filter(|&owner| allow_source(owner)) {
             let (source_vulnerability, resistance_down) =
-                self.target_auras_from(owner, actor, target, event);
+                self.target_auras_from(owner, actor, target, element, event);
             vulnerability = vulnerability.saturating_add(source_vulnerability);
             field_resistance_down = field_resistance_down.saturating_add(resistance_down);
         }
@@ -822,7 +852,9 @@ impl Battle<'_> {
             stats,
             damage_reduction_bp: 0,
             vulnerability_bp: vulnerability,
-            defense_down_bp: sum(DebuffKind::DefenseDown).saturating_add(weightless_defense_down),
+            defense_down_bp: sum(DebuffKind::DefenseDown)
+                .saturating_add(weightless_defense_down)
+                .saturating_add(u32::from(event.defense_ignore_bp)),
             resistance_down_bp: sum(DebuffKind::ResistanceDown(element))
                 .saturating_add(sum(DebuffKind::AllResistanceDown))
                 .saturating_add(weightless_resistance_down)
@@ -836,6 +868,14 @@ impl Battle<'_> {
             toughness: state.toughness,
             max_toughness: plan.kit.max_toughness(),
         }
+    }
+
+    fn epiphany_applies(&self, kind: DebuffKind, target: usize) -> bool {
+        matches!(
+            kind,
+            DebuffKind::Epiphany { only_on_turn, .. }
+                if !only_on_turn || self.enemy_turn == Some(target)
+        )
     }
 
     fn hit(
@@ -959,7 +999,7 @@ impl Battle<'_> {
         }
         let origin = Action::Basic;
         let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
-        self.attack_targets.clear();
+        self.begin_attack();
         self.emit(EventKind::FollowUp, Some(actor), Some(target));
         let neighbors: Vec<_> = self.adjacent_enemies(target).collect();
         let mut hit = |target, multiplier_bp, toughness, defense_multiplier_bp| {
@@ -1001,6 +1041,16 @@ impl Battle<'_> {
             DotScale::Attack(bp) => (
                 bp.saturating_mul(u16::from(dot.stacks)),
                 DamageScale::Attack,
+            ),
+            DotScale::StackedAttack {
+                multiplier_bp,
+                defense_ignore_bp,
+            } => (
+                10_000,
+                DamageScale::StackedAttack {
+                    multiplier_bp,
+                    defense_ignore_bp,
+                },
             ),
             DotScale::TargetHp {
                 hp_bp,
@@ -1111,6 +1161,12 @@ impl Battle<'_> {
                 origin,
                 assisted_by,
                 from_break: false,
+                defense_ignore_bp: match scale {
+                    DamageScale::StackedAttack {
+                        defense_ignore_bp, ..
+                    } => defense_ignore_bp,
+                    _ => 0,
+                },
             },
             |view| {
                 let mut adjusted = source;
@@ -1168,6 +1224,7 @@ impl Battle<'_> {
                         origin,
                         assisted_by: None,
                         from_break: true,
+                        defense_ignore_bp: 0,
                     },
                     |view| {
                         let mut adjusted = source;
@@ -1313,6 +1370,7 @@ impl Battle<'_> {
                 origin: Some(origin),
                 assisted_by: None,
                 from_break: true,
+                defense_ignore_bp: 0,
             },
             |view| {
                 let mut adjusted = source;
@@ -1338,6 +1396,7 @@ impl Battle<'_> {
             origin,
             assisted_by,
             from_break,
+            ..
         } = event;
         let offense = OffenseContext {
             actor,
@@ -1397,7 +1456,8 @@ impl Battle<'_> {
                             | DebuffKind::Vulnerability
                             | DebuffKind::AllResistanceDown
                             | DebuffKind::Weightless { .. }
-                    ) || status.kind == DebuffKind::ResistanceDown(element)
+                    ) || self.epiphany_applies(status.kind, target)
+                        || status.kind == DebuffKind::ResistanceDown(element)
                         || (status.kind == DebuffKind::DotVulnerability
                             && kind == DamageKind::DamageOverTime)
                         || (status.kind == DebuffKind::Besotted
@@ -1409,7 +1469,7 @@ impl Battle<'_> {
                 )
                 .chain(self.allies().filter(|&owner| {
                     self.offense_buffs_from(owner, offense) != OffenseBuffs::default()
-                        || self.target_auras_from(owner, actor, target, &event) != (0, 0)
+                        || self.target_auras_from(owner, actor, target, element, &event) != (0, 0)
                 }))
                 .filter(|&source| source != actor && source < self.plan.ally_count)
                 .collect();
@@ -1451,12 +1511,18 @@ impl Battle<'_> {
         } else {
             self.deal_damage(actor, target, kind, amount, critical);
         }
-        if amount > 0 && kind == DamageKind::DamageOverTime && offense.enemy.is_some() {
+        if amount > 0
+            && kind == DamageKind::DamageOverTime
+            && offense.enemy.is_some()
+            && let Some(origin) = origin
+        {
             let dot = DotEvent {
                 source: actor,
                 target,
                 element,
                 from_break,
+                origin,
+                timing: self.dot_timing,
             };
             for owner in self.allies() {
                 if self.units[owner].hp > 0
