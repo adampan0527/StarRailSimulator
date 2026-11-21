@@ -64,6 +64,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '战技点变化';
     case 'energy':
       return '能量变化';
+    case 'flying_aureus':
+      return '飞黄变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -104,6 +106,8 @@ function eventDetail({ kind }: BattleEvent) {
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;
+    case 'flying_aureus':
+      return `${kind.detail.before_halves / 2} → ${kind.detail.after_halves / 2}`;
     case 'heal':
       return `恢复生命 ${kind.detail.amount}`;
     case 'hp_spent':

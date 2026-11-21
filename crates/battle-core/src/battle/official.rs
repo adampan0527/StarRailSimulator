@@ -6,6 +6,7 @@ mod bronya;
 mod clara;
 mod dan_heng;
 mod dr_ratio;
+mod feixiao;
 mod gallagher;
 mod gepard;
 mod guinaifen;
@@ -40,6 +41,7 @@ pub(super) use {
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
     dr_ratio::DrRatioState,
+    feixiao::FeixiaoState,
     hanya::HanyaState,
     jiaoqiu::Field as JiaoqiuField,
     jing_yuan::JingYuanState,
@@ -152,7 +154,7 @@ impl OfficialCharacter {
         let stats = &self.stats;
         if self.level != 80
             || self.eidolon > 6
-            || self.energy_capacity == 0
+            || (self.energy_capacity == 0 && self.form_id != feixiao::FORM)
             || self.energy_capacity > 999
             || stats.hp == 0
             || stats.hp > 100_000
@@ -273,6 +275,14 @@ pub(super) struct YanqingState {
 }
 
 pub(super) trait Mechanics: Send + Sync {
+    fn alternate_ultimate_resource_ready(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+    ) -> Option<bool> {
+        None
+    }
+
     fn can_use_skill(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         true
     }
@@ -538,6 +548,16 @@ pub(super) trait Mechanics: Send + Sync {
     ) {
     }
 
+    fn on_ally_attack(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _origin: Action,
+        _primary_target: Option<usize>,
+    ) {
+    }
+
     fn on_attack_target(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
 
     fn on_first_attack_hit(
@@ -558,6 +578,8 @@ pub(super) trait Mechanics: Send + Sync {
         _origin: Action,
     ) {
     }
+
+    fn before_follow_up(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     fn after_follow_up(&self, _battle: &mut Battle<'_>, _actor: usize, _origin: Action) {}
 
@@ -738,6 +760,14 @@ pub(super) trait Mechanics: Send + Sync {
         false
     }
 
+    fn follow_up_counts_as_ultimate(&self) -> bool {
+        false
+    }
+
+    fn ultimate_resistance_penetration_bp(&self) -> u32 {
+        0
+    }
+
     fn primary_attack_counts_as_follow_up(&self, action: Action) -> bool {
         action == Action::Ultimate && self.ultimate_counts_as_follow_up()
     }
@@ -839,6 +869,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         xueyi::FORM => Some(xueyi::build),
         "character.1215" => Some(hanya::build),
         "character.1218" => Some(jiaoqiu::build),
+        feixiao::FORM => Some(feixiao::build),
         "character.1223" => Some(moze::build),
         "character.1301" => Some(gallagher::build),
         "character.1305" => Some(dr_ratio::build),

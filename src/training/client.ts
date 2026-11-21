@@ -109,6 +109,10 @@ type EventKind =
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }
   | {
+      event: 'flying_aureus';
+      detail: { before_halves: number; after_halves: number };
+    }
+  | {
       event: 'damage';
       detail: {
         kind: DamageKind;

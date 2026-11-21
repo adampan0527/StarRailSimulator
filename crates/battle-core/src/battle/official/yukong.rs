@@ -140,9 +140,10 @@ impl Mechanics for Yukong {
         }
         if self.eidolon >= 2 {
             for ally in battle.allies() {
+                let energy_cap = battle.plan.units[ally].kit.max_energy_milli();
                 if battle.units[ally].hp > 0
-                    && battle.units[ally].energy_milli
-                        == battle.plan.units[ally].kit.max_energy_milli()
+                    && energy_cap > 0
+                    && battle.units[ally].energy_milli == energy_cap
                 {
                     self.on_ally_energy_full(battle, actor, ally);
                 }

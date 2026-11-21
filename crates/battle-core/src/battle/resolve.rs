@@ -39,12 +39,6 @@ struct DamageEvent {
     defense_ignore_bp: u16,
 }
 
-impl DamageEvent {
-    fn is_ultimate_hit(&self) -> bool {
-        self.kind == DamageKind::Direct && self.origin == Some(Action::Ultimate)
-    }
-}
-
 #[derive(Clone, Copy)]
 enum DamageScale {
     Attack,
@@ -130,6 +124,16 @@ enum FollowUpTargets {
 }
 
 impl Battle<'_> {
+    fn is_ultimate_damage(&self, actor: usize, event: &DamageEvent) -> bool {
+        match (event.kind, &self.plan.units[actor].kit) {
+            (DamageKind::Direct, _) => event.origin == Some(Action::Ultimate),
+            (DamageKind::FollowUp, Kit::Official(kit)) => {
+                kit.mechanics.follow_up_counts_as_ultimate()
+            }
+            _ => false,
+        }
+    }
+
     pub(super) fn is_follow_up_damage(
         &self,
         actor: usize,
@@ -578,8 +582,13 @@ impl Battle<'_> {
         });
     }
 
-    pub(super) fn finish_attack(&mut self, actor: usize, origin: Action) {
-        self.notify_attack(actor, origin);
+    pub(super) fn finish_attack(
+        &mut self,
+        actor: usize,
+        origin: Action,
+        primary_target: Option<usize>,
+    ) {
+        self.notify_attack(actor, origin, primary_target);
         self.resolve_follow_ups();
     }
 
@@ -615,6 +624,9 @@ impl Battle<'_> {
             self.begin_attack();
             let mechanics = self.mechanics(actor);
             self.emit(EventKind::FollowUp, Some(actor), single);
+            if let Some(mechanics) = &mechanics {
+                mechanics.before_follow_up(self, actor);
+            }
             if let FollowUpTargets::Random {
                 hit_count,
                 adjacent_multiplier_bp,
@@ -680,7 +692,7 @@ impl Battle<'_> {
             if let Some(mechanics) = mechanics {
                 mechanics.after_follow_up(self, actor, origin);
             }
-            self.notify_attack(actor, origin);
+            self.notify_attack(actor, origin, single);
             self.resolving_follow_up = was_follow_up;
         }
     }
@@ -708,12 +720,16 @@ impl Battle<'_> {
         );
     }
 
-    fn notify_attack(&mut self, actor: usize, origin: Action) {
+    fn notify_attack(&mut self, actor: usize, origin: Action, primary_target: Option<usize>) {
+        let landed = !self.attack_targets.is_empty();
         for owner in self.allies() {
             if self.units[owner].hp > 0
                 && let Some(mechanics) = self.mechanics(owner)
             {
                 mechanics.on_attack_finished(self, owner, actor, origin);
+                if landed {
+                    mechanics.on_ally_attack(self, owner, actor, origin, primary_target);
+                }
             }
         }
         let crossed_half = std::mem::take(&mut self.crossed_half);
@@ -792,7 +808,7 @@ impl Battle<'_> {
             return (0, 0);
         }
         self.mechanics(owner).map_or((0, 0), |mechanics| {
-            let ultimate = event.is_ultimate_hit();
+            let ultimate = self.is_ultimate_damage(actor, event);
             let follow_up = self.is_follow_up_damage(actor, event.origin, event.kind);
             let mut vulnerability = 0_u32;
             if ultimate {
@@ -877,7 +893,14 @@ impl Battle<'_> {
             }
         }
         let personal_penetration = self.mechanics(actor).map_or(0, |mechanics| {
-            mechanics.resistance_penetration_bp(self, actor, element)
+            let ultimate_penetration = if self.is_ultimate_damage(actor, event) {
+                mechanics.ultimate_resistance_penetration_bp()
+            } else {
+                0
+            };
+            mechanics
+                .resistance_penetration_bp(self, actor, element)
+                .saturating_add(ultimate_penetration)
         });
         let mut stats = plan.stats;
         stats.hp = self.effective_max_hp(target);
@@ -1062,7 +1085,7 @@ impl Battle<'_> {
             }
         }
         self.gain_energy(actor, actor, counter.energy_milli);
-        self.finish_attack(actor, origin);
+        self.finish_attack(actor, origin, Some(target));
         self.resolving_follow_up = was_follow_up;
     }
 
@@ -1769,6 +1792,9 @@ impl Battle<'_> {
 
     pub(super) fn gain_energy(&mut self, actor: usize, target: usize, amount_milli: u32) {
         let cap = self.plan.units[target].kit.max_energy_milli();
+        if cap == 0 {
+            return;
+        }
         let bonus_bp = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.energy_regeneration_bonus_bp(self, target)
         });

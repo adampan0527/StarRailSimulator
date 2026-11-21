@@ -94,6 +94,11 @@ pub enum EventKind {
         before_milli: u32,
         after_milli: u32,
     },
+    /// Flying Aureus uses half-points so progress from individual attacks is exact.
+    FlyingAureus {
+        before_halves: u8,
+        after_halves: u8,
+    },
     Damage {
         kind: DamageKind,
         amount: u32,

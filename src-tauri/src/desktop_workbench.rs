@@ -36,6 +36,7 @@ impl From<Error> for CommandError {
                 | BattleError::IllegalTiming
                 | BattleError::InsufficientSkillPoints
                 | BattleError::InsufficientEnergy
+                | BattleError::InsufficientUltimateResource
                 | BattleError::InvalidTarget,
             ) => "invalid_action",
             Error::Archive(star_rail_profiles::Error::Invalid { field, .. }) => {
