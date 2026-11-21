@@ -1066,6 +1066,57 @@ fn saved_team_replays_lightning_lord_with_three_harmony_supports() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_hp_consumption_and_boothills_breaks() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [blade, jingliu, boothill, ruan_mei] = [
+        "character.1205",
+        "character.1212",
+        "character.1315",
+        "character.1303",
+    ];
+    let mut edit = archive.profile(blade).unwrap().edit;
+    edit.eidolon = 6;
+    archive.save(blade, edit).unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "生命消耗与弱点击破",
+            &[blade, jingliu, boothill, ruan_mei].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| hit.source_id == blade && hit.kind == DamageKind::FollowUp));
+    assert!(hits().any(|hit| hit.source_id == jingliu && hit.kind == DamageKind::Direct));
+    assert!(hits().any(|hit| hit.source_id == boothill && hit.kind == DamageKind::WeaknessBreak));
+    assert!(hits().any(|hit| {
+        [blade, jingliu, boothill].contains(&hit.source_id.as_str())
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == ruan_mei && credit.amount > 0)
+    }));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
