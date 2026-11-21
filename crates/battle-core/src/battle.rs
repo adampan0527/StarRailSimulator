@@ -123,6 +123,7 @@ struct UnitState {
     tingyun_state: TingyunState,
     sparkle_state: official::SparkleState,
     qingque_state: official::QingqueState,
+    robin_state: official::RobinState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
     misha_state: MishaState,
@@ -235,6 +236,7 @@ impl<'a> Battle<'a> {
                     tingyun_state: TingyunState::default(),
                     sparkle_state: official::SparkleState::default(),
                     qingque_state: official::QingqueState::default(),
+                    robin_state: official::RobinState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
                     misha_state: MishaState::default(),
@@ -536,6 +538,9 @@ impl<'a> Battle<'a> {
         if self.units[actor].hp == 0 {
             return Err(BattleError::InvalidActor);
         }
+        if self.turn_is_suspended(actor) {
+            return Err(BattleError::IllegalTiming);
+        }
         if action == Action::Ultimate {
             match self
                 .mechanics(actor)
@@ -606,6 +611,15 @@ impl<'a> Battle<'a> {
     fn is_targetable(&self, unit: usize) -> bool {
         let state = &self.units[unit];
         state.hp > 0 && !state.departed
+    }
+
+    fn available_for_ordinary_turn(&self, unit: usize) -> bool {
+        self.is_targetable(unit) && !self.turn_is_suspended(unit)
+    }
+
+    fn turn_is_suspended(&self, unit: usize) -> bool {
+        matches!(&self.plan.units[unit].kit, Kit::Official(kit)
+            if kit.mechanics.suspends_turn(self, unit))
     }
 
     fn mechanics(&self, unit: usize) -> Option<Arc<dyn Mechanics>> {
@@ -743,7 +757,7 @@ impl<'a> Battle<'a> {
     fn turn_candidates(&self) -> impl Iterator<Item = usize> {
         self.allies()
             .chain(self.enemies())
-            .filter(|&unit| self.is_targetable(unit))
+            .filter(|&unit| self.available_for_ordinary_turn(unit))
     }
 
     fn scheduled_turns(&self) -> impl Iterator<Item = (u64, bool, TurnSlot)> {
@@ -783,7 +797,7 @@ impl<'a> Battle<'a> {
 
             self.av_micros += delta;
             for unit in self.allies().chain(self.enemies()) {
-                if self.is_targetable(unit) {
+                if self.available_for_ordinary_turn(unit) {
                     let consumed = delta * self.speed_micros(unit);
                     self.units[unit].gauge_quanta =
                         self.units[unit].gauge_quanta.saturating_sub(consumed);

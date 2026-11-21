@@ -25,7 +25,7 @@ impl Battle<'_> {
             return true;
         }
         while let Some(actor) = self.extra_turns.pending.pop_front() {
-            if !self.is_targetable(actor) {
+            if !self.available_for_ordinary_turn(actor) {
                 continue;
             }
             self.extra_turns.interrupted = self.ordinary_actor.replace(actor);
@@ -46,7 +46,19 @@ impl Battle<'_> {
             .extra_turns
             .interrupted
             .take()
-            .filter(|&actor| self.is_targetable(actor));
+            .filter(|&actor| self.available_for_ordinary_turn(actor));
+    }
+
+    pub(super) fn close_turn_before_suspension(&mut self, actor: usize) {
+        if self.in_extra_turn(actor) {
+            self.finish_extra_turn();
+        } else if self.ordinary_actor == Some(actor) {
+            self.ordinary_actor = None;
+            self.finish_turn(actor);
+        } else if self.extra_turns.interrupted == Some(actor) {
+            self.extra_turns.interrupted = None;
+            self.finish_turn(actor);
+        }
     }
 
     pub(super) fn interrupted_turn_actor(&self) -> Option<usize> {

@@ -39,11 +39,18 @@ struct DamageView {
 
 struct DamageEvent {
     kind: DamageKind,
-    crit_rate_bp: Option<u32>,
+    critical: DamageCritical,
     origin: Option<Action>,
     assisted_by: Option<usize>,
     from_break: bool,
     defense_ignore_bp: u16,
+}
+
+#[derive(Clone, Copy)]
+enum DamageCritical {
+    Never,
+    Chance(u32),
+    Guaranteed,
 }
 
 #[derive(Clone, Copy)]
@@ -453,6 +460,12 @@ impl Battle<'_> {
     pub(super) fn resists_enemy_control(&mut self, actor: usize, target: usize) -> bool {
         if !self.enemies().contains(&actor) || !self.allies().contains(&target) {
             return false;
+        }
+        if self
+            .mechanics(target)
+            .is_some_and(|rules| rules.immune_to_enemy_control(self, target))
+        {
+            return true;
         }
         self.allies().any(|owner| {
             self.is_targetable(owner)
@@ -1205,6 +1218,40 @@ impl Battle<'_> {
         );
     }
 
+    pub(super) fn fixed_critical_additional_hit(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        multiplier_bp: u16,
+        crit_damage_bp: u32,
+        origin: Action,
+    ) {
+        let mut source = self.plan.units[actor].stats;
+        source.crit_damage_bp = crit_damage_bp;
+        let index = element.index();
+        self.resolve_damage(
+            actor,
+            target,
+            element,
+            DamageEvent {
+                kind: DamageKind::Additional,
+                critical: DamageCritical::Guaranteed,
+                origin: Some(origin),
+                assisted_by: None,
+                from_break: false,
+                defense_ignore_bp: 0,
+            },
+            |view| {
+                let mut adjusted = source;
+                adjusted.element_damage_bp[index] =
+                    adjusted.element_damage_bp[index].saturating_add(view.bonus.damage_bp);
+                let base_bp = u64::from(view.attack) * u64::from(multiplier_bp);
+                damage::direct(adjusted, view.target, element, base_bp, view.critical)
+            },
+        );
+    }
+
     pub(super) fn secondary_hit_from_hp(
         &mut self,
         actor: usize,
@@ -1433,7 +1480,11 @@ impl Battle<'_> {
             element,
             DamageEvent {
                 kind,
-                crit_rate_bp: (kind != DamageKind::DamageOverTime).then_some(crit_rate),
+                critical: if kind == DamageKind::DamageOverTime {
+                    DamageCritical::Never
+                } else {
+                    DamageCritical::Chance(crit_rate)
+                },
                 origin,
                 assisted_by,
                 from_break: false,
@@ -1504,7 +1555,7 @@ impl Battle<'_> {
                     element,
                     DamageEvent {
                         kind: DamageKind::WeaknessBreak,
-                        crit_rate_bp: None,
+                        critical: DamageCritical::Never,
                         origin,
                         assisted_by: None,
                         from_break: true,
@@ -1653,7 +1704,7 @@ impl Battle<'_> {
             element,
             DamageEvent {
                 kind,
-                crit_rate_bp: None,
+                critical: DamageCritical::Never,
                 origin: Some(origin),
                 assisted_by: None,
                 from_break: true,
@@ -1679,12 +1730,16 @@ impl Battle<'_> {
     ) -> bool {
         let DamageEvent {
             kind,
-            crit_rate_bp,
+            critical,
             origin,
             assisted_by,
             from_break,
             ..
         } = event;
+        let crit_rate_bp = match critical {
+            DamageCritical::Chance(rate) => Some(rate),
+            DamageCritical::Never | DamageCritical::Guaranteed => None,
+        };
         let offense = OffenseContext {
             actor,
             enemy: self.enemies().contains(&target).then_some(target),
@@ -1724,12 +1779,13 @@ impl Battle<'_> {
             defender.damage_share_bp = recipient.share_bp;
             defender.damage_reduction_bp = recipient.reduction_bp;
             let defense = self.defense_with_buff(actor, bonus.defense_bp);
-            let critical = crit_roll.is_some_and(|(rate, roll)| {
-                roll < u64::from(
-                    rate.saturating_add(bonus.crit_rate_bp)
-                        .saturating_add(crit_rate_from_defense(defense)),
-                )
-            });
+            let critical = matches!(critical, DamageCritical::Guaranteed)
+                || crit_roll.is_some_and(|(rate, roll)| {
+                    roll < u64::from(
+                        rate.saturating_add(bonus.crit_rate_bp)
+                            .saturating_add(crit_rate_from_defense(defense)),
+                    )
+                });
             let amount = calculate(DamageView {
                 target: defender,
                 bonus,
