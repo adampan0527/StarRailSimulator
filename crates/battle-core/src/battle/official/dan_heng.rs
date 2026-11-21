@@ -183,13 +183,14 @@ impl Mechanics for DanHeng {
         target: usize,
         action: Option<Action>,
         kind: DamageKind,
-        base: u16,
-    ) -> u16 {
+        base: u32,
+    ) -> u32 {
         if action == Some(Action::Ultimate)
             && kind == DamageKind::Direct
             && battle.is_slowed(target)
         {
-            base.saturating_add(self.slowed_ultimate_bonus_bp)
+            base.saturating_add(u32::from(self.slowed_ultimate_bonus_bp))
+                .min(u32::from(u16::MAX))
         } else {
             base
         }

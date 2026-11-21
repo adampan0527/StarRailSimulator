@@ -16,7 +16,7 @@ use super::{
 
 struct Hit {
     element: Element,
-    multiplier_bp: u16,
+    multiplier_bp: u32,
     toughness: u16,
     origin: Option<Action>,
     scale: DamageScale,
@@ -59,7 +59,7 @@ impl DamageScale {
         defense: u32,
         source_hp: u32,
         target_hp: u32,
-        multiplier_bp: u16,
+        multiplier_bp: u32,
     ) -> u64 {
         let ratio = u64::from(multiplier_bp);
         match self {
@@ -107,6 +107,12 @@ pub(super) struct FollowUp {
     targets: FollowUpTargets,
     origin: Action,
     attack: FollowUpAttack,
+}
+
+#[derive(Clone)]
+pub(super) enum PendingAttack {
+    FollowUp(FollowUp),
+    TriggeredSkill { actor: usize, target: usize },
 }
 
 #[derive(Clone, Copy)]
@@ -175,7 +181,7 @@ impl Battle<'_> {
                 multiplier_bp,
                 toughness,
             } => self.attack_hit(actor, target, element, multiplier_bp, toughness),
-            Effect::MaxHpHit {
+            Effect::WideHit {
                 element,
                 multiplier_bp,
                 toughness,
@@ -184,6 +190,18 @@ impl Battle<'_> {
                 target,
                 element,
                 multiplier_bp,
+                toughness,
+                DamageScale::Attack,
+            ),
+            Effect::MaxHpHit {
+                element,
+                multiplier_bp,
+                toughness,
+            } => self.attack_hit_scaled(
+                actor,
+                target,
+                element,
+                u32::from(multiplier_bp),
                 toughness,
                 DamageScale::MaxHp,
             ),
@@ -264,7 +282,7 @@ impl Battle<'_> {
             actor,
             target,
             element,
-            multiplier_bp,
+            u32::from(multiplier_bp),
             toughness,
             DamageScale::Attack,
         );
@@ -275,7 +293,7 @@ impl Battle<'_> {
         actor: usize,
         target: usize,
         element: Element,
-        multiplier_bp: u16,
+        multiplier_bp: u32,
         toughness: u16,
         scale: DamageScale,
     ) {
@@ -485,18 +503,19 @@ impl Battle<'_> {
         origin: Action,
         energy_milli: u32,
     ) {
-        self.pending_follow_ups.push_back(FollowUp {
-            actor,
-            targets: FollowUpTargets::All,
-            origin,
-            attack: FollowUpAttack {
-                element,
-                multiplier_bp,
-                toughness,
-                energy_milli,
-                first_hit: None,
-            },
-        });
+        self.pending_follow_ups
+            .push_back(PendingAttack::FollowUp(FollowUp {
+                actor,
+                targets: FollowUpTargets::All,
+                origin,
+                attack: FollowUpAttack {
+                    element,
+                    multiplier_bp,
+                    toughness,
+                    energy_milli,
+                    first_hit: None,
+                },
+            }));
     }
 
     pub(super) fn follow_up_single(
@@ -506,12 +525,13 @@ impl Battle<'_> {
         origin: Action,
         attack: FollowUpAttack,
     ) {
-        self.pending_follow_ups.push_back(FollowUp {
-            actor,
-            targets: FollowUpTargets::Single(target),
-            origin,
-            attack,
-        });
+        self.pending_follow_ups
+            .push_back(PendingAttack::FollowUp(FollowUp {
+                actor,
+                targets: FollowUpTargets::Single(target),
+                origin,
+                attack,
+            }));
     }
 
     /// Each hit draws a living enemy and grants the specified energy for that hit.
@@ -522,12 +542,13 @@ impl Battle<'_> {
         hit_count: u8,
         attack: FollowUpAttack,
     ) {
-        self.pending_follow_ups.push_back(FollowUp {
-            actor,
-            targets: FollowUpTargets::Random { hit_count },
-            origin,
-            attack,
-        });
+        self.pending_follow_ups
+            .push_back(PendingAttack::FollowUp(FollowUp {
+                actor,
+                targets: FollowUpTargets::Random { hit_count },
+                origin,
+                attack,
+            }));
     }
 
     pub(super) fn follow_up_single_or_random(
@@ -537,12 +558,39 @@ impl Battle<'_> {
         origin: Action,
         attack: FollowUpAttack,
     ) {
-        self.pending_follow_ups.push_back(FollowUp {
-            actor,
-            targets: FollowUpTargets::SingleOrRandom(target),
-            origin,
-            attack,
-        });
+        self.pending_follow_ups
+            .push_back(PendingAttack::FollowUp(FollowUp {
+                actor,
+                targets: FollowUpTargets::SingleOrRandom(target),
+                origin,
+                attack,
+            }));
+    }
+
+    pub(super) fn queue_triggered_skill(&mut self, actor: usize, target: usize) {
+        self.pending_follow_ups
+            .push_back(PendingAttack::TriggeredSkill { actor, target });
+    }
+
+    pub(super) fn perform_triggered_skill(
+        &mut self,
+        actor: usize,
+        target: usize,
+        ability: Ability<'_>,
+    ) {
+        let previous_action = self.action.replace(Action::Skill);
+        let previous_target = self.action_target.replace(target);
+        let previous_follow_up = std::mem::take(&mut self.resolving_follow_up);
+        let previous_attack_targets = std::mem::take(&mut self.attack_targets);
+        self.emit(EventKind::TriggeredSkill, Some(actor), Some(target));
+        self.notify_ally_action_started(actor, Some(target), ability);
+        self.resolve_ability(actor, Some(target), ability);
+        self.notify_attack(actor, Action::Skill);
+        self.notify_ally_action_finished(actor, Action::Skill);
+        self.attack_targets = previous_attack_targets;
+        self.resolving_follow_up = previous_follow_up;
+        self.action_target = previous_target;
+        self.action = previous_action;
     }
 
     pub(super) fn finish_attack(&mut self, actor: usize, origin: Action) {
@@ -551,7 +599,18 @@ impl Battle<'_> {
     }
 
     pub(super) fn resolve_follow_ups(&mut self) {
-        while let Some(follow_up) = self.pending_follow_ups.pop_front() {
+        while let Some(attack) = self.pending_follow_ups.pop_front() {
+            let follow_up = match attack {
+                PendingAttack::FollowUp(follow_up) => follow_up,
+                PendingAttack::TriggeredSkill { actor, target } => {
+                    if self.is_targetable(actor)
+                        && let Some(rules) = self.mechanics(actor)
+                    {
+                        rules.on_triggered_skill(self, actor, target);
+                    }
+                    continue;
+                }
+            };
             let FollowUp {
                 actor,
                 targets,
@@ -651,7 +710,7 @@ impl Battle<'_> {
             DamageKind::FollowUp,
             Hit {
                 element,
-                multiplier_bp,
+                multiplier_bp: u32::from(multiplier_bp),
                 toughness,
                 origin: Some(origin),
                 scale: DamageScale::Attack,
@@ -705,20 +764,31 @@ impl Battle<'_> {
         }
     }
 
+    pub(super) fn enemy_targeting_weight(&self, unit: usize) -> u64 {
+        let weight =
+            u32::from(self.plan.units[unit].stats.base_aggro) + self.lynx_aggro_bonus(unit);
+        let ratio = self
+            .mechanics(unit)
+            .map_or(10_000, |rules| rules.aggro_multiplier_bp(self, unit));
+        (u64::from(weight) * u64::from(ratio)).max(1)
+    }
+
     fn random_enemy_target(&mut self) -> Option<usize> {
-        let weighted = self
+        let mut weighted = self
             .allies()
             .filter(|&unit| self.is_targetable(unit))
-            .map(|unit| {
-                let weight =
-                    u32::from(self.plan.units[unit].stats.base_aggro) + self.lynx_aggro_bonus(unit);
-                (unit, u64::from(weight))
-            })
+            .map(|unit| (unit, self.enemy_targeting_weight(unit)))
             .collect::<Vec<_>>();
         let &(_, first_weight) = weighted.first()?;
         if weighted.iter().all(|&(_, weight)| weight == first_weight) {
             let slot = self.rng.below(weighted.len() as u64) as usize;
             return Some(weighted[slot].0);
+        }
+        // Keep the original random range for fixtures with integer aggro weights.
+        if weighted.iter().all(|&(_, weight)| weight % 10_000 == 0) {
+            for (_, weight) in &mut weighted {
+                *weight /= 10_000;
+            }
         }
         let total = weighted.iter().map(|&(_, weight)| weight).sum();
         let mut roll = self.rng.below(total);
@@ -812,9 +882,13 @@ impl Battle<'_> {
                     weightless_resistance_down.saturating_add(u32::from(resistance_down_bp));
             }
         }
-        let personal_penetration = self.mechanics(actor).map_or(0, |mechanics| {
-            mechanics.resistance_penetration_bp(self, actor, element)
-        });
+        let (personal_penetration, personal_defense_ignore) =
+            self.mechanics(actor).map_or((0, 0), |mechanics| {
+                (
+                    mechanics.resistance_penetration_bp(self, actor, element),
+                    mechanics.defense_ignore_bp(self, actor, target),
+                )
+            });
         let mut stats = plan.stats;
         stats.hp = self.effective_max_hp(target);
         stats.defense = self.defense(target);
@@ -822,7 +896,9 @@ impl Battle<'_> {
             stats,
             damage_reduction_bp: 0,
             vulnerability_bp: vulnerability,
-            defense_down_bp: sum(DebuffKind::DefenseDown).saturating_add(weightless_defense_down),
+            defense_down_bp: sum(DebuffKind::DefenseDown)
+                .saturating_add(weightless_defense_down)
+                .saturating_add(personal_defense_ignore),
             resistance_down_bp: sum(DebuffKind::ResistanceDown(element))
                 .saturating_add(sum(DebuffKind::AllResistanceDown))
                 .saturating_add(weightless_resistance_down)
@@ -852,7 +928,7 @@ impl Battle<'_> {
             DamageKind::Direct,
             Hit {
                 element,
-                multiplier_bp,
+                multiplier_bp: u32::from(multiplier_bp),
                 toughness,
                 origin: self.action,
                 scale: DamageScale::Attack,
@@ -875,7 +951,7 @@ impl Battle<'_> {
             kind,
             Hit {
                 element,
-                multiplier_bp,
+                multiplier_bp: u32::from(multiplier_bp),
                 toughness: 0,
                 origin: Some(origin),
                 scale: DamageScale::Attack,
@@ -898,7 +974,7 @@ impl Battle<'_> {
             DamageKind::Additional,
             Hit {
                 element,
-                multiplier_bp,
+                multiplier_bp: u32::from(multiplier_bp),
                 toughness: 0,
                 origin: Some(origin),
                 scale: DamageScale::Attack,
@@ -922,7 +998,7 @@ impl Battle<'_> {
             DamageKind::Additional,
             Hit {
                 element,
-                multiplier_bp,
+                multiplier_bp: u32::from(multiplier_bp),
                 toughness: 0,
                 origin: Some(origin),
                 scale: DamageScale::MaxHp,
@@ -945,7 +1021,7 @@ impl Battle<'_> {
             DamageKind::Additional,
             Hit {
                 element,
-                multiplier_bp,
+                multiplier_bp: u32::from(multiplier_bp),
                 toughness,
                 origin: Some(origin),
                 scale: DamageScale::Attack,
@@ -969,7 +1045,7 @@ impl Battle<'_> {
                 DamageKind::FollowUp,
                 Hit {
                     element: counter.element,
-                    multiplier_bp,
+                    multiplier_bp: u32::from(multiplier_bp),
                     toughness,
                     origin: Some(origin),
                     scale: DamageScale::AttackAndDefense(defense_multiplier_bp),
@@ -1013,7 +1089,7 @@ impl Battle<'_> {
             DamageKind::DamageOverTime,
             Hit {
                 element: dot.element,
-                multiplier_bp,
+                multiplier_bp: u32::from(multiplier_bp),
                 toughness: 0,
                 origin: Some(dot.origin),
                 scale,
@@ -1224,17 +1300,20 @@ impl Battle<'_> {
         {
             mechanics.after_non_primary_critical_hit(self, actor, target, action, kind);
         }
-        let (hp, max_hp) = self.hp(target);
         if origin.is_some()
             && (self.action.is_some() || kind == DamageKind::FollowUp)
             && kind != DamageKind::DamageOverTime
-            && self.enemies().contains(&target)
-            && hp_before > max_hp / 2
-            && hp <= max_hp / 2
         {
-            self.crossed_half.push(target);
+            self.record_half_hp_crossing(target, hp_before);
         }
         crit
+    }
+
+    fn record_half_hp_crossing(&mut self, target: usize, hp_before: u32) {
+        let (hp, max_hp) = self.hp(target);
+        if self.enemies().contains(&target) && hp_before > max_hp / 2 && hp <= max_hp / 2 {
+            self.crossed_half.push(target);
+        }
     }
 
     pub(super) fn skip_frozen_turn(&mut self, actor: usize, target: usize, thawed: bool) {
@@ -1385,6 +1464,10 @@ impl Battle<'_> {
             (amount, critical)
         };
         let (amount, critical) = damage_with(applied_buffs, &|_| true);
+        let ultimate = event
+            .is_ultimate_hit()
+            .then(|| self.mechanics(actor))
+            .flatten();
         if matches!(self.plan.units[target].kit, Kit::Dummy { .. }) {
             let state = &self.units[target];
             let assists: std::collections::BTreeSet<_> = state
@@ -1438,6 +1521,9 @@ impl Battle<'_> {
                     credits.push((owner, remainder));
                 }
             }
+            if let Some(rules) = ultimate {
+                rules.capture_ultimate_damage(self, actor, target, amount, &credits);
+            }
             self.dummy_damage.push(DummyDamage {
                 av_micros: self.av_micros,
                 actor,
@@ -1449,6 +1535,9 @@ impl Battle<'_> {
                 action: origin.unwrap_or(Action::Basic),
             });
         } else {
+            if let Some(rules) = ultimate {
+                rules.capture_ultimate_damage(self, actor, target, amount, &[]);
+            }
             self.deal_damage(actor, target, kind, amount, critical);
         }
         if amount > 0 && kind == DamageKind::DamageOverTime && offense.enemy.is_some() {
@@ -1467,6 +1556,32 @@ impl Battle<'_> {
             }
         }
         critical
+    }
+
+    pub(super) fn true_damage(
+        &mut self,
+        actor: usize,
+        target: usize,
+        origin: Action,
+        amount: u32,
+        assists: Vec<(usize, u32)>,
+    ) {
+        if matches!(self.plan.units[target].kit, Kit::Dummy { .. }) {
+            self.dummy_damage.push(DummyDamage {
+                av_micros: self.av_micros,
+                actor,
+                target,
+                kind: DamageKind::TrueDamage,
+                critical: false,
+                amount,
+                assists,
+                action: origin,
+            });
+        } else if self.is_targetable(target) {
+            let hp_before = self.units[target].hp;
+            self.deal_damage(actor, target, DamageKind::TrueDamage, amount, false);
+            self.record_half_hp_crossing(target, hp_before);
+        }
     }
 
     fn deal_damage(

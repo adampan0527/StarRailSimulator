@@ -134,6 +134,11 @@ pub(crate) enum Effect {
         multiplier_bp: u16,
         toughness: u16,
     },
+    WideHit {
+        element: Element,
+        multiplier_bp: u32,
+        toughness: u16,
+    },
     MaxHpHit {
         element: Element,
         multiplier_bp: u16,
@@ -180,6 +185,7 @@ impl Effect {
         matches!(
             self,
             Self::Hit { .. }
+                | Self::WideHit { .. }
                 | Self::MaxHpHit { .. }
                 | Self::BlastAdjacent { .. }
                 | Self::RandomHits { .. }

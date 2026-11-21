@@ -92,6 +92,8 @@ type EventKind =
       event:
         | 'wave_started'
         | 'turn_started'
+        | 'extra_turn_started'
+        | 'triggered_skill'
         | 'enemy_attack'
         | 'follow_up'
         | 'weakness_broken'
@@ -170,7 +172,8 @@ export type DamageKind =
   | 'weakness_break'
   | 'damage_over_time'
   | 'additional'
-  | 'follow_up';
+  | 'follow_up'
+  | 'true_damage';
 type DprHit = {
   av_micros: number;
   source_id: string;

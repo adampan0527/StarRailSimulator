@@ -55,7 +55,7 @@ export function BattlePanel({ battle, playing, busy, issue, onAct }: Props) {
             <ol>
               {order.map(({ unit_id, remaining_av_micros }, index) => (
                 <li
-                  key={unit_id}
+                  key={`${unit_id}:${index === 0 ? 'current' : 'scheduled'}`}
                   className={index === 0 ? 'current-turn' : undefined}
                 >
                   <span>{unitName(unit_id)}</span>

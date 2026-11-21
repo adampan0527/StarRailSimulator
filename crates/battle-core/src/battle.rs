@@ -1,5 +1,6 @@
 mod analysis;
 mod combat_status;
+mod extra_turn;
 mod official;
 mod periodic;
 mod protection;
@@ -22,10 +23,11 @@ pub use analysis::{
     VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
+use extra_turn::ExtraTurns;
 use official::{
     BailuState, DrRatioState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse,
-    MarchHuntState, Mechanics, MishaState, MozeState, SkillPoints, SushangState, TopazState,
-    WeltState, XueyiState, YanqingState, YukongState,
+    MarchHuntState, Mechanics, MishaState, MozeState, SeeleState, SkillPoints, SushangState,
+    TopazState, WeltState, XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     CombatPath, CombatType, OfficialCharacter, OfficialStats, supports_official_dpr,
@@ -120,6 +122,7 @@ struct UnitState {
     hanya_state: HanyaState,
     misha_state: MishaState,
     welt_state: WeltState,
+    seele_state: SeeleState,
     yukong_state: YukongState,
     luocha_state: LuochaState,
     jiaoqiu_field: official::JiaoqiuField,
@@ -148,6 +151,7 @@ pub struct Battle<'a> {
     av_micros: u64,
     wave_index: usize,
     ordinary_actor: Option<usize>,
+    extra_turns: ExtraTurns,
     normal_turns: u32,
     decision_index: u32,
     skill_points: u8,
@@ -159,7 +163,7 @@ pub struct Battle<'a> {
     action: Option<Action>,
     action_target: Option<usize>,
     attack_targets: Vec<usize>,
-    pending_follow_ups: std::collections::VecDeque<resolve::FollowUp>,
+    pending_follow_ups: std::collections::VecDeque<resolve::PendingAttack>,
     resolving_follow_up: bool,
 }
 
@@ -214,6 +218,7 @@ impl<'a> Battle<'a> {
                     hanya_state: HanyaState::default(),
                     misha_state: MishaState::default(),
                     welt_state: WeltState::default(),
+                    seele_state: SeeleState::default(),
                     yukong_state: YukongState::default(),
                     luocha_state: LuochaState::default(),
                     jiaoqiu_field: official::JiaoqiuField::default(),
@@ -231,6 +236,7 @@ impl<'a> Battle<'a> {
             av_micros: 0,
             wave_index: 0,
             ordinary_actor: None,
+            extra_turns: ExtraTurns::default(),
             normal_turns: 0,
             decision_index: 0,
             skill_points: plan.starting_skill_points,
@@ -339,8 +345,11 @@ impl<'a> Battle<'a> {
             SkillPoints::Unchanged => {}
         }
         let ordinary = command.action != Action::Ultimate;
+        let extra_turn = ordinary && self.in_extra_turn(actor);
         if ordinary {
-            self.reset_gauge(actor);
+            if !extra_turn {
+                self.reset_gauge(actor);
+            }
         } else {
             self.set_energy(actor, actor, 0);
         }
@@ -364,12 +373,17 @@ impl<'a> Battle<'a> {
         self.units[actor].active_penetration_bp = 0;
         self.action = None;
         self.action_target = None;
-        if ordinary {
+        if extra_turn {
+            self.finish_extra_turn();
+        } else if ordinary {
             self.finish_turn(actor);
             self.ordinary_actor = None;
         }
         self.resolve_wave_or_end();
-        if self.ordinary_actor.is_none() {
+        if self.outcome == Outcome::Ongoing
+            && !self.start_extra_turn()
+            && self.ordinary_actor.is_none()
+        {
             self.advance_to_decision();
         }
         Ok(())
@@ -416,19 +430,26 @@ impl<'a> Battle<'a> {
         }
     }
 
-    /// Shows the current actor, then pending turns ordered by the current action gauges.
+    /// Shows the acting unit, an interrupted ordinary turn, then action-gauge order.
     pub fn action_order(&self) -> Vec<ActionOrderEntry> {
         if self.outcome != Outcome::Ongoing {
             return Vec::new();
         }
+        let interrupted = self.interrupted_turn_actor();
+        let current_scheduled = if self.extra_turn_active() {
+            interrupted
+        } else {
+            self.ordinary_actor
+        };
         let mut pending: Vec<_> = self
             .scheduled_turns()
-            .filter(|(_, _, slot)| self.ordinary_actor.map(TurnSlot::Unit).as_ref() != Some(slot))
+            .filter(|(_, _, slot)| current_scheduled.map(TurnSlot::Unit).as_ref() != Some(slot))
             .collect();
         pending.sort_unstable();
         self.ordinary_actor
-            .iter()
-            .map(|&unit| (0, false, TurnSlot::Unit(unit)))
+            .into_iter()
+            .chain(interrupted)
+            .map(|unit| (0, false, TurnSlot::Unit(unit)))
             .chain(pending)
             .filter_map(|(remaining_av_micros, _, slot)| {
                 let unit_id = match slot {
@@ -687,6 +708,9 @@ impl<'a> Battle<'a> {
 
     fn advance_to_decision(&mut self) {
         while self.outcome == Outcome::Ongoing {
+            if self.start_extra_turn() {
+                return;
+            }
             if self.normal_turns == TURN_LIMIT {
                 self.end(Outcome::TurnLimit);
                 return;
