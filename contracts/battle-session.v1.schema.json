@@ -175,7 +175,9 @@
       "properties": {
         "decision_index": { "$ref": "#/$defs/uint32" },
         "actor_id": { "$ref": "#/$defs/id" },
-        "action": { "enum": ["basic", "skill", "ultimate"] },
+        "action": {
+          "enum": ["basic", "skill", "ultimate", "enhanced_ultimate"]
+        },
         "target_id": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }] }
       }
     }

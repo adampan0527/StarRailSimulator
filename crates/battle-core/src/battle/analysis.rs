@@ -198,9 +198,15 @@ fn offensive_priority(battle: &Battle<'_>, command: &Command) -> u8 {
     }
     let damaging = actor
         .and_then(|unit| battle.check_action(unit, command.action).ok())
-        .is_some_and(|(ability, _)| ability.effects.iter().any(|effect| effect.deals_damage()));
+        .is_some_and(|checked| {
+            checked
+                .ability
+                .effects
+                .iter()
+                .any(|effect| effect.deals_damage())
+        });
     match (command.action, damaging) {
-        (Action::Ultimate, true) => 0,
+        (Action::Ultimate | Action::EnhancedUltimate, true) => 0,
         (Action::Basic, _)
             if actor.is_some_and(|unit| {
                 battle.mechanics(unit).is_some_and(|mechanics| {

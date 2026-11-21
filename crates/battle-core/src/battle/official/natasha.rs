@@ -164,7 +164,7 @@ impl Mechanics for Natasha {
     fn heal_over_time(&self, battle: &mut Battle<'_>, actor: usize, target: usize, origin: Action) {
         let healing = match origin {
             Action::Skill => self.skill_hot,
-            Action::Ultimate => E2_HOT,
+            Action::Ultimate | Action::EnhancedUltimate => E2_HOT,
             Action::Basic => return,
         };
         self.heal(battle, actor, target, healing);

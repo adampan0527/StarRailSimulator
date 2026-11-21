@@ -347,7 +347,7 @@ impl Mechanics for Welt {
                     additional(battle, actor, target, multiplier, action);
                 }
             }
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 if self.weightless.is_none() && self.eidolon >= 1 {
                     battle.units[actor].welt_state.honor_charges = 2;
                 }

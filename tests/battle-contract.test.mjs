@@ -35,3 +35,11 @@ test('rejects a floating profile reference and a seed beyond the portable range'
   session.input.seed = 4_294_967_296;
   assert.equal(validate(session), false);
 });
+
+test('the replay schema accepts both Ultimate action types', () => {
+  const session = load('battle-session.v1.example.json');
+  session.commands[0].action = 'ultimate';
+  assert.ok(validate(session), JSON.stringify(validate.errors));
+  session.commands[0].action = 'enhanced_ultimate';
+  assert.ok(validate(session), JSON.stringify(validate.errors));
+});

@@ -346,7 +346,7 @@ impl Mechanics for Qingque {
             (Action::Ultimate, _) => {
                 Self::set_hand(battle, actor, actor, JadeHand::Tiles([MAX_TILES, 0, 0]))
             }
-            (Action::Basic, None) => {}
+            (Action::Basic, None) | (Action::EnhancedUltimate, _) => {}
         }
     }
 
@@ -403,7 +403,7 @@ impl Mechanics for Qingque {
                     && state.damage_stacks < MAX_DAMAGE_STACKS;
                 Some(if keep_drawing { 4 } else { 0 })
             }
-            Action::Basic => None,
+            Action::Basic | Action::EnhancedUltimate => None,
         }
     }
 }

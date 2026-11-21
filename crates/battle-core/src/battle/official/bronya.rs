@@ -168,7 +168,7 @@ impl Mechanics for Bronya {
         match (action, target) {
             (Action::Basic, _) => battle.advance(actor, self.talent_advance_bp),
             (Action::Skill, Some(target)) => self.redeploy(battle, actor, target),
-            (Action::Ultimate, _) => self.rally(battle, actor),
+            (Action::Ultimate | Action::EnhancedUltimate, _) => self.rally(battle, actor),
             (Action::Skill, None) => {}
         }
     }
@@ -184,7 +184,7 @@ impl Mechanics for Bronya {
         actor: usize,
         action: Action,
     ) {
-        if action == Action::Ultimate && !battle.in_follow_up() {
+        if action.is_ultimate() && !battle.in_follow_up() {
             Self::activate_pending_speed(battle, owner, actor);
         }
     }
@@ -260,7 +260,7 @@ impl Mechanics for Bronya {
     ) -> Option<u8> {
         match action {
             Action::Basic => None,
-            Action::Ultimate => Some(0),
+            Action::Ultimate | Action::EnhancedUltimate => Some(0),
             Action::Skill => {
                 let preferred = battle
                     .allies()

@@ -212,11 +212,12 @@ pub(crate) struct AllyKit {
 }
 
 impl AllyKit {
-    pub const fn ability(&self, action: Action) -> Ability<'static> {
+    pub const fn ability(&self, action: Action) -> Option<Ability<'static>> {
         match action {
-            Action::Basic => self.basic,
-            Action::Skill => self.skill,
-            Action::Ultimate => self.ultimate,
+            Action::Basic => Some(self.basic),
+            Action::Skill => Some(self.skill),
+            Action::Ultimate => Some(self.ultimate),
+            Action::EnhancedUltimate => None,
         }
     }
 }

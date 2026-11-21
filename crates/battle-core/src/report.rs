@@ -126,6 +126,10 @@ pub enum EventKind {
         suits: [u8; 3],
         hidden_hand: bool,
     },
+    Apotheosis {
+        before: u8,
+        after: u8,
+    },
     Damage {
         kind: DamageKind,
         amount: u32,

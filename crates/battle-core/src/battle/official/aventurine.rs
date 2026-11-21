@@ -312,7 +312,7 @@ impl Mechanics for Aventurine {
                 }
                 self.queue_ready_follow_up(battle, actor);
             }
-            Action::Basic => {}
+            Action::Basic | Action::EnhancedUltimate => {}
         }
     }
 

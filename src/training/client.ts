@@ -49,7 +49,7 @@ export type Setup = {
   boots_speed_tiers_micros: number[];
 };
 
-export type Action = 'basic' | 'skill' | 'ultimate';
+export type Action = 'basic' | 'skill' | 'ultimate' | 'enhanced_ultimate';
 export type Outcome = 'ongoing' | 'victory' | 'defeat' | 'turn_limit';
 export type Command = {
   decision_index: number;
@@ -109,7 +109,12 @@ type EventKind =
   | { event: 'action'; detail: Action }
   | { event: 'battle_ended'; detail: Outcome }
   | {
-      event: 'skill_points' | 'toughness' | 'crimson_knot' | 'blind_bet';
+      event:
+        | 'skill_points'
+        | 'toughness'
+        | 'crimson_knot'
+        | 'blind_bet'
+        | 'apotheosis';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }

@@ -202,7 +202,7 @@ impl Mechanics for Yukong {
                 state.bowstrings = MAX_BOWSTRINGS;
                 state.preserve_bowstrings_this_turn = true;
             }
-            Action::Ultimate => state.energy_refunded = [false; 4],
+            Action::Ultimate | Action::EnhancedUltimate => state.energy_refunded = [false; 4],
             Action::Basic => {}
         }
     }
@@ -298,10 +298,10 @@ impl Mechanics for Yukong {
     ) -> Option<u8> {
         let has_bowstrings = battle.units[actor].yukong_state.bowstrings > 0;
         Some(match action {
-            Action::Ultimate if has_bowstrings || self.eidolon >= 6 => 0,
+            Action::Ultimate | Action::EnhancedUltimate if has_bowstrings || self.eidolon >= 6 => 0,
             Action::Skill if !has_bowstrings => 2,
             Action::Basic => 3,
-            Action::Skill | Action::Ultimate => 4,
+            Action::Skill | Action::Ultimate | Action::EnhancedUltimate => 4,
         })
     }
 }

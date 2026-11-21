@@ -381,7 +381,7 @@ impl Mechanics for Huohuo {
         actor: usize,
         action: Action,
     ) {
-        if action == Action::Ultimate {
+        if action.is_ultimate() {
             self.trigger_talent(battle, owner, actor);
         }
     }
@@ -419,7 +419,7 @@ impl Mechanics for Huohuo {
                     && lowest_hp_ally(battle) == Some(target))
                 .then_some(2)
             }
-            Action::Basic => None,
+            Action::Basic | Action::EnhancedUltimate => None,
         }
     }
 }

@@ -196,7 +196,7 @@ impl Mechanics for Hanya {
                     battle.apply_ally_buff(actor, actor, AllyBuffKind::SpeedPercent, 2_000, 1);
                 }
             }
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 let speed = battle.speed_micros(actor) * self.ultimate_speed_ratio_micros
                     / SPEED_RATIO_SCALE;
                 let speed = u32::try_from(speed).unwrap_or(u32::MAX);
@@ -293,7 +293,7 @@ impl Mechanics for Hanya {
             } else {
                 4
             }),
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 let preferred = battle
                     .allies()
                     .filter(|&unit| unit != actor && battle.is_targetable(unit))

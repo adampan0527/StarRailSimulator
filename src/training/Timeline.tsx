@@ -5,6 +5,7 @@ export const actionNames: Record<Action, string> = {
   basic: '普攻',
   skill: '战技',
   ultimate: '终结技',
+  enhanced_ultimate: '强化终结技',
 };
 
 export const damageNames: Record<DamageKind, string> = {
@@ -82,6 +83,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '盲注变化';
     case 'jade_tiles':
       return '琼玉牌变化';
+    case 'apotheosis':
+      return '升格变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -121,6 +124,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'blind_bet':
     case 'toughness':
     case 'crimson_knot':
+    case 'apotheosis':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;

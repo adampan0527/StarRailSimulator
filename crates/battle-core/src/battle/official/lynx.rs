@@ -221,7 +221,7 @@ impl Mechanics for Lynx {
                     self.use_skill(battle, actor, target);
                 }
             }
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 for ally in battle
                     .allies()
                     .filter(|&target| battle.hp(target).0 > 0)

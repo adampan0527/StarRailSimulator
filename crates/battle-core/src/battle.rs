@@ -136,6 +136,7 @@ struct UnitState {
     fu_xuan_state: FuXuanState,
     acheron_state: AcheronState,
     huohuo_state: HuohuoState,
+    argenti_apotheosis: u8,
     crimson_knots: u8,
     aventurine_state: AventurineState,
     survival_triggered: bool,
@@ -151,6 +152,12 @@ impl UnitState {
     fn magnitude(&self, status: StatusKind) -> u32 {
         self.statuses[status.index()].map_or(0, |status| status.magnitude)
     }
+}
+
+struct CheckedAction<'a> {
+    ability: Ability<'a>,
+    skill_points: SkillPoints,
+    ultimate_cost_milli: Option<u32>,
 }
 
 /// A deterministic state machine advanced only by accepted commands and automatic actions.
@@ -248,6 +255,7 @@ impl<'a> Battle<'a> {
                     fu_xuan_state: FuXuanState::default(),
                     acheron_state: AcheronState::default(),
                     huohuo_state: HuohuoState::default(),
+                    argenti_apotheosis: 0,
                     crimson_knots: 0,
                     aventurine_state: AventurineState::default(),
                     survival_triggered: false,
@@ -337,6 +345,7 @@ impl<'a> Battle<'a> {
         }
         for actor in self.allies() {
             self.list_actions(actor, Action::Ultimate, &mut actions);
+            self.list_actions(actor, Action::EnhancedUltimate, &mut actions);
         }
         actions
     }
@@ -353,7 +362,11 @@ impl<'a> Battle<'a> {
             .allies()
             .find(|&unit| self.plan.units[unit].id == command.actor_id)
             .ok_or(BattleError::InvalidActor)?;
-        let (ability, skill_points) = self.check_action(actor, command.action)?;
+        let CheckedAction {
+            ability,
+            skill_points,
+            ultimate_cost_milli,
+        } = self.check_action(actor, command.action)?;
         let target = match (ability.target, command.target_id.as_deref()) {
             (Target::Ally | Target::OtherAlly, Some(id)) => {
                 let target = self.find_target(self.allies(), id)?;
@@ -372,7 +385,7 @@ impl<'a> Battle<'a> {
         let keeps_turn = mechanics
             .as_ref()
             .is_some_and(|rules| rules.keeps_turn(command.action));
-        let ends_turn = command.action != Action::Ultimate && !keeps_turn;
+        let ends_turn = ultimate_cost_milli.is_none() && !keeps_turn;
         self.decision_index += 1;
         self.action = Some(command.action);
         self.action_target = target;
@@ -387,8 +400,8 @@ impl<'a> Battle<'a> {
             SkillPoints::Unchanged => {}
         }
         let extra_turn = ends_turn && self.in_extra_turn(actor);
-        if command.action == Action::Ultimate {
-            self.set_energy(actor, actor, 0);
+        if let Some(cost) = ultimate_cost_milli {
+            self.set_energy(actor, actor, self.units[actor].energy_milli - cost);
         } else if ends_turn && !extra_turn {
             self.reset_gauge(actor);
         }
@@ -512,40 +525,50 @@ impl<'a> Battle<'a> {
             .collect()
     }
 
-    fn check_action(
-        &self,
-        actor: usize,
-        action: Action,
-    ) -> Result<(Ability<'a>, SkillPoints), BattleError> {
+    fn check_action(&self, actor: usize, action: Action) -> Result<CheckedAction<'a>, BattleError> {
+        if self.units[actor].hp == 0 {
+            return Err(BattleError::InvalidActor);
+        }
         let kit = &self.plan.units[actor].kit;
         let (ability, skill_points) = match kit {
             Kit::Ally(kit) => (
-                kit.ability(action),
+                kit.ability(action).ok_or(BattleError::IllegalTiming)?,
                 match action {
                     Action::Basic => SkillPoints::Generate,
                     Action::Skill => SkillPoints::Spend,
-                    Action::Ultimate => SkillPoints::Unchanged,
+                    Action::Ultimate | Action::EnhancedUltimate => SkillPoints::Unchanged,
                 },
             ),
             Kit::Official(kit) => kit
                 .mechanics
                 .ability_override(self, actor, action)
-                .map_or_else(|| kit.ability(action), official::OfficialAbility::resolve),
+                .map(official::OfficialAbility::resolve)
+                .or_else(|| kit.ability(action))
+                .ok_or(BattleError::IllegalTiming)?,
             Kit::Enemy(_) | Kit::Dummy { .. } => return Err(BattleError::InvalidActor),
         };
-        if self.units[actor].hp == 0 {
-            return Err(BattleError::InvalidActor);
-        }
-        if action == Action::Ultimate {
+        let ultimate_cost_milli = if action.is_ultimate() {
             match self
                 .mechanics(actor)
                 .and_then(|mechanics| mechanics.alternate_ultimate_resource_ready(self, actor))
             {
                 Some(false) => return Err(BattleError::InsufficientUltimateResource),
-                None if self.units[actor].energy_milli < kit.max_energy_milli() => {
-                    return Err(BattleError::InsufficientEnergy);
+                Some(true) => Some(0),
+                None => {
+                    let energy_range = self
+                        .mechanics(actor)
+                        .and_then(|mechanics| mechanics.ultimate_energy_range(action))
+                        .unwrap_or_else(|| kit.max_energy_milli()..=kit.max_energy_milli());
+                    let current_energy = self.units[actor].energy_milli;
+                    let cost = *energy_range.start();
+                    if current_energy < cost {
+                        return Err(BattleError::InsufficientEnergy);
+                    }
+                    if current_energy > *energy_range.end() {
+                        return Err(BattleError::IllegalTiming);
+                    }
+                    Some(cost)
                 }
-                _ => {}
             }
         } else {
             if self.ordinary_actor != Some(actor)
@@ -559,12 +582,17 @@ impl<'a> Battle<'a> {
             if skill_points == SkillPoints::Spend && self.skill_points == 0 {
                 return Err(BattleError::InsufficientSkillPoints);
             }
-        }
-        Ok((ability, skill_points))
+            None
+        };
+        Ok(CheckedAction {
+            ability,
+            skill_points,
+            ultimate_cost_milli,
+        })
     }
 
     fn list_actions(&self, actor: usize, action: Action, actions: &mut Vec<Command>) {
-        let Ok((ability, _)) = self.check_action(actor, action) else {
+        let Ok(CheckedAction { ability, .. }) = self.check_action(actor, action) else {
             return;
         };
         let mut add = |target: Option<usize>| {
@@ -670,7 +698,7 @@ impl<'a> Battle<'a> {
         state.active_attack_bonus_bp = std::mem::take(&mut state.next_attack_bonus_bp);
         if let Some((bp, cooldown)) = state.pending_penetration.take() {
             state.active_penetration_bp = bp;
-            let after_this_turn = u32::from(action != Action::Ultimate);
+            let after_this_turn = u32::from(!action.is_ultimate());
             state.penetration_ready_after_turn = state.finished_turns + after_this_turn + cooldown;
         }
     }
