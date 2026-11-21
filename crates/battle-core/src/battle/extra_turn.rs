@@ -31,6 +31,7 @@ impl Battle<'_> {
             self.extra_turns.interrupted = self.ordinary_actor.replace(actor);
             self.extra_turns.active = true;
             self.emit(EventKind::ExtraTurnStarted, Some(actor), None);
+            self.notify_ally_turn_opening(actor, true);
             if let Some(rules) = self.mechanics(actor) {
                 rules.on_extra_turn_start(self, actor);
             }

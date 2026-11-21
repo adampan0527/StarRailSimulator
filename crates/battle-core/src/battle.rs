@@ -26,9 +26,9 @@ use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use extra_turn::ExtraTurns;
 use official::{
     AcheronState, BailuState, BlackSwanTarget, DrRatioState, FeixiaoState, FuXuanState,
-    GallagherState, HanyaState, Invigoration, JingYuanState, LuochaState, LynxResponse,
-    MarchHuntState, Mechanics, MishaState, MozeState, SeeleState, SkillPoints, SushangState,
-    TopazState, WeltState, XueyiState, YanqingState, YukongState,
+    GallagherState, HanyaState, HuohuoState, Invigoration, JingYuanState, LuochaState,
+    LynxResponse, MarchHuntState, Mechanics, MishaState, MozeState, SeeleState, SkillPoints,
+    SushangState, TopazState, WeltState, XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     CombatPath, CombatType, OfficialCharacter, OfficialStats, supports_official_dpr,
@@ -133,6 +133,7 @@ struct UnitState {
     feixiao_state: FeixiaoState,
     fu_xuan_state: FuXuanState,
     acheron_state: AcheronState,
+    huohuo_state: HuohuoState,
     crimson_knots: u8,
     survival_triggered: bool,
     finished_turns: u32,
@@ -241,6 +242,7 @@ impl<'a> Battle<'a> {
                     feixiao_state: FeixiaoState::default(),
                     fu_xuan_state: FuXuanState::default(),
                     acheron_state: AcheronState::default(),
+                    huohuo_state: HuohuoState::default(),
                     crimson_knots: 0,
                     survival_triggered: false,
                     finished_turns: 0,
@@ -812,6 +814,7 @@ impl<'a> Battle<'a> {
             match kit {
                 Kit::Ally(_) | Kit::Official(_) => {
                     self.tick_heals_over_time(actor);
+                    self.notify_ally_turn_opening(actor, false);
                     if self.thaw(actor) {
                         self.finish_turn(actor);
                         self.resolve_wave_or_end();

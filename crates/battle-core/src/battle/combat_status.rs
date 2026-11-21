@@ -347,7 +347,7 @@ impl Battle<'_> {
             + special
     }
 
-    pub(super) fn cleanse_one(&mut self, actor: usize, target: usize) {
+    pub(super) fn cleanse_one(&mut self, actor: usize, target: usize) -> bool {
         let state = &mut self.units[target];
         let expired = if let Some(index) = state
             .debuffs
@@ -368,7 +368,7 @@ impl Battle<'_> {
             && !self.clear_periodic_debuff(target)
         {
             let Some(status) = self.units[target].entanglement.take() else {
-                return;
+                return false;
             };
             self.emit(
                 EventKind::StatusExpired(StatusKind::Entangled),
@@ -377,6 +377,7 @@ impl Battle<'_> {
             );
         }
         self.emit(EventKind::StatusCleared, Some(actor), Some(target));
+        true
     }
 
     fn clear_periodic_debuff(&mut self, target: usize) -> bool {
