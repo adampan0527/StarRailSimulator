@@ -679,6 +679,113 @@ fn saved_follow_up_team_tracks_numby_and_debt_assists() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_summons_flying_aureus_and_arcana() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [jing_yuan, feixiao, black_swan, topaz] = [
+        "character.1204",
+        "character.1220",
+        "character.1307",
+        "character.1112",
+    ];
+    let team = archive
+        .save_team(
+            None,
+            "召唤、飞黄与奥迹",
+            &[jing_yuan, feixiao, black_swan, topaz].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    for source in [jing_yuan, topaz] {
+        assert!(hits().any(|hit| hit.source_id == source && hit.kind == DamageKind::FollowUp));
+    }
+    assert!(hits().any(|hit| {
+        hit.source_id == feixiao && hit.action == Action::Ultimate && hit.kind == DamageKind::Direct
+    }));
+    assert!(
+        hits().any(|hit| hit.source_id == black_swan && hit.kind == DamageKind::DamageOverTime)
+    );
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
+#[cfg(bundled_catalog)]
+#[test]
+fn black_swan_preserves_arcana_sources_with_both_saved_variants() {
+    use star_rail_battle_core::DamageKind;
+    use star_rail_profiles::Catalog;
+
+    let dir = TestData::new();
+    let black_swan = "character.1307";
+    let catalog = Catalog::from_json(include_str!("../../.m03-data/4.7.0/catalog.json")).unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let forms = [
+        black_swan,
+        "character.1005",
+        "character.1108",
+        "character.1210",
+    ];
+    let team = archive
+        .save_team(None, "奥迹与引爆", &forms.map(|id| Some(id.into())))
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        let result = checked.result.unwrap();
+        assert!(
+            result
+                .targets
+                .iter()
+                .flat_map(|target| &target.hits)
+                .any(|hit| {
+                    hit.source_id == black_swan && hit.kind == DamageKind::DamageOverTime
+                })
+        );
+        assert_eq!(
+            result.total_damage,
+            result
+                .characters
+                .iter()
+                .map(|actor| actor.own_damage + actor.assist_damage)
+                .sum::<u64>()
+        );
+        result
+    };
+    let enhanced = run();
+    let base = catalog
+        .default_loadout_at(black_swan, "base", 80, 6)
+        .unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog).unwrap();
+    let profile = profiles.profile(black_swan).unwrap();
+    assert_eq!(
+        profile.presets[&profile.current_preset].variant_id,
+        "novaflare"
+    );
+    profiles
+        .save_preset(black_swan, "原版", &base, true)
+        .unwrap();
+    let original = run();
+    assert_ne!(enhanced.total_damage, original.total_damage);
+    assert_eq!(original, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
