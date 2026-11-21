@@ -24,8 +24,8 @@ pub use analysis::{
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use official::{
     BailuState, DrRatioState, GallagherState, HanyaState, Invigoration, LuochaState, LynxResponse,
-    Mechanics, MishaState, MozeState, SkillPoints, SushangState, XueyiState, YanqingState,
-    YukongState,
+    Mechanics, MishaState, MozeState, SkillPoints, SushangState, TopazState, XueyiState,
+    YanqingState, YukongState,
 };
 pub use official::{
     OfficialCharacter, OfficialStats, supports_official_dpr, supports_official_dpr_variant,
@@ -44,12 +44,44 @@ struct Status {
     expires_after_turn: u32,
 }
 
+#[derive(Clone, Copy)]
+struct SummonTurn {
+    name: &'static str,
+    speed_micros: u64,
+    gauge_quanta: u64,
+    advanced_to_front: bool,
+}
+
+impl SummonTurn {
+    fn new(name: &'static str, speed_micros: u64) -> Self {
+        Self {
+            name,
+            speed_micros,
+            gauge_quanta: GAUGE_FULL,
+            advanced_to_front: false,
+        }
+    }
+
+    fn advance(&mut self, bp: u16) {
+        self.gauge_quanta = self.gauge_quanta.saturating_sub(resolve::gauge_for(bp));
+        self.advanced_to_front = self.gauge_quanta == 0;
+    }
+}
+
+// Equal AV and advance priority preserve unit order, then summon owner order.
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+enum TurnSlot {
+    Unit(usize),
+    Summon(usize),
+}
+
 #[derive(Clone)]
 struct UnitState {
     hp: u32,
     energy_milli: u32,
     toughness: u16,
     gauge_quanta: u64,
+    summon_turn: Option<SummonTurn>,
     normal_turns: u32,
     departed: bool,
     advanced_to_front: bool,
@@ -74,6 +106,7 @@ struct UnitState {
     luka_state: LukaState,
     himeko_charge: u8,
     moze_state: MozeState,
+    topaz_state: TopazState,
     xueyi_state: XueyiState,
     sushang_state: SushangState,
     yanqing_state: YanqingState,
@@ -140,6 +173,7 @@ impl<'a> Battle<'a> {
                     energy_milli: unit.starting_energy_milli,
                     toughness: unit.kit.max_toughness(),
                     gauge_quanta: GAUGE_FULL,
+                    summon_turn: None,
                     normal_turns: 0,
                     departed: false,
                     advanced_to_front: false,
@@ -164,6 +198,7 @@ impl<'a> Battle<'a> {
                     luka_state: LukaState::default(),
                     himeko_charge: 0,
                     moze_state: MozeState::default(),
+                    topaz_state: TopazState::default(),
                     xueyi_state: XueyiState::default(),
                     sushang_state: SushangState::default(),
                     yanqing_state: YanqingState::default(),
@@ -376,18 +411,26 @@ impl<'a> Battle<'a> {
             return Vec::new();
         }
         let mut pending: Vec<_> = self
-            .turn_candidates()
-            .filter(|&unit| Some(unit) != self.ordinary_actor)
-            .map(|unit| self.turn_priority(unit))
+            .scheduled_turns()
+            .filter(|(_, _, slot)| self.ordinary_actor.map(TurnSlot::Unit).as_ref() != Some(slot))
             .collect();
         pending.sort_unstable();
         self.ordinary_actor
             .iter()
-            .map(|&unit| (0, false, unit))
+            .map(|&unit| (0, false, TurnSlot::Unit(unit)))
             .chain(pending)
-            .map(|(remaining_av_micros, _, unit)| ActionOrderEntry {
-                unit_id: self.plan.units[unit].id.clone(),
-                remaining_av_micros,
+            .filter_map(|(remaining_av_micros, _, slot)| {
+                let unit_id = match slot {
+                    TurnSlot::Unit(unit) => self.plan.units[unit].id.clone(),
+                    TurnSlot::Summon(owner) => {
+                        let summon = self.units[owner].summon_turn?;
+                        format!("summon:{}:{}", self.plan.units[owner].id, summon.name)
+                    }
+                };
+                Some(ActionOrderEntry {
+                    unit_id,
+                    remaining_av_micros,
+                })
             })
             .collect()
     }
@@ -607,13 +650,25 @@ impl<'a> Battle<'a> {
             .filter(|&unit| self.is_targetable(unit))
     }
 
-    fn turn_priority(&self, unit: usize) -> (u64, bool, usize) {
-        let state = &self.units[unit];
-        (
-            state.gauge_quanta.div_ceil(self.speed_micros(unit)),
-            !state.advanced_to_front,
-            unit,
-        )
+    fn scheduled_turns(&self) -> impl Iterator<Item = (u64, bool, TurnSlot)> {
+        let units = self.turn_candidates().map(|unit| {
+            let state = &self.units[unit];
+            (
+                state.gauge_quanta.div_ceil(self.speed_micros(unit)),
+                !state.advanced_to_front,
+                TurnSlot::Unit(unit),
+            )
+        });
+        let summons = self.allies().filter_map(|owner| {
+            let state = &self.units[owner];
+            let summon = state.summon_turn.filter(|_| state.hp > 0)?;
+            Some((
+                summon.gauge_quanta.div_ceil(summon.speed_micros),
+                !summon.advanced_to_front,
+                TurnSlot::Summon(owner),
+            ))
+        });
+        units.chain(summons)
     }
 
     fn advance_to_decision(&mut self) {
@@ -622,11 +677,7 @@ impl<'a> Battle<'a> {
                 self.end(Outcome::TurnLimit);
                 return;
             }
-            let Some((delta, _, actor)) = self
-                .turn_candidates()
-                .map(|unit| self.turn_priority(unit))
-                .min()
-            else {
+            let Some((delta, _, slot)) = self.scheduled_turns().min() else {
                 self.end(Outcome::Defeat);
                 return;
             };
@@ -640,6 +691,30 @@ impl<'a> Battle<'a> {
                 }
             }
             self.normal_turns += 1;
+            for owner in self.allies() {
+                let state = &mut self.units[owner];
+                if state.hp > 0
+                    && let Some(summon) = &mut state.summon_turn
+                {
+                    summon.gauge_quanta = summon
+                        .gauge_quanta
+                        .saturating_sub(delta * summon.speed_micros);
+                }
+            }
+            let actor = match slot {
+                TurnSlot::Unit(actor) => actor,
+                TurnSlot::Summon(owner) => {
+                    if let Some(summon) = &mut self.units[owner].summon_turn {
+                        summon.gauge_quanta = GAUGE_FULL;
+                        summon.advanced_to_front = false;
+                    }
+                    if let Some(mechanics) = self.mechanics(owner) {
+                        mechanics.on_summon_turn(self, owner);
+                    }
+                    self.resolve_wave_or_end();
+                    continue;
+                }
+            };
             self.units[actor].normal_turns += 1;
             self.units[actor].advanced_to_front = false;
             self.emit(EventKind::TurnStarted, Some(actor), None);

@@ -118,6 +118,21 @@ enum FollowUpTargets {
 }
 
 impl Battle<'_> {
+    pub(super) fn is_follow_up_damage(
+        &self,
+        actor: usize,
+        action: Option<Action>,
+        kind: DamageKind,
+    ) -> bool {
+        match (kind, action, &self.plan.units[actor].kit) {
+            (DamageKind::FollowUp, _, _) => true,
+            (DamageKind::Direct, Some(action), Kit::Official(kit)) => {
+                kit.mechanics.primary_attack_counts_as_follow_up(action)
+            }
+            _ => false,
+        }
+    }
+
     pub(super) fn resolve_ability(
         &mut self,
         actor: usize,
@@ -435,7 +450,7 @@ impl Battle<'_> {
         }
     }
 
-    fn random_living_enemy(&mut self) -> Option<usize> {
+    pub(super) fn random_living_enemy(&mut self) -> Option<usize> {
         let live: Vec<_> = self
             .enemies()
             .filter(|&unit| self.units[unit].hp > 0)
@@ -515,6 +530,10 @@ impl Battle<'_> {
 
     pub(super) fn finish_attack(&mut self, actor: usize, origin: Action) {
         self.notify_attack(actor, origin);
+        self.resolve_follow_ups();
+    }
+
+    pub(super) fn resolve_follow_ups(&mut self) {
         while let Some(follow_up) = self.pending_follow_ups.pop_front() {
             let FollowUp {
                 actor,
@@ -705,11 +724,7 @@ impl Battle<'_> {
         }
         self.mechanics(owner).map_or((0, 0), |mechanics| {
             let ultimate = event.is_ultimate_hit();
-            let follow_up = event.kind == DamageKind::FollowUp
-                || (ultimate
-                    && self
-                        .mechanics(actor)
-                        .is_some_and(|source| source.ultimate_counts_as_follow_up()));
+            let follow_up = self.is_follow_up_damage(actor, event.origin, event.kind);
             let mut vulnerability = 0_u32;
             if ultimate {
                 vulnerability = mechanics.ultimate_vulnerability_bp(self, owner, target);
@@ -998,10 +1013,18 @@ impl Battle<'_> {
         {
             self.attack_targets.push(target);
             self.stack_entanglement(target);
+            let follow_up = self.is_follow_up_damage(actor, origin, kind);
             for owner in self.allies() {
                 if self.units[owner].hp > 0
                     && let Some(mechanics) = self.mechanics(owner)
                 {
+                    mechanics.on_first_attack_hit(
+                        self,
+                        owner,
+                        target,
+                        kind == DamageKind::Direct,
+                        follow_up,
+                    );
                     mechanics.on_attack_target(self, owner, target);
                 }
             }
@@ -1262,6 +1285,7 @@ impl Battle<'_> {
             enemy: self.enemies().contains(&target).then_some(target),
             element,
             kind,
+            follow_up: self.is_follow_up_damage(actor, origin, kind),
         };
         let incoming_reduction_bp = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
@@ -1461,6 +1485,7 @@ impl Battle<'_> {
                 }
             }
             self.units[target].statuses.fill(None);
+            self.units[target].summon_turn = None;
             self.units[target].shields.clear();
             self.units[target].shocks.clear();
             self.units[target].frozen = None;
