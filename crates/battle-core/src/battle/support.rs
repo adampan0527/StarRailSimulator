@@ -10,8 +10,13 @@ pub(super) enum AllyBuffKind {
     AttackFlat,
     AttackPercent,
     BreakEffect,
+    CritRate,
     CritDamage,
+    CritOverflowRatio,
     Damage,
+    DefenseIgnore {
+        summon: bool,
+    },
     DefensePercent,
     EffectResistance,
     MaxHpFlat,
@@ -58,9 +63,11 @@ pub(super) struct OffenseBuffs {
     pub break_effect_bp: u32,
     pub max_hp_flat: u32,
     pub defense_bp: u32,
+    pub defense_ignore_bp: u32,
     pub damage_bp: u32,
     pub crit_rate_bp: u32,
     pub crit_damage_bp: u32,
+    pub crit_overflow_ratio_bp: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -70,6 +77,7 @@ pub(super) struct OffenseContext {
     pub element: Element,
     pub kind: DamageKind,
     pub follow_up: bool,
+    pub summon: bool,
 }
 
 impl OffenseBuffs {
@@ -79,9 +87,15 @@ impl OffenseBuffs {
         self.break_effect_bp = self.break_effect_bp.saturating_add(buff.break_effect_bp);
         self.max_hp_flat = self.max_hp_flat.saturating_add(buff.max_hp_flat);
         self.defense_bp = self.defense_bp.saturating_add(buff.defense_bp);
+        self.defense_ignore_bp = self
+            .defense_ignore_bp
+            .saturating_add(buff.defense_ignore_bp);
         self.damage_bp = self.damage_bp.saturating_add(buff.damage_bp);
         self.crit_rate_bp = self.crit_rate_bp.saturating_add(buff.crit_rate_bp);
         self.crit_damage_bp = self.crit_damage_bp.saturating_add(buff.crit_damage_bp);
+        self.crit_overflow_ratio_bp = self
+            .crit_overflow_ratio_bp
+            .saturating_add(buff.crit_overflow_ratio_bp);
     }
 }
 
@@ -233,6 +247,7 @@ impl Battle<'_> {
             element,
             kind,
             follow_up,
+            summon,
         } = context;
         let mut bonuses = OffenseBuffs::default();
         for buff in self.units[target]
@@ -244,13 +259,19 @@ impl Battle<'_> {
                 AllyBuffKind::AttackFlat => &mut bonuses.attack_flat,
                 AllyBuffKind::AttackPercent => &mut bonuses.attack_bp,
                 AllyBuffKind::BreakEffect => &mut bonuses.break_effect_bp,
+                AllyBuffKind::CritRate => &mut bonuses.crit_rate_bp,
                 AllyBuffKind::CritDamage => &mut bonuses.crit_damage_bp,
+                AllyBuffKind::CritOverflowRatio => &mut bonuses.crit_overflow_ratio_bp,
                 AllyBuffKind::Damage => &mut bonuses.damage_bp,
+                AllyBuffKind::DefenseIgnore {
+                    summon: applies_to_summon,
+                } if summon == applies_to_summon => &mut bonuses.defense_ignore_bp,
                 AllyBuffKind::DefensePercent => &mut bonuses.defense_bp,
                 AllyBuffKind::MaxHpFlat => &mut bonuses.max_hp_flat,
                 AllyBuffKind::SpeedFlat
                 | AllyBuffKind::SpeedPercent
-                | AllyBuffKind::EffectResistance => continue,
+                | AllyBuffKind::EffectResistance
+                | AllyBuffKind::DefenseIgnore { .. } => continue,
             };
             *total = total.saturating_add(buff.value);
         }
@@ -275,7 +296,9 @@ impl Battle<'_> {
             bonuses.attack_flat = bonuses
                 .attack_flat
                 .saturating_add(mechanics.ally_attack_bonus_flat(self, source, target));
-            bonuses.crit_rate_bp = mechanics.ally_crit_rate_bonus_bp(self, source, target);
+            bonuses.crit_rate_bp = bonuses
+                .crit_rate_bp
+                .saturating_add(mechanics.ally_crit_rate_bonus_bp(self, source, target));
             bonuses.crit_damage_bp = bonuses
                 .crit_damage_bp
                 .saturating_add(mechanics.ally_crit_damage_bonus_bp(self, source, target));
@@ -328,6 +351,7 @@ impl Battle<'_> {
                     element: Element::Physical,
                     kind: DamageKind::Direct,
                     follow_up: false,
+                    summon: false,
                 },
                 |_| true,
             )
@@ -343,6 +367,7 @@ impl Battle<'_> {
                 element: Element::Physical,
                 kind: DamageKind::Direct,
                 follow_up: false,
+                summon: false,
             },
             |_| true,
         );

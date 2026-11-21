@@ -38,6 +38,7 @@ mod seele;
 mod serval;
 mod silver_wolf;
 mod sparkle;
+mod sunday;
 mod sushang;
 mod tingyun;
 mod topaz;
@@ -64,6 +65,7 @@ pub(super) use {
     qingque::QingqueState,
     seele::SeeleState,
     sparkle::SparkleState,
+    sunday::SundayState,
     topaz::TopazState,
     welt::WeltState,
     xueyi::XueyiState,
@@ -976,6 +978,16 @@ pub(super) trait Mechanics: Send + Sync {
         DamageTargetAura::default()
     }
 
+    fn damage_comes_from_summon(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _origin: Option<Action>,
+        _kind: DamageKind,
+    ) -> bool {
+        false
+    }
+
     fn all_resistance_down_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
         0
     }
@@ -1070,6 +1082,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         black_swan::FORM => Some(black_swan::build),
         acheron::FORM => Some(acheron::build),
         "character.1312" => Some(misha::build),
+        sunday::FORM => Some(sunday::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         march_hunt::FORM => Some(march_hunt::build),
         "march_7th.preservation" => Some(march_preservation::build),

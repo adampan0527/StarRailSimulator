@@ -267,6 +267,21 @@ impl Mechanics for Topaz {
         battle.units[owner].topaz_state.numby_turn = false;
     }
 
+    fn damage_comes_from_summon(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        origin: Option<Action>,
+        kind: DamageKind,
+    ) -> bool {
+        // The Skill uses Numby even when its independent turn is not in progress.
+        origin == Some(Action::Skill)
+            && matches!(
+                kind,
+                DamageKind::Direct | DamageKind::FollowUp | DamageKind::WeaknessBreak
+            )
+    }
+
     fn after_follow_up(&self, battle: &mut Battle<'_>, actor: usize, _origin: Action) {
         if battle.units[actor].topaz_state.numby_turn {
             self.finish_numby_attack(battle, actor, true);

@@ -207,6 +207,17 @@ impl Mechanics for JingYuan {
         Self::set_hits(battle, owner, BASE_HITS);
     }
 
+    fn damage_comes_from_summon(
+        &self,
+        battle: &Battle<'_>,
+        actor: usize,
+        _origin: Option<Action>,
+        kind: DamageKind,
+    ) -> bool {
+        battle.units[actor].jing_yuan_state.lightning_lord_attacking
+            && matches!(kind, DamageKind::FollowUp | DamageKind::WeaknessBreak)
+    }
+
     fn after_follow_up_hit(
         &self,
         battle: &mut Battle<'_>,

@@ -11,7 +11,7 @@ use super::{
     Battle, DummyDamage, Kit, Status,
     combat_status::DebuffKind,
     periodic::{DotEvent, DotScale},
-    support::{OffenseBuffs, OffenseContext},
+    support::{OffenseBuffs, OffenseContext, percentage_of},
 };
 
 struct Hit {
@@ -1697,6 +1697,9 @@ impl Battle<'_> {
             element,
             kind,
             follow_up: self.is_follow_up_damage(actor, origin, kind),
+            summon: self
+                .mechanics(actor)
+                .is_some_and(|rules| rules.damage_comes_from_summon(self, actor, origin, kind)),
         };
         let distribution = self.damage_distribution(actor, target);
         let recipient = |unit, share_bp| DamageRecipient {
@@ -1722,20 +1725,28 @@ impl Battle<'_> {
                     ))
                     > 0
             })
-            .map(|rate| (rate, self.rng.below(10_000)));
+            .map(|_| self.rng.below(10_000));
         let damage_with = |recipient: DamageRecipient,
-                           bonus: OffenseBuffs,
+                           mut bonus: OffenseBuffs,
                            allow: &dyn Fn(usize) -> bool| {
             let mut defender = self.damage_target(actor, recipient.unit, element, &event, allow);
             defender.damage_share_bp = recipient.share_bp;
             defender.damage_reduction_bp = recipient.reduction_bp;
+            defender.defense_down_bp = defender
+                .defense_down_bp
+                .saturating_add(bonus.defense_ignore_bp);
             let defense = self.defense_with_buff(actor, bonus.defense_bp);
-            let critical = crit_roll.is_some_and(|(rate, roll)| {
-                roll < u64::from(
-                    rate.saturating_add(bonus.crit_rate_bp)
-                        .saturating_add(crit_rate_from_defense(defense)),
-                )
-            });
+            let total_crit_rate = crit_rate_bp
+                .unwrap_or_default()
+                .saturating_add(bonus.crit_rate_bp)
+                .saturating_add(crit_rate_from_defense(defense));
+            let critical = crit_roll.is_some_and(|roll| roll < u64::from(total_crit_rate));
+            if critical && bonus.crit_overflow_ratio_bp > 0 {
+                let overflow = total_crit_rate.saturating_sub(10_000);
+                bonus.crit_damage_bp = bonus
+                    .crit_damage_bp
+                    .saturating_add(percentage_of(overflow, bonus.crit_overflow_ratio_bp));
+            }
             let amount = calculate(DamageView {
                 target: defender,
                 bonus,
