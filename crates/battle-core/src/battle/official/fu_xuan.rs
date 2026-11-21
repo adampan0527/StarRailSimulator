@@ -269,7 +269,13 @@ impl Mechanics for FuXuan {
         }
     }
 
-    fn block_enemy_control(&self, battle: &mut Battle<'_>, owner: usize, attacker: usize) -> bool {
+    fn block_enemy_control(
+        &self,
+        battle: &mut Battle<'_>,
+        owner: usize,
+        attacker: usize,
+        _target: usize,
+    ) -> bool {
         let action = battle.enemy_action == Some(attacker);
         let state = &mut battle.units[owner].fu_xuan_state;
         if action && state.blocking_action {

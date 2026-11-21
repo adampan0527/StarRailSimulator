@@ -89,7 +89,8 @@ type Status =
   | 'arcana'
   | 'epiphany'
   | 'frozen'
-  | 'weakness_implanted';
+  | 'weakness_implanted'
+  | 'unnerved';
 type EventKind =
   | {
       event:
@@ -107,7 +108,7 @@ type EventKind =
   | { event: 'action'; detail: Action }
   | { event: 'battle_ended'; detail: Outcome }
   | {
-      event: 'skill_points' | 'toughness';
+      event: 'skill_points' | 'toughness' | 'blind_bet';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }

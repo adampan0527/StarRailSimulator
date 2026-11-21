@@ -43,6 +43,7 @@ const statusNames = {
   imprisoned: '禁锢',
   weightless: '失重',
   weakness_implanted: '弱点植入',
+  unnerved: '惊惶',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
@@ -72,6 +73,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '能量变化';
     case 'flying_aureus':
       return '飞黄变化';
+    case 'blind_bet':
+      return '盲注变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -108,6 +111,7 @@ function eventTitle({ kind }: BattleEvent): string {
 function eventDetail({ kind }: BattleEvent) {
   switch (kind.event) {
     case 'skill_points':
+    case 'blind_bet':
     case 'toughness':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':

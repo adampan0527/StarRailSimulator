@@ -6,8 +6,8 @@ use super::Battle;
 pub(super) struct Shield {
     source: usize,
     origin: Option<Action>,
-    amount: u32,
-    expires_after_turn: u32,
+    pub(super) amount: u32,
+    pub(super) expires_after_turn: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -70,10 +70,20 @@ impl Battle<'_> {
     }
 
     pub(super) fn has_official_shield(&self, source: usize, target: usize, origin: Action) -> bool {
+        self.official_shield(source, target, origin).is_some()
+    }
+
+    pub(super) fn official_shield(
+        &self,
+        source: usize,
+        target: usize,
+        origin: Action,
+    ) -> Option<Shield> {
         self.units[target]
             .shields
             .iter()
-            .any(|item| item.source == source && item.origin == Some(origin))
+            .find(|item| item.source == source && item.origin == Some(origin))
+            .copied()
     }
 
     pub(super) fn shield_amount(&self, target: usize) -> u32 {
