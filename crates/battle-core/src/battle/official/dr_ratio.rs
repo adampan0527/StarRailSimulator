@@ -186,6 +186,7 @@ impl Mechanics for DrRatio {
                         target,
                         remaining: if self.eidolon >= 6 { 3 } else { 2 },
                     });
+                    battle.record_enemy_debuff(target);
                     battle.emit(EventKind::StatusApplied(FOLLY), Some(actor), Some(target));
                 }
             }

@@ -138,6 +138,7 @@ impl Moze {
             charges: FULL_CHARGE,
         });
         unit.departed = true;
+        battle.record_enemy_debuff(target);
     }
 
     fn on_prey_attacked(

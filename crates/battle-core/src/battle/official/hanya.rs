@@ -130,7 +130,7 @@ fn targets_burden(
         Target::Enemy => {
             target == Some(burden)
                 || ability.effects.iter().any(|effect| match effect {
-                    Effect::RandomHits { .. } => true,
+                    Effect::RandomHits { .. } | Effect::DirectedAreaAttack => true,
                     Effect::BlastAdjacent { .. } => target.is_some_and(|unit| {
                         battle
                             .adjacent_enemies(unit)

@@ -89,7 +89,8 @@ type Status =
   | 'arcana'
   | 'epiphany'
   | 'frozen'
-  | 'weakness_implanted';
+  | 'weakness_implanted'
+  | 'ultimate_vulnerability';
 type EventKind =
   | {
       event:
@@ -107,13 +108,22 @@ type EventKind =
   | { event: 'action'; detail: Action }
   | { event: 'battle_ended'; detail: Outcome }
   | {
-      event: 'skill_points' | 'toughness';
+      event: 'skill_points' | 'toughness' | 'crimson_knot';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }
   | {
       event: 'flying_aureus';
       detail: { before_halves: number; after_halves: number };
+    }
+  | {
+      event: 'slashed_dream';
+      detail: {
+        before: number;
+        after: number;
+        overflow_before: number;
+        overflow_after: number;
+      };
     }
   | {
       event: 'damage';

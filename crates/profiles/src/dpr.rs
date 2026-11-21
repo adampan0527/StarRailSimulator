@@ -36,7 +36,10 @@ impl Catalog {
             character.resource.capacity,
         ) {
             ("character.1220", "flying_aureus", Some(12)) => 0,
-            ("character.1220", _, _) => return Err(Error::invalid("character.resource", id)),
+            ("character.1308", "slashed_dream", Some(9)) => 0,
+            ("character.1220" | "character.1308", _, _) => {
+                return Err(Error::invalid("character.resource", id));
+            }
             (_, "energy", Some(capacity)) => capacity,
             _ => return Err(Error::invalid("character.resource", id)),
         };

@@ -98,6 +98,7 @@ impl Battle<'_> {
         } else {
             shocks.push(shock);
         }
+        self.record_enemy_debuff(target);
         self.emit(
             EventKind::ShockApplied {
                 origin: shock.origin,

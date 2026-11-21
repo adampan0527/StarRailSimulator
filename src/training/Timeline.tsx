@@ -39,6 +39,7 @@ const statusNames = {
   wisemans_folly: '智者的短见',
   arcana: '奥迹',
   epiphany: '揭露',
+  ultimate_vulnerability: '终结技易伤',
   frozen: '冻结',
   imprisoned: '禁锢',
   weightless: '失重',
@@ -72,6 +73,10 @@ function eventTitle({ kind }: BattleEvent): string {
       return '能量变化';
     case 'flying_aureus':
       return '飞黄变化';
+    case 'slashed_dream':
+      return '残梦变化';
+    case 'crimson_knot':
+      return '集真赤变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -109,11 +114,19 @@ function eventDetail({ kind }: BattleEvent) {
   switch (kind.event) {
     case 'skill_points':
     case 'toughness':
+    case 'crimson_knot':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;
     case 'flying_aureus':
       return `${kind.detail.before_halves / 2} → ${kind.detail.after_halves / 2}`;
+    case 'slashed_dream': {
+      const { before, after, overflow_before, overflow_after } = kind.detail;
+      const dreams = `${before} → ${after}`;
+      return overflow_before === overflow_after
+        ? dreams
+        : `${dreams} · 四相断我 ${overflow_before} → ${overflow_after}`;
+    }
     case 'heal':
       return `恢复生命 ${kind.detail.amount}`;
     case 'hp_spent':
