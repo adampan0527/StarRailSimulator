@@ -224,7 +224,7 @@ impl Mechanics for FuXuan {
         match action {
             Action::Basic => {}
             Action::Skill => self.activate_matrix(battle, actor),
-            Action::Ultimate => self.finish_ultimate(battle, actor),
+            Action::Ultimate | Action::EnhancedUltimate => self.finish_ultimate(battle, actor),
         }
     }
 

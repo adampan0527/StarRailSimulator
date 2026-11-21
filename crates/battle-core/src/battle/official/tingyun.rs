@@ -180,7 +180,7 @@ impl Mechanics for Tingyun {
                     battle.apply_speed_up(actor, actor, 2_000, 1);
                 }
             }
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 battle.restore_energy_flat(actor, target, self.ultimate_energy_milli);
                 battle.apply_ally_buff(
                     actor,
@@ -257,10 +257,7 @@ impl Mechanics for Tingyun {
         actor: usize,
         action: Action,
     ) {
-        if self.eidolon >= 1
-            && action == Action::Ultimate
-            && recipient(battle, owner) == Some(actor)
-        {
+        if self.eidolon >= 1 && action.is_ultimate() && recipient(battle, owner) == Some(actor) {
             battle.apply_ally_buff(owner, actor, AllyBuffKind::SpeedPercent, 2_000, 1);
         }
     }
@@ -320,7 +317,7 @@ impl Mechanics for Tingyun {
             } else {
                 4
             }),
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 let ultimate_target = current
                     .filter(|&unit| battle.is_targetable(unit))
                     .unwrap_or(preferred);

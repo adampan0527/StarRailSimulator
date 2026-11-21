@@ -116,6 +116,10 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    Apotheosis {
+        before: u8,
+        after: u8,
+    },
     Damage {
         kind: DamageKind,
         amount: u32,

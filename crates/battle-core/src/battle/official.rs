@@ -1,4 +1,5 @@
 mod acheron;
+mod argenti;
 mod arlan;
 mod asta;
 mod bailu;
@@ -63,7 +64,7 @@ pub(super) use {
     yukong::YukongState,
 };
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, ops::RangeInclusive, sync::Arc};
 
 use super::{
     Battle,
@@ -258,13 +259,14 @@ pub(super) struct OfficialKit {
 }
 
 impl OfficialKit {
-    pub fn ability(&self, action: Action) -> (Ability<'_>, SkillPoints) {
+    pub fn ability(&self, action: Action) -> Option<(Ability<'_>, SkillPoints)> {
         let ability = match action {
             Action::Basic => &self.basic,
             Action::Skill => &self.skill,
             Action::Ultimate => &self.ultimate,
+            Action::EnhancedUltimate => return None,
         };
-        ability.resolve()
+        Some(ability.resolve())
     }
 }
 
@@ -286,6 +288,11 @@ pub(super) struct YanqingState {
 }
 
 pub(super) trait Mechanics: Send + Sync {
+    /// Lower bound is both the charge threshold and the energy consumed.
+    fn ultimate_energy_range(&self, _action: Action) -> Option<RangeInclusive<u32>> {
+        None
+    }
+
     fn alternate_ultimate_resource_ready(
         &self,
         _battle: &Battle<'_>,
@@ -878,7 +885,7 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn primary_attack_counts_as_ultimate(&self, action: Action) -> bool {
-        action == Action::Ultimate
+        action.is_ultimate()
     }
 
     fn follow_up_counts_as_ultimate(&self) -> bool {
@@ -889,8 +896,12 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn ultimate_defense_ignore_bp(&self) -> u32 {
+        0
+    }
+
     fn primary_attack_counts_as_follow_up(&self, action: Action) -> bool {
-        action == Action::Ultimate && self.ultimate_counts_as_follow_up()
+        action.is_ultimate() && self.ultimate_counts_as_follow_up()
     }
 
     fn follow_up_vulnerability_bp(
@@ -1013,6 +1024,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         feixiao::FORM => Some(feixiao::build),
         "character.1223" => Some(moze::build),
         "character.1301" => Some(gallagher::build),
+        argenti::FORM => Some(argenti::build),
         "character.1305" => Some(dr_ratio::build),
         sparkle::FORM => Some(sparkle::build),
         black_swan::FORM => Some(black_swan::build),

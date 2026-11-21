@@ -234,7 +234,7 @@ impl Mechanics for Luka {
                     battle.dispel_one(actor, target);
                 }
             }
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 self.gain_fighting_will(battle, actor, self.ultimate_fighting_will);
                 if battle.roll_effect(actor, target, self.vulnerability_chance_bp) {
                     battle.apply_vulnerability(

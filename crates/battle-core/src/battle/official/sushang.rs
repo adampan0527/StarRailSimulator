@@ -245,7 +245,7 @@ impl Mechanics for Sushang {
                     self.resolve_skill(battle, actor, target);
                 }
             }
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 let unit = &mut battle.units[actor];
                 unit.sushang_state.ultimate_expires_after_turn =
                     unit.normal_turns + self.ultimate_turns;

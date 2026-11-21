@@ -241,7 +241,9 @@ impl Mechanics for MarchHunt {
     ) {
         match action {
             Action::Skill => battle.units[actor].march_hunt_state.shifu = target,
-            Action::Ultimate => battle.units[actor].march_hunt_state.ultimate_armed = true,
+            Action::Ultimate | Action::EnhancedUltimate => {
+                battle.units[actor].march_hunt_state.ultimate_armed = true;
+            }
             Action::Basic => {
                 let state = &mut battle.units[actor].march_hunt_state;
                 if state.enhanced() {
@@ -284,12 +286,12 @@ impl Mechanics for MarchHunt {
             return;
         }
         // An Ultimate always counts through the action hook, including an Ultimate with no attack.
-        if battle.in_follow_up() || origin != Action::Ultimate {
+        if battle.in_follow_up() || !origin.is_ultimate() {
             Self::add_charge(battle, owner);
         }
         if self.eidolon < 2
             || battle.in_follow_up()
-            || origin == Action::Ultimate
+            || origin.is_ultimate()
             || battle.is_frozen(owner)
             || battle.attack_targets().is_empty()
             || !battle.enemies().any(|target| battle.is_targetable(target))
@@ -322,8 +324,7 @@ impl Mechanics for MarchHunt {
         source: usize,
         action: Action,
     ) {
-        if action == Action::Ultimate && battle.units[owner].march_hunt_state.shifu == Some(source)
-        {
+        if action.is_ultimate() && battle.units[owner].march_hunt_state.shifu == Some(source) {
             Self::add_charge(battle, owner);
         }
     }

@@ -150,7 +150,7 @@ impl Battle<'_> {
             (DamageKind::Direct, Kit::Official(kit)) => event
                 .origin
                 .is_some_and(|action| kit.mechanics.primary_attack_counts_as_ultimate(action)),
-            (DamageKind::Direct, _) => event.origin == Some(Action::Ultimate),
+            (DamageKind::Direct, _) => event.origin.is_some_and(Action::is_ultimate),
             (DamageKind::FollowUp, Kit::Official(kit)) => {
                 kit.mechanics.follow_up_counts_as_ultimate()
             }
@@ -1042,16 +1042,22 @@ impl Battle<'_> {
         }
         let (personal_penetration, personal_defense_ignore) =
             self.mechanics(actor).map_or((0, 0), |mechanics| {
-                let ultimate_penetration = if self.is_ultimate_damage(actor, event) {
-                    mechanics.ultimate_resistance_penetration_bp()
-                } else {
-                    0
-                };
+                let (ultimate_penetration, ultimate_defense_ignore) =
+                    if self.is_ultimate_damage(actor, event) {
+                        (
+                            mechanics.ultimate_resistance_penetration_bp(),
+                            mechanics.ultimate_defense_ignore_bp(),
+                        )
+                    } else {
+                        (0, 0)
+                    };
                 (
                     mechanics
                         .resistance_penetration_bp(self, actor, element)
                         .saturating_add(ultimate_penetration),
-                    mechanics.defense_ignore_bp(self, actor, target),
+                    mechanics
+                        .defense_ignore_bp(self, actor, target)
+                        .saturating_add(ultimate_defense_ignore),
                 )
             });
         let mut stats = plan.stats;
@@ -1668,7 +1674,7 @@ impl Battle<'_> {
             });
             (amount, critical)
         };
-        let ultimate = (kind == DamageKind::Direct && origin == Some(Action::Ultimate))
+        let ultimate = (kind == DamageKind::Direct && origin.is_some_and(Action::is_ultimate))
             .then(|| self.mechanics(actor))
             .flatten();
         let (amount, critical) = damage_with(main_recipient, applied_buffs, &|_| true);

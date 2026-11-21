@@ -177,7 +177,7 @@ impl Mechanics for JingYuan {
         let added_hits = match action {
             Action::Basic => return,
             Action::Skill => SKILL_ADDED_HITS,
-            Action::Ultimate => ULTIMATE_ADDED_HITS,
+            Action::Ultimate | Action::EnhancedUltimate => ULTIMATE_ADDED_HITS,
         };
         let unit = &mut battle.units[actor];
         if action == Action::Skill && self.war_marshal {

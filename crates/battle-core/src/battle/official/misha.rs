@@ -186,7 +186,7 @@ impl Mechanics for Misha {
         match action {
             Action::Basic => {}
             Action::Skill => battle.units[actor].misha_state.add_hits(1),
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 let eidolon_hits = if self.eidolon >= 1 {
                     battle
                         .enemies()
@@ -250,7 +250,7 @@ impl Mechanics for Misha {
                     battle.restore_skill_points(actor, 1);
                 }
             }
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 state.active_ultimate = None;
                 state.accumulated_hits = 0;
             }

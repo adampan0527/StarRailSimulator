@@ -8,6 +8,13 @@ pub enum Action {
     Basic,
     Skill,
     Ultimate,
+    EnhancedUltimate,
+}
+
+impl Action {
+    pub const fn is_ultimate(self) -> bool {
+        matches!(self, Self::Ultimate | Self::EnhancedUltimate)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -167,7 +174,7 @@ impl fmt::Display for BattleError {
             }
             Self::BattleEnded => output.write_str("battle has ended"),
             Self::InvalidActor => output.write_str("actor is not a living ally"),
-            Self::IllegalTiming => output.write_str("ordinary action is outside the actor's turn"),
+            Self::IllegalTiming => output.write_str("action is unavailable at this time"),
             Self::InsufficientSkillPoints => output.write_str("not enough skill points"),
             Self::InsufficientEnergy => output.write_str("not enough energy"),
             Self::InsufficientUltimateResource => output.write_str("not enough Ultimate resource"),

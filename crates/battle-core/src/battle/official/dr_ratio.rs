@@ -176,7 +176,7 @@ impl Mechanics for DrRatio {
                     );
                 }
             }
-            Action::Ultimate => {
+            Action::Ultimate | Action::EnhancedUltimate => {
                 let mark = battle.units[actor].dr_ratio_state.mark;
                 if mark.is_some_and(|mark| mark.target != target) {
                     clear_mark(battle, actor);

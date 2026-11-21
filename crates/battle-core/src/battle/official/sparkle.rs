@@ -424,7 +424,7 @@ impl Mechanics for Sparkle {
         actor: usize,
         action: Action,
     ) {
-        if action != Action::Ultimate && battle.in_extra_turn(actor) {
+        if !action.is_ultimate() && battle.in_extra_turn(actor) {
             battle.units[owner].sparkle_state.extra_turn_points_spent = 0;
             Self::restore_overflow(battle, owner);
         }
@@ -522,7 +522,7 @@ impl Mechanics for Sparkle {
     ) -> Option<u8> {
         match action {
             Action::Basic => None,
-            Action::Ultimate => Some(0),
+            Action::Ultimate | Action::EnhancedUltimate => Some(0),
             Action::Skill => {
                 let preferred = battle
                     .allies()
