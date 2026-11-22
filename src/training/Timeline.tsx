@@ -54,6 +54,8 @@ const statusNames = {
   taunt: '嘲讽',
   withered_leaf: '枯叶',
   sublimation: '升华',
+  patron: '老主顾',
+  weaken: '虚弱',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

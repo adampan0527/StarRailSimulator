@@ -98,7 +98,9 @@ type Status =
   | 'parry'
   | 'taunt'
   | 'withered_leaf'
-  | 'sublimation';
+  | 'sublimation'
+  | 'patron'
+  | 'weaken';
 type EventKind =
   | {
       event:

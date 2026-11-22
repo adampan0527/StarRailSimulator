@@ -128,6 +128,7 @@ struct UnitState {
     black_swan: BlackSwanTarget,
     luka_state: LukaState,
     himeko_charge: u8,
+    cipher_state: official::CipherState,
     the_herta_state: official::TheHertaState,
     anaxa_state: official::AnaxaState,
     the_herta_interpretation: u8,
@@ -221,6 +222,7 @@ pub struct Battle<'a> {
     attack_targets: Vec<usize>,
     attack_damage: Option<u64>,
     tracks_attack_damage: bool,
+    tracks_ally_damage: bool,
     super_break_targets: Vec<resolve::SuperBreakTarget>,
     tracks_super_break: bool,
     attack_index: u32,
@@ -274,6 +276,7 @@ impl<'a> Battle<'a> {
                     black_swan: BlackSwanTarget::default(),
                     luka_state: LukaState::default(),
                     himeko_charge: 0,
+                    cipher_state: official::CipherState::default(),
                     the_herta_state: official::TheHertaState::default(),
                     anaxa_state: official::AnaxaState::default(),
                     the_herta_interpretation: 0,
@@ -355,6 +358,9 @@ impl<'a> Battle<'a> {
             tracks_attack_damage: plan.units[..plan.ally_count]
                 .iter()
                 .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.tracks_attack_damage())),
+            tracks_ally_damage: plan.units[..plan.ally_count]
+                .iter()
+                .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.tracks_ally_damage())),
             super_break_targets: Vec::new(),
             tracks_super_break: plan.units[..plan.ally_count]
                 .iter()

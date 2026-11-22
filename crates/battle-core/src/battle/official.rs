@@ -9,6 +9,7 @@ mod black_swan;
 mod blade;
 mod boothill;
 mod bronya;
+mod cipher;
 mod clara;
 mod dan_heng;
 mod dan_heng_il;
@@ -72,6 +73,7 @@ pub(super) use {
     black_swan::BlackSwanTarget,
     blade::BladeState,
     boothill::BoothillState,
+    cipher::CipherState,
     dan_heng_il::DanHengIlState,
     dr_ratio::DrRatioState,
     feixiao::FeixiaoState,
@@ -456,6 +458,21 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn tracks_attack_damage(&self) -> bool {
         false
+    }
+
+    fn tracks_ally_damage(&self) -> bool {
+        false
+    }
+
+    fn on_ally_damage(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _target: usize,
+        _kind: DamageKind,
+        _amount: u32,
+    ) {
     }
 
     fn after_ally_attack_damage(
@@ -1374,6 +1391,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         the_herta::FORM => Some(the_herta::build),
         tribbie::FORM => Some(tribbie::build),
         anaxa::FORM => Some(anaxa::build),
+        cipher::FORM => Some(cipher::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),
         "dan_heng.hunt" => Some(dan_heng::build),
