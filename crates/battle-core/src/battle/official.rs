@@ -39,6 +39,7 @@ mod march_hunt;
 mod march_preservation;
 mod misha;
 mod moze;
+mod mydei;
 mod natasha;
 mod pela;
 mod qingque;
@@ -117,7 +118,9 @@ use crate::{
     Action, BattleError, DamageKind,
     fixture::{Ability, Effect, Element, Stats, Target},
 };
-pub(super) use {gallagher::GallagherState, luocha::LuochaState, lynx::LynxResponse};
+pub(super) use {
+    gallagher::GallagherState, luocha::LuochaState, lynx::LynxResponse, mydei::MydeiState,
+};
 
 /// Static stats resolved by the profile layer before a fixed-target simulation.
 pub struct OfficialStats {
@@ -404,6 +407,10 @@ pub(super) trait Mechanics: Send + Sync {
         None
     }
 
+    fn prepare_automatic_skill(&self, _battle: &mut Battle<'_>, _actor: usize) -> bool {
+        false
+    }
+
     fn taunts_enemy(&self, _battle: &Battle<'_>, _owner: usize, _enemy: usize) -> bool {
         false
     }
@@ -598,6 +605,10 @@ pub(super) trait Mechanics: Send + Sync {
         _target: usize,
     ) -> bool {
         false
+    }
+
+    fn max_hp_multiplier_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        10_000
     }
 
     fn ally_max_hp_bonus(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
@@ -902,7 +913,14 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn after_follow_up(&self, _battle: &mut Battle<'_>, _actor: usize, _origin: Action) {}
 
-    fn after_hp_loss(&self, _battle: &mut Battle<'_>, _actor: usize, _hp_lost: u32) {}
+    fn after_hp_loss(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _source: usize,
+        _hp_lost: u32,
+    ) {
+    }
 
     fn after_hp_spent(&self, _battle: &mut Battle<'_>, _actor: usize, _amount: u32) {}
 
@@ -1073,6 +1091,10 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn defense_is_zero(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
+        false
+    }
+
     fn defense_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         0
     }
@@ -1137,6 +1159,8 @@ pub(super) trait Mechanics: Send + Sync {
         _action: Action,
     ) {
     }
+
+    fn on_unit_action_finished(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
     fn dpr_priority(
         &self,
@@ -1373,6 +1397,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         jade::FORM => Some(jade::build),
         the_herta::FORM => Some(the_herta::build),
         tribbie::FORM => Some(tribbie::build),
+        mydei::FORM => Some(mydei::build),
         anaxa::FORM => Some(anaxa::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),

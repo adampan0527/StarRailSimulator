@@ -98,7 +98,8 @@ type Status =
   | 'parry'
   | 'taunt'
   | 'withered_leaf'
-  | 'sublimation';
+  | 'sublimation'
+  | 'vendetta';
 type EventKind =
   | {
       event:
@@ -140,6 +141,11 @@ type EventKind =
         | 'pawned_asset';
       detail: { before: number; after: number };
     }
+  | {
+      event: 'mydei_charge';
+      detail: { before_milli: number; after_milli: number };
+    }
+  | { event: 'mydei_enhanced_skill'; detail: { godslayer: boolean } }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }
   | { event: 'debt_collector'; detail: { active: boolean } }
   | {

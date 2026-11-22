@@ -48,10 +48,11 @@ pub enum StatusKind {
     Taunt,
     WitheredLeaf,
     Sublimation,
+    Vendetta,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Sublimation.index() + 1;
+    pub(crate) const COUNT: usize = Self::Vendetta.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -84,6 +85,7 @@ impl StatusKind {
             Self::Taunt => 25,
             Self::WitheredLeaf => 26,
             Self::Sublimation => 27,
+            Self::Vendetta => 28,
         }
     }
 }
@@ -174,6 +176,13 @@ pub enum EventKind {
     BladeCharge {
         before: u8,
         after: u8,
+    },
+    MydeiCharge {
+        before_milli: u32,
+        after_milli: u32,
+    },
+    MydeiEnhancedSkill {
+        godslayer: bool,
     },
     Syzygy {
         before: u8,

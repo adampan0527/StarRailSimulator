@@ -254,7 +254,7 @@ impl Mechanics for FuXuan {
         self.restore_if_needed(battle, owner);
     }
 
-    fn after_hp_loss(&self, battle: &mut Battle<'_>, actor: usize, _: u32) {
+    fn after_hp_loss(&self, battle: &mut Battle<'_>, actor: usize, _source: usize, _: u32) {
         // Wait for all shares of one enemy action before checking for a killing blow.
         if battle.enemy_action.is_none() {
             self.restore_if_needed(battle, actor);

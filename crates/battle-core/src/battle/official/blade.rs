@@ -485,7 +485,7 @@ impl Mechanics for Blade {
         }
     }
 
-    fn after_hp_loss(&self, battle: &mut Battle<'_>, actor: usize, amount: u32) {
+    fn after_hp_loss(&self, battle: &mut Battle<'_>, actor: usize, _source: usize, amount: u32) {
         self.hp_lost(battle, actor, amount);
         if battle.enemy_action.is_some() {
             let charged = &mut battle.units[actor].blade_state.charged_from_enemy_attack;
