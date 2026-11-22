@@ -138,7 +138,7 @@ impl Debuff {
 pub(super) struct HealOverTime {
     source: usize,
     origin: Action,
-    turns: u32,
+    pub(super) turns: u32,
 }
 
 #[derive(Clone, Copy)]

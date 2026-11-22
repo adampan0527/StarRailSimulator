@@ -154,7 +154,7 @@ impl Mechanics for DrRatio {
         match action {
             Action::ElationSkill => {}
             Action::Basic => {}
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 let count = if target_survives {
                     if self.inference && battle.roll_effect(actor, target, 10_000) {
                         battle.apply_effect_resistance_down(actor, target, 1_000, 2);

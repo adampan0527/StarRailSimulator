@@ -177,7 +177,7 @@ impl Mechanics for JingYuan {
         let added_hits = match action {
             Action::ElationSkill => return,
             Action::Basic => return,
-            Action::Skill => SKILL_ADDED_HITS,
+            Action::Skill | Action::EnhancedSkill => SKILL_ADDED_HITS,
             Action::Ultimate | Action::EnhancedUltimate => ULTIMATE_ADDED_HITS,
         };
         let unit = &mut battle.units[actor];

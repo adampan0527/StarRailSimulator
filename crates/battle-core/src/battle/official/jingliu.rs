@@ -422,8 +422,10 @@ impl Mechanics for Jingliu {
         state.transformed_attack = false;
         match action {
             Action::ElationSkill => {}
-            Action::Skill if enhanced_skill => self.spend_syzygy(battle, actor),
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill if enhanced_skill => {
+                self.spend_syzygy(battle, actor)
+            }
+            Action::Skill | Action::EnhancedSkill => {
                 if !self.novaflare() && self.sword_champion {
                     battle.advance(actor, 1_000);
                 }

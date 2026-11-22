@@ -55,10 +55,11 @@ pub enum StatusKind {
     SupremeStance,
     WealLots,
     WoesWhisper,
+    Khaslana,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::WoesWhisper.index() + 1;
+    pub(crate) const COUNT: usize = Self::Khaslana.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -98,6 +99,7 @@ impl StatusKind {
             Self::SupremeStance => 32,
             Self::WealLots => 33,
             Self::WoesWhisper => 34,
+            Self::Khaslana => 35,
         }
     }
 }
@@ -173,6 +175,14 @@ pub enum EventKind {
     Newbud {
         before: u32,
         after: u32,
+    },
+    Coreflame {
+        before: u32,
+        after: u32,
+    },
+    Scourge {
+        before: u8,
+        after: u8,
     },
     BlindBet {
         before: u8,

@@ -488,11 +488,13 @@ impl Mechanics for Boothill {
     ) -> Option<u8> {
         match action {
             Action::ElationSkill => None,
-            Action::Skill => Some(if target == self.preferred_duel(battle, owner) {
-                1
-            } else {
-                5
-            }),
+            Action::Skill | Action::EnhancedSkill => {
+                Some(if target == self.preferred_duel(battle, owner) {
+                    1
+                } else {
+                    5
+                })
+            }
             Action::Ultimate => {
                 let duel = live_standoff(battle, owner);
                 let preferred = duel

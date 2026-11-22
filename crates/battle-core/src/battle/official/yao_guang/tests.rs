@@ -8,7 +8,7 @@ use super::*;
 const ARGENTI: &str = "character.1302";
 const MIDDLE: &str = "dpr:2";
 
-fn yao(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
+pub(in crate::battle::official) fn yao(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
     OfficialCharacter {
         unit_id: FORM.into(),
         form_id: FORM.into(),

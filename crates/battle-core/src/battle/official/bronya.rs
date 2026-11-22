@@ -168,9 +168,11 @@ impl Mechanics for Bronya {
         match (action, target) {
             (Action::ElationSkill, _) => {}
             (Action::Basic, _) => battle.advance(actor, self.talent_advance_bp),
-            (Action::Skill, Some(target)) => self.redeploy(battle, actor, target),
+            (Action::Skill | Action::EnhancedSkill, Some(target)) => {
+                self.redeploy(battle, actor, target)
+            }
             (Action::Ultimate | Action::EnhancedUltimate, _) => self.rally(battle, actor),
-            (Action::Skill, None) => {}
+            (Action::Skill | Action::EnhancedSkill, None) => {}
         }
     }
 
@@ -263,7 +265,7 @@ impl Mechanics for Bronya {
             Action::ElationSkill => None,
             Action::Basic => None,
             Action::Ultimate | Action::EnhancedUltimate => Some(0),
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 let preferred = battle
                     .allies()
                     .filter(|&unit| unit != actor && battle.is_targetable(unit))

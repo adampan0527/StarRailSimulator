@@ -485,6 +485,28 @@ impl Battle<'_> {
         }
     }
 
+    pub(super) fn final_hit(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        multiplier_bp: u32,
+        toughness: u16,
+    ) {
+        self.strike(
+            actor,
+            target,
+            DamageKind::Direct,
+            Hit {
+                element,
+                multiplier_bp,
+                toughness,
+                origin: Some(Action::Ultimate),
+                scale: DamageScale::Attack,
+            },
+        );
+    }
+
     pub(super) fn attack_hit_with_break_effect(
         &mut self,
         actor: usize,
@@ -586,6 +608,7 @@ impl Battle<'_> {
             rules.after_healing(self, target, restored);
         }
         if amount > 0 && self.is_targetable(target) && self.is_party_unit(target) {
+            self.notify_ally_sustain(actor, target);
             for owner in self.allies() {
                 if self.is_targetable(owner)
                     && let Some(rules) = self.mechanics(owner)
@@ -622,7 +645,7 @@ impl Battle<'_> {
         amount: u32,
     ) -> u32 {
         // A zero-HP target can be rescued, but a departed unit is off the field.
-        if self.units[target].departed {
+        if self.units[target].departed || !self.in_territory(target) {
             return 0;
         }
         let (hp, max_hp) = self.hp(target);
@@ -1065,7 +1088,7 @@ impl Battle<'_> {
                 origin,
                 attack,
             } = follow_up;
-            if self.units[actor].hp == 0 {
+            if self.units[actor].hp == 0 || !self.in_territory(actor) {
                 continue;
             }
             let single = match targets {
@@ -1297,6 +1320,9 @@ impl Battle<'_> {
         });
         if let Some(target) = target {
             let was_shielded = self.shield_amount(target) > 0;
+            if let Some(rules) = self.mechanics(target) {
+                rules.on_enemy_targeted(self, target);
+            }
             self.notify_active_ability(actor);
             self.begin_attack();
             self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
@@ -3010,7 +3036,12 @@ impl Battle<'_> {
         after_quanta: u64,
         advanced_to_front: bool,
     ) {
-        let before_quanta = if let Some(owner) = self.memosprite_owner(target)
+        let before_quanta = if self.territory_owner == Some(target)
+            && let Some(countdown) = &mut self.units[target].countdown
+        {
+            countdown.advanced_to_front = advanced_to_front;
+            std::mem::replace(&mut countdown.gauge_quanta, after_quanta)
+        } else if let Some(owner) = self.memosprite_owner(target)
             && let Some(summon) = &mut self.units[owner].summon_turn
         {
             summon.advanced_to_front = advanced_to_front;
@@ -3152,6 +3183,9 @@ impl Battle<'_> {
     pub(super) fn gain_energy(&mut self, actor: usize, target: usize, amount_milli: u32) {
         let cap = self.plan.units[target].kit.max_energy_milli();
         if cap == 0 {
+            if amount_milli > 0 {
+                self.notify_external_energy(actor, target);
+            }
             return;
         }
         let bonus_bp = self.mechanics(target).map_or(0, |mechanics| {

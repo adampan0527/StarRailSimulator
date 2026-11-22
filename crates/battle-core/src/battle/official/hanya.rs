@@ -185,7 +185,7 @@ impl Mechanics for Hanya {
         match action {
             Action::ElationSkill => {}
             Action::Basic => {}
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 if battle.hp(target).0 > 0 {
                     let state = &mut battle.units[actor].hanya_state;
                     if state.burden.is_none_or(|mark| mark.target != target) {
@@ -295,11 +295,13 @@ impl Mechanics for Hanya {
         match action {
             Action::ElationSkill => None,
             Action::Basic => None,
-            Action::Skill => Some(if battle.units[actor].hanya_state.burden.is_none() {
-                2
-            } else {
-                4
-            }),
+            Action::Skill | Action::EnhancedSkill => {
+                Some(if battle.units[actor].hanya_state.burden.is_none() {
+                    2
+                } else {
+                    4
+                })
+            }
             Action::Ultimate | Action::EnhancedUltimate => {
                 let preferred = battle
                     .allies()

@@ -45,6 +45,7 @@ mod moze;
 mod mydei;
 mod natasha;
 mod pela;
+mod phainon;
 mod qingque;
 mod rappa;
 mod robin;
@@ -96,6 +97,7 @@ pub(super) use {
     march_hunt::MarchHuntState,
     misha::MishaState,
     moze::MozeState,
+    phainon::PhainonState,
     qingque::QingqueState,
     rappa::RappaState,
     robin::RobinState,
@@ -221,7 +223,7 @@ impl OfficialCharacter {
             || (self.energy_capacity == 0
                 && !matches!(
                     self.form_id.as_str(),
-                    acheron::FORM | castorice::FORM | feixiao::FORM
+                    acheron::FORM | castorice::FORM | feixiao::FORM | phainon::FORM
                 ))
             || self.energy_capacity > 999
             || stats.hp == 0
@@ -321,7 +323,7 @@ impl OfficialKit {
             Action::Basic => &self.basic,
             Action::Skill => &self.skill,
             Action::Ultimate => &self.ultimate,
-            Action::EnhancedUltimate | Action::ElationSkill => return None,
+            Action::EnhancedSkill | Action::EnhancedUltimate | Action::ElationSkill => return None,
         };
         Some(ability.resolve())
     }
@@ -453,6 +455,12 @@ pub(super) trait Mechanics: Send + Sync {
     fn memosprite_ignores_weakness(&self) -> bool {
         false
     }
+
+    fn on_external_energy(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn on_ally_sustain(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn on_enemy_targeted(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     /// Lower bound is both the charge threshold and the energy consumed.
     fn ultimate_energy_range(&self, _action: Action) -> Option<RangeInclusive<u32>> {
@@ -1539,6 +1547,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         tribbie::FORM => Some(tribbie::build),
         mydei::FORM => Some(mydei::build),
         anaxa::FORM => Some(anaxa::build),
+        phainon::FORM => Some(phainon::build),
         cipher::FORM => Some(cipher::build),
         castorice::FORM => Some(castorice::build),
         boothill::FORM => Some(boothill::build),

@@ -160,6 +160,7 @@ struct UnitState {
     remembrance_trailblazer_state: official::RemembranceTrailblazerState,
     aglaea_state: official::AglaeaState,
     castorice_state: official::CastoriceState,
+    phainon_state: official::PhainonState,
     robin_state: official::RobinState,
     firefly_state: official::FireflyState,
     boothill_state: official::BoothillState,
@@ -215,6 +216,7 @@ pub struct Battle<'a> {
     outcome: Outcome,
     av_micros: u64,
     wave_index: usize,
+    territory_owner: Option<usize>,
     ordinary_actor: Option<usize>,
     extra_turns: ExtraTurns,
     normal_turns: u32,
@@ -315,6 +317,7 @@ impl<'a> Battle<'a> {
                     remembrance_trailblazer_state: official::RemembranceTrailblazerState::default(),
                     aglaea_state: official::AglaeaState::default(),
                     castorice_state: official::CastoriceState::default(),
+                    phainon_state: official::PhainonState::default(),
                     robin_state: official::RobinState::default(),
                     firefly_state: official::FireflyState::default(),
                     boothill_state: official::BoothillState::default(),
@@ -353,6 +356,7 @@ impl<'a> Battle<'a> {
             outcome: Outcome::Ongoing,
             av_micros: 0,
             wave_index: 0,
+            territory_owner: None,
             ordinary_actor: None,
             extra_turns: ExtraTurns::default(),
             normal_turns: 0,
@@ -440,7 +444,7 @@ impl<'a> Battle<'a> {
         let Some(actor) = self.ordinary_actor else {
             return actions;
         };
-        for action in [Action::Basic, Action::Skill] {
+        for action in [Action::Basic, Action::Skill, Action::EnhancedSkill] {
             self.list_actions(actor, action, &mut actions);
         }
         for actor in self.allies() {
@@ -672,7 +676,7 @@ impl<'a> Battle<'a> {
         if self.units[actor].hp == 0 {
             return Err(BattleError::InvalidActor);
         }
-        if self.turn_is_suspended(actor) {
+        if self.turn_is_suspended(actor) || !self.in_territory(actor) {
             return Err(BattleError::IllegalTiming);
         }
         let kit = &self.plan.units[actor].kit;
@@ -681,7 +685,7 @@ impl<'a> Battle<'a> {
                 kit.ability(action).ok_or(BattleError::IllegalTiming)?,
                 match action {
                     Action::Basic => SkillPoints::Generate,
-                    Action::Skill => SkillPoints::Spend,
+                    Action::Skill | Action::EnhancedSkill => SkillPoints::Spend,
                     Action::Ultimate | Action::EnhancedUltimate | Action::ElationSkill => {
                         SkillPoints::Unchanged
                     }
@@ -730,7 +734,7 @@ impl<'a> Battle<'a> {
             if self.ordinary_actor != Some(actor)
                 || self.mechanics(actor).is_some_and(|rules| match action {
                     Action::Basic => !rules.can_use_basic(self, actor),
-                    Action::Skill => !rules.can_use_skill(self, actor),
+                    Action::Skill | Action::EnhancedSkill => !rules.can_use_skill(self, actor),
                     Action::Ultimate | Action::EnhancedUltimate | Action::ElationSkill => false,
                 })
             {
@@ -868,7 +872,13 @@ impl<'a> Battle<'a> {
 
     fn is_targetable(&self, unit: usize) -> bool {
         let state = &self.units[unit];
-        state.hp > 0 && !state.departed
+        state.hp > 0 && !state.departed && self.in_territory(unit)
+    }
+
+    fn in_territory(&self, unit: usize) -> bool {
+        self.territory_owner.is_none_or(|owner| {
+            unit == owner || self.memosprite_owner(unit) == Some(owner) || !self.is_party_unit(unit)
+        })
     }
 
     fn available_for_ordinary_turn(&self, unit: usize) -> bool {
@@ -896,7 +906,10 @@ impl<'a> Battle<'a> {
     }
 
     fn has_weakness(&self, unit: usize, element: crate::fixture::Element) -> bool {
-        self.plan.units[unit].kit.matches_weakness(element)
+        (self.territory_owner.is_some()
+            && self.enemies().contains(&unit)
+            && element == crate::fixture::Element::Physical)
+            || self.plan.units[unit].kit.matches_weakness(element)
             || self.units[unit]
                 .debuffs
                 .iter()
@@ -1026,6 +1039,11 @@ impl<'a> Battle<'a> {
     }
 
     fn gauge_quanta(&self, actor: usize) -> u64 {
+        if self.territory_owner == Some(actor)
+            && let Some(countdown) = self.units[actor].countdown
+        {
+            return countdown.gauge_quanta;
+        }
         self.memosprite_owner(actor)
             .and_then(|owner| self.units[owner].summon_turn)
             .map_or(self.units[actor].gauge_quanta, |summon| summon.gauge_quanta)
@@ -1037,17 +1055,22 @@ impl<'a> Battle<'a> {
     }
 
     fn scheduled_turns(&self) -> impl Iterator<Item = (u64, bool, TurnSlot)> {
-        let units = self.turn_candidates().map(|unit| {
-            let state = &self.units[unit];
-            (
-                state.gauge_quanta.div_ceil(self.speed_micros(unit)),
-                !state.advanced_to_front,
-                TurnSlot::Unit(unit),
-            )
-        });
+        let units = self
+            .turn_candidates()
+            .filter(|&unit| self.territory_owner != Some(unit))
+            .map(|unit| {
+                let state = &self.units[unit];
+                (
+                    state.gauge_quanta.div_ceil(self.speed_micros(unit)),
+                    !state.advanced_to_front,
+                    TurnSlot::Unit(unit),
+                )
+            });
         let summons = self.allies().filter_map(|owner| {
             let state = &self.units[owner];
-            let summon = state.summon_turn.filter(|_| state.hp > 0)?;
+            let summon = state
+                .summon_turn
+                .filter(|_| state.hp > 0 && self.in_territory(owner))?;
             Some((
                 summon
                     .gauge_quanta
@@ -1057,10 +1080,12 @@ impl<'a> Battle<'a> {
             ))
         });
         let countdowns = self.allies().filter_map(|owner| {
-            let countdown = self.units[owner].countdown?;
+            let countdown = self.units[owner]
+                .countdown
+                .filter(|_| self.in_territory(owner))?;
             Some((
                 countdown.gauge_quanta.div_ceil(countdown.speed_micros),
-                true,
+                !countdown.advanced_to_front,
                 TurnSlot::Countdown(owner),
             ))
         });
@@ -1108,7 +1133,7 @@ impl<'a> Battle<'a> {
                 aha.gauge_quanta = aha.gauge_quanta.saturating_sub(delta * speed);
             }
             for unit in self.allies().chain(self.enemies()) {
-                if self.available_for_ordinary_turn(unit) {
+                if self.available_for_ordinary_turn(unit) && self.territory_owner != Some(unit) {
                     let consumed = delta * self.speed_micros(unit);
                     self.units[unit].gauge_quanta =
                         self.units[unit].gauge_quanta.saturating_sub(consumed);
@@ -1116,6 +1141,9 @@ impl<'a> Battle<'a> {
             }
             self.normal_turns += 1;
             for owner in self.allies() {
+                if !self.in_territory(owner) {
+                    continue;
+                }
                 let state = &self.units[owner];
                 if state.hp > 0
                     && let Some(summon) = state.summon_turn
@@ -1209,7 +1237,7 @@ impl<'a> Battle<'a> {
         }
     }
 
-    fn resolve_enemy_turn(&mut self, actor: usize) {
+    fn resolve_enemy_turn(&mut self, actor: usize) -> bool {
         let sublimation_blocks_action = self.expire_sublimation(actor);
         for owner in self.allies() {
             if self.units[owner].hp > 0
@@ -1226,8 +1254,9 @@ impl<'a> Battle<'a> {
         self.dot_timing = DotTiming::Other;
         self.tick_entanglement(actor);
         if self.units[actor].hp == 0 {
-            return;
+            return false;
         }
+        let mut completed_action = false;
         let mut acted = false;
         if !self.thaw(actor) {
             let kit = &self.plan.units[actor].kit;
@@ -1240,15 +1269,16 @@ impl<'a> Battle<'a> {
                     if self.units[actor].hp > 0 {
                         self.finish_turn(actor);
                     }
-                    return;
+                    return false;
                 }
                 self.set_toughness(actor, actor, kit.max_toughness());
             }
             self.reset_gauge(actor);
             if sublimation_blocks_action {
                 self.finish_turn(actor);
-                return;
+                return false;
             }
+            completed_action = true;
             let parent_debuff_targets = self.begin_debuff_action();
             for owner in self.allies() {
                 if self.units[owner].hp > 0
@@ -1267,6 +1297,34 @@ impl<'a> Battle<'a> {
         if acted {
             self.notify_unit_action_finished(actor);
         }
+        completed_action
+    }
+
+    fn immediately_act_enemies(&mut self, territory_owner: usize) -> u8 {
+        let mut turns = self.scheduled_turns()
+            .filter(|&(_, _, slot)| matches!(slot, TurnSlot::Unit(unit) if self.enemies().contains(&unit)))
+            .collect::<Vec<_>>();
+        turns.sort_unstable();
+        let mut resolved = 0;
+        for (_, _, slot) in turns {
+            let TurnSlot::Unit(enemy) = slot else {
+                continue;
+            };
+            if self.territory_owner != Some(territory_owner) {
+                break;
+            }
+            if !self.is_targetable(enemy) {
+                continue;
+            }
+            self.units[enemy].normal_turns += 1;
+            self.units[enemy].advanced_to_front = false;
+            self.emit(EventKind::TurnStarted, Some(enemy), None);
+            let previous = self.enemy_turn.replace(enemy);
+            let completed_action = self.resolve_enemy_turn(enemy);
+            self.enemy_turn = previous;
+            resolved += u8::from(completed_action);
+        }
+        resolved
     }
 
     fn resolve_wave_or_end(&mut self) {

@@ -336,7 +336,7 @@ impl Mechanics for Welt {
     ) {
         match action {
             Action::ElationSkill => {}
-            Action::Basic | Action::Skill => {
+            Action::Basic | Action::Skill | Action::EnhancedSkill => {
                 if let Some(target) = target
                     && self.use_honor_charge(battle, actor)
                 {

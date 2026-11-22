@@ -52,6 +52,7 @@ export type Setup = {
 export type Action =
   | 'basic'
   | 'skill'
+  | 'enhanced_skill'
   | 'ultimate'
   | 'enhanced_ultimate'
   | 'elation_skill';
@@ -110,7 +111,8 @@ type Status =
   | 'seam_stitch'
   | 'supreme_stance'
   | 'weal_lots'
-  | 'woes_whisper';
+  | 'woes_whisper'
+  | 'khaslana';
 type EventKind =
   | {
       event:
@@ -146,6 +148,8 @@ type EventKind =
         | 'blade_charge'
         | 'memosprite_charge'
         | 'newbud'
+        | 'coreflame'
+        | 'scourge'
         | 'syzygy'
         | 'moonlight'
         | 'basic_enhancement'

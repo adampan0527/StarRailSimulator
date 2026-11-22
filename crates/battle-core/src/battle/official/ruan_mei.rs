@@ -172,7 +172,7 @@ impl Mechanics for RuanMei {
         let unit = &mut battle.units[owner];
         match action {
             Action::ElationSkill => {}
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 unit.ruan_mei_state.overtones_until_turn =
                     unit.normal_turns.saturating_add(self.skill_turns);
             }

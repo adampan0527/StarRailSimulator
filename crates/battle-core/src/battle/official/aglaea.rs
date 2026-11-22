@@ -339,7 +339,7 @@ impl Mechanics for Aglaea {
                     self.mark_seam(battle, owner, target);
                 }
             }
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 if let Some(sprite) = battle.active_memosprite(owner) {
                     let max_hp = u64::from(battle.effective_max_hp(sprite));
                     let healing = max_hp * self.healing_ratio_micros / MICROS_PER_UNIT;

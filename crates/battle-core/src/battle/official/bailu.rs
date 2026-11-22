@@ -34,7 +34,7 @@ pub(in crate::battle) struct BailuState {
 #[derive(Clone, Copy)]
 pub(in crate::battle) struct Invigoration {
     source: usize,
-    expires_after_turn: u32,
+    pub(in crate::battle) expires_after_turn: u32,
     remaining_heals: u8,
     damage_reduction_bp: u32,
     full_hp_energy_milli: u32,

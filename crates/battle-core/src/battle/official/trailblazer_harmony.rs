@@ -158,11 +158,11 @@ impl Mechanics for HarmonyTrailblazer {
                 state.backup_dancer_until_turn =
                     unit.normal_turns.saturating_add(self.dancer_turns);
             }
-            Action::Skill if self.eidolon >= 1 && !state.refunded_skill => {
+            Action::Skill | Action::EnhancedSkill if self.eidolon >= 1 && !state.refunded_skill => {
                 state.refunded_skill = true;
                 battle.restore_skill_points(owner, 1);
             }
-            Action::Basic | Action::Skill | Action::EnhancedUltimate => {}
+            Action::Basic | Action::Skill | Action::EnhancedSkill | Action::EnhancedUltimate => {}
         }
     }
 

@@ -25,7 +25,7 @@ const MICROS: u64 = 1_000_000;
 #[derive(Clone, Copy)]
 pub(in crate::battle) struct LynxResponse {
     source: usize,
-    expires_after_turn: u32,
+    pub(in crate::battle) expires_after_turn: u32,
     guard: bool,
     aggro_bonus: u32,
     hp_bonus: u32,
@@ -217,7 +217,7 @@ impl Mechanics for Lynx {
     ) {
         match action {
             Action::ElationSkill => {}
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 if let Some(target) = target {
                     self.use_skill(battle, actor, target);
                 }

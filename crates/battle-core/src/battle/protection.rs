@@ -67,6 +67,7 @@ impl Battle<'_> {
             Some(source),
             Some(target),
         );
+        self.notify_ally_sustain(source, target);
     }
 
     pub(super) fn has_official_shield(&self, source: usize, target: usize, origin: Action) -> bool {

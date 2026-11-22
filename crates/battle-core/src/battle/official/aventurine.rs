@@ -306,7 +306,9 @@ impl Mechanics for Aventurine {
     ) {
         match action {
             Action::ElationSkill => {}
-            Action::Skill => self.grant_fortified_wager(battle, actor, false),
+            Action::Skill | Action::EnhancedSkill => {
+                self.grant_fortified_wager(battle, actor, false)
+            }
             Action::Ultimate => {
                 if self.eidolon >= 1 {
                     self.grant_fortified_wager(battle, actor, false);

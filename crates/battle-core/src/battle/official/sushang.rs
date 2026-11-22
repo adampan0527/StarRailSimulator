@@ -241,7 +241,7 @@ impl Mechanics for Sushang {
     ) {
         match action {
             Action::ElationSkill => {}
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 if let Some(target) = target {
                     self.resolve_skill(battle, actor, target);
                 }
