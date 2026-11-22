@@ -1272,6 +1272,62 @@ fn saved_team_replays_parry_counters_and_erudition_damage() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_memosprite_and_true_damage_providers() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [trailblazer, tribbie, anaxa, the_herta] = [
+        "trailblazer.remembrance",
+        "character.1403",
+        "character.1405",
+        "character.1401",
+    ];
+    let mut edit = archive.profile(tribbie).unwrap().edit;
+    edit.eidolon = 1;
+    archive.save(tribbie, edit).unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "忆灵与同谐结界",
+            &[trailblazer, tribbie, anaxa, the_herta].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert_eq!(result.targets.len(), 3);
+    assert_eq!(result.characters.len(), 4);
+    let mem = format!("{trailblazer}:mem");
+    assert!(hits().any(|hit| hit.source_id == mem && hit.amount > 0));
+    assert!(hits().any(|hit| hit.source_id == anaxa && hit.kind == DamageKind::Direct));
+    for provider in [trailblazer, tribbie] {
+        assert!(hits().any(|hit| {
+            hit.kind == DamageKind::TrueDamage
+                && (hit.source_id == provider
+                    || hit
+                        .credits
+                        .iter()
+                        .any(|credit| credit.unit_id == provider && credit.amount > 0))
+        }));
+    }
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
