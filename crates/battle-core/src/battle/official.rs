@@ -54,6 +54,7 @@ mod sushang;
 mod tingyun;
 mod topaz;
 mod trailblazer_harmony;
+mod tribbie;
 mod welt;
 mod xueyi;
 mod yanqing;
@@ -92,6 +93,7 @@ pub(super) use {
     sunday::SundayState,
     topaz::TopazState,
     trailblazer_harmony::HarmonyTrailblazerState,
+    tribbie::TribbieState,
     welt::WeltState,
     xueyi::XueyiState,
     yukong::YukongState,
@@ -405,6 +407,19 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn on_battle_start(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn tracks_attack_damage(&self) -> bool {
+        false
+    }
+
+    fn after_ally_attack_damage(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _origin: Action,
+        _damage: u64,
+    ) {
+    }
 
     fn on_summon_turn(&self, _battle: &mut Battle<'_>, _owner: usize) {}
 
@@ -1306,6 +1321,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         rappa::FORM => Some(rappa::build),
         sunday::FORM => Some(sunday::build),
         jade::FORM => Some(jade::build),
+        tribbie::FORM => Some(tribbie::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),
         "dan_heng.hunt" => Some(dan_heng::build),
