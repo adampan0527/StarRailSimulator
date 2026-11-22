@@ -18,6 +18,7 @@ pub(super) enum DebuffKind {
     UltimateVulnerability,
     EffectResistanceDown,
     Besotted,
+    Befog,
     Unnerved,
     ThanatoplumRebloom,
     Standoff,
@@ -57,6 +58,7 @@ impl DebuffKind {
             Self::UltimateVulnerability => StatusKind::UltimateVulnerability,
             Self::EffectResistanceDown => StatusKind::EffectResistanceDown,
             Self::Besotted => StatusKind::Besotted,
+            Self::Befog => StatusKind::Befog,
             Self::Unnerved => StatusKind::Unnerved,
             Self::ThanatoplumRebloom => StatusKind::ThanatoplumRebloom,
             Self::Standoff => StatusKind::Standoff,
@@ -75,6 +77,10 @@ impl DebuffKind {
             }
             _ => false,
         }
+    }
+
+    pub(super) fn is_break_vulnerability(self) -> bool {
+        matches!(self, Self::Befog | Self::Besotted)
     }
 }
 

@@ -412,12 +412,21 @@ impl Battle<'_> {
         let conversion_bp = mechanics
             .as_ref()
             .map_or(0, |rules| rules.attack_conversion_from_defense_bp());
+        let break_conversion_bp = mechanics.as_ref().map_or(0, |rules| {
+            let break_effect = stats
+                .break_effect_bp
+                .saturating_add(rules.break_effect_bonus_bp(self, actor))
+                .saturating_add(buffs.break_effect_bp);
+            rules.attack_bonus_from_break_effect_bp(break_effect)
+        });
         let defense = self.defense_with_buff(actor, buffs.defense_bp);
         let attack = stats
             .attack
             .saturating_add(percentage_of(
                 stats.base_attack,
-                personal_bp.saturating_add(buffs.attack_bp),
+                personal_bp
+                    .saturating_add(buffs.attack_bp)
+                    .saturating_add(break_conversion_bp),
             ))
             .saturating_add(percentage_of(defense, conversion_bp))
             .saturating_add(flat)
