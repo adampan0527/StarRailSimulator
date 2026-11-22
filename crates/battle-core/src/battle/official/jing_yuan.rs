@@ -215,7 +215,7 @@ impl Mechanics for JingYuan {
         kind: DamageKind,
     ) -> bool {
         battle.units[actor].jing_yuan_state.lightning_lord_attacking
-            && matches!(kind, DamageKind::FollowUp | DamageKind::WeaknessBreak)
+            && (kind == DamageKind::FollowUp || kind.is_break())
     }
 
     fn after_follow_up_hit(

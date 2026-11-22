@@ -53,6 +53,18 @@ enum DamageCritical {
     Guaranteed,
 }
 
+#[derive(Clone)]
+pub(super) struct SuperBreakTarget {
+    target: usize,
+    element: Element,
+    toughness_segments: Vec<(u16, u32)>,
+}
+
+fn scaled_toughness(base: u16, personal_bp: u32, team_bp: u64) -> u16 {
+    let efficiency_bp = 10_000 + u64::from(personal_bp) + team_bp;
+    (u64::from(base) * efficiency_bp / 10_000).min(u64::from(u16::MAX)) as u16
+}
+
 #[derive(Clone, Copy)]
 enum DamageScale {
     Attack,
@@ -820,6 +832,7 @@ impl Battle<'_> {
         let previous_target = self.action_target.replace(target);
         let previous_follow_up = std::mem::take(&mut self.resolving_follow_up);
         let previous_attack_targets = std::mem::take(&mut self.attack_targets);
+        let previous_super_break_targets = std::mem::take(&mut self.super_break_targets);
         let parent_debuff_targets = self.begin_debuff_action();
         self.begin_attack();
         self.emit(EventKind::TriggeredSkill, Some(actor), Some(target));
@@ -829,6 +842,7 @@ impl Battle<'_> {
         self.notify_ally_action_finished(actor, Action::Skill);
         self.finish_debuff_action(actor, parent_debuff_targets);
         self.attack_targets = previous_attack_targets;
+        self.super_break_targets = previous_super_break_targets;
         self.resolving_follow_up = previous_follow_up;
         self.action_target = previous_target;
         self.action = previous_action;
@@ -995,6 +1009,7 @@ impl Battle<'_> {
         primary_target: Option<usize>,
     ) {
         let landed = !self.attack_targets.is_empty();
+        let super_break_targets = std::mem::take(&mut self.super_break_targets);
         for owner in self.allies() {
             if self.units[owner].hp > 0
                 && let Some(mechanics) = self.mechanics(owner)
@@ -1005,6 +1020,7 @@ impl Battle<'_> {
                 }
             }
         }
+        self.resolve_super_breaks(actor, origin, &super_break_targets);
         let crossed_half = std::mem::take(&mut self.crossed_half);
         if crossed_half.is_empty() {
             return;
@@ -1194,7 +1210,7 @@ impl Battle<'_> {
         if event.kind == DamageKind::DamageOverTime {
             vulnerability = vulnerability.saturating_add(sum(DebuffKind::DotVulnerability));
         }
-        if event.kind == DamageKind::WeaknessBreak {
+        if event.kind.is_break() {
             vulnerability = vulnerability.saturating_add(sum(DebuffKind::Besotted));
         }
         let mut field_defense_down = 0_u32;
@@ -1673,6 +1689,18 @@ impl Battle<'_> {
         );
 
         let before = self.units[target].toughness;
+        if self.tracks_super_break
+            && before == 0
+            && hit_weakness
+            && toughness > 0
+            && matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
+            && origin.is_some()
+            && self.allies().contains(&actor)
+            && self.enemies().contains(&target)
+            && self.is_targetable(target)
+        {
+            self.record_super_break_segment(target, element, toughness, personal_toughness_bp);
+        }
         if self.units[target].hp > 0 && hit_weakness && before > 0 && toughness > 0 {
             let team_toughness_bp = if self.allies().contains(&actor) {
                 self.allies()
@@ -1683,9 +1711,7 @@ impl Battle<'_> {
             } else {
                 0
             };
-            let efficiency_bp = 10_000 + u64::from(personal_toughness_bp) + team_toughness_bp;
-            let toughness =
-                (u64::from(toughness) * efficiency_bp / 10_000).min(u64::from(u16::MAX)) as u16;
+            let toughness = scaled_toughness(toughness, personal_toughness_bp, team_toughness_bp);
             let after = before.saturating_sub(toughness);
             self.set_toughness(actor, target, after);
             if origin.is_some()
@@ -1782,6 +1808,80 @@ impl Battle<'_> {
         let (hp, max_hp) = self.hp(target);
         if self.enemies().contains(&target) && hp_before > max_hp / 2 && hp <= max_hp / 2 {
             self.crossed_half.push(target);
+        }
+    }
+
+    fn record_super_break_segment(
+        &mut self,
+        target: usize,
+        element: Element,
+        toughness: u16,
+        personal_toughness_bp: u32,
+    ) {
+        let segment = (toughness, personal_toughness_bp);
+        if let Some(group) = self
+            .super_break_targets
+            .iter_mut()
+            .find(|group| group.target == target && group.element == element)
+        {
+            group.toughness_segments.push(segment);
+        } else {
+            self.super_break_targets.push(SuperBreakTarget {
+                target,
+                element,
+                toughness_segments: vec![segment],
+            });
+        }
+    }
+
+    fn resolve_super_breaks(&mut self, actor: usize, origin: Action, targets: &[SuperBreakTarget]) {
+        if targets.is_empty() {
+            return;
+        }
+        let mut source = self.plan.units[actor].stats;
+        if let Some(rules) = self.mechanics(actor) {
+            source.break_effect_bp = source
+                .break_effect_bp
+                .saturating_add(rules.break_effect_bonus_bp(self, actor));
+        }
+        for group in targets {
+            let SuperBreakTarget {
+                target,
+                element,
+                toughness_segments,
+            } = group;
+            for owner in self.allies() {
+                if !self.is_targetable(*target) || !self.is_targetable(owner) {
+                    continue;
+                }
+                let multiplier = self.mechanics(owner).map_or(0, |rules| {
+                    rules.super_break_multiplier_bp(self, owner, actor, *target)
+                });
+                if multiplier == 0 {
+                    continue;
+                }
+                let hp_before = self.units[*target].hp;
+                let mut event = Self::break_damage_event(origin, DamageKind::SuperBreak);
+                event.assisted_by = Some(owner);
+                self.resolve_damage(actor, *target, *element, event, |view| {
+                    let mut adjusted = source;
+                    adjusted.break_effect_bp = adjusted
+                        .break_effect_bp
+                        .saturating_add(view.bonus.break_effect_bp);
+                    let toughness = toughness_segments
+                        .iter()
+                        .map(|&(base, personal_bp)| {
+                            u32::from(scaled_toughness(
+                                base,
+                                personal_bp,
+                                u64::from(view.bonus.toughness_efficiency_bp),
+                            ))
+                        })
+                        .sum();
+                    damage::super_break(adjusted, view.target, *element, toughness, multiplier)
+                });
+                self.record_half_hp_crossing(*target, hp_before);
+            }
         }
     }
 
@@ -2031,8 +2131,7 @@ impl Battle<'_> {
                             && self.is_ultimate_damage(actor, &event))
                         || (status.kind == DebuffKind::DotVulnerability
                             && kind == DamageKind::DamageOverTime)
-                        || (status.kind == DebuffKind::Besotted
-                            && kind == DamageKind::WeaknessBreak)
+                        || (status.kind == DebuffKind::Besotted && kind.is_break())
                 })
                 .map(|status| status.source)
                 .chain(

@@ -83,10 +83,17 @@ impl StatusKind {
 pub enum DamageKind {
     Direct,
     WeaknessBreak,
+    SuperBreak,
     DamageOverTime,
     Additional,
     FollowUp,
     TrueDamage,
+}
+
+impl DamageKind {
+    pub(crate) const fn is_break(self) -> bool {
+        matches!(self, Self::WeaknessBreak | Self::SuperBreak)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]

@@ -276,10 +276,7 @@ impl Mechanics for Topaz {
     ) -> bool {
         // The Skill uses Numby even when its independent turn is not in progress.
         origin == Some(Action::Skill)
-            && matches!(
-                kind,
-                DamageKind::Direct | DamageKind::FollowUp | DamageKind::WeaknessBreak
-            )
+            && (matches!(kind, DamageKind::Direct | DamageKind::FollowUp) || kind.is_break())
     }
 
     fn after_follow_up(&self, battle: &mut Battle<'_>, actor: usize, _origin: Action) {
