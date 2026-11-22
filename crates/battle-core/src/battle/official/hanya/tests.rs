@@ -9,7 +9,7 @@ use super::{BASIC, FORM, NETHERWORLD, REANIMATED, SCRIVENER, SKILL, TALENT, ULTI
 
 #[test]
 fn a_directed_attack_only_targets_burden_in_its_declared_scope() {
-    let plan = prepared(&[hanya(0)]);
+    let plan = prepared(&[hanya(0)]).with_dummies(&[120; 5]).unwrap();
     let battle = Battle::start(&plan, LogMode::Detailed);
     let left = 1;
     let center = 2;
@@ -28,6 +28,14 @@ fn a_directed_attack_only_targets_burden_in_its_declared_scope() {
         );
         assert!(!super::targets_burden(&battle, right, Some(left), ability));
     }
+    let effects = [fixture::Effect::DirectedRadiusAttack { radius: 2 }];
+    let ability = fixture::Ability {
+        target: fixture::Target::Enemy,
+        energy_milli: 0,
+        effects: &effects,
+    };
+    assert!(super::targets_burden(&battle, right, Some(left), ability));
+    assert!(!super::targets_burden(&battle, 4, Some(left), ability));
 }
 
 fn hanya_damage_bonus(battle: &Battle<'_>, actor: usize, element: fixture::Element) -> u32 {

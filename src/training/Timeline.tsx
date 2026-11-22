@@ -94,6 +94,12 @@ function eventTitle({ kind }: BattleEvent): string {
       return '琼玉牌变化';
     case 'apotheosis':
       return '升格变化';
+    case 'interpretation':
+      return '解读变化';
+    case 'inspiration':
+      return '灵感变化';
+    case 'herta_answer':
+      return '谜底变化';
     case 'pocket_trickshot':
       return '优势口袋变化';
     case 'blade_charge':
@@ -159,6 +165,9 @@ function eventDetail({ kind }: BattleEvent) {
     case 'toughness':
     case 'crimson_knot':
     case 'apotheosis':
+    case 'interpretation':
+    case 'inspiration':
+    case 'herta_answer':
     case 'pocket_trickshot':
     case 'blade_charge':
     case 'syzygy':

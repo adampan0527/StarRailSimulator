@@ -51,6 +51,7 @@ mod silver_wolf;
 mod sparkle;
 mod sunday;
 mod sushang;
+mod the_herta;
 mod tingyun;
 mod topaz;
 mod trailblazer_harmony;
@@ -90,6 +91,7 @@ pub(super) use {
     seele::SeeleState,
     sparkle::SparkleState,
     sunday::SundayState,
+    the_herta::TheHertaState,
     topaz::TopazState,
     trailblazer_harmony::HarmonyTrailblazerState,
     welt::WeltState,
@@ -1306,6 +1308,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         rappa::FORM => Some(rappa::build),
         sunday::FORM => Some(sunday::build),
         jade::FORM => Some(jade::build),
+        the_herta::FORM => Some(the_herta::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),
         "dan_heng.hunt" => Some(dan_heng::build),
