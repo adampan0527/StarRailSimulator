@@ -414,7 +414,7 @@ impl Mechanics for DanHengIl {
                     battle.advance(actor, 10_000);
                 }
             }
-            Action::Skill | Action::EnhancedUltimate => {}
+            Action::Skill | Action::EnhancedSkill | Action::EnhancedUltimate => {}
         }
     }
 
@@ -494,8 +494,8 @@ impl Mechanics for DanHengIl {
         let affordable = Self::affordable_tier(battle, actor);
         let selected = battle.units[actor].dan_heng_il_state.tier.cost();
         match action {
-            Action::Skill if selected < affordable => Some(1),
-            Action::Skill => Some(5),
+            Action::Skill | Action::EnhancedSkill if selected < affordable => Some(1),
+            Action::Skill | Action::EnhancedSkill => Some(5),
             Action::Basic => Some(2),
             Action::Ultimate
                 if self.eidolon >= 2 && affordable == 3 && battle.ordinary_actor == Some(actor) =>

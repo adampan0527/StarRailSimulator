@@ -158,8 +158,10 @@ impl Mechanics for Clara {
                     battle.apply_attack_bonus(actor, 3_000, 2);
                 }
             }
-            Action::Skill if self.eidolon == 0 => battle.units[actor].counter_state.marked.clear(),
-            Action::Basic | Action::Skill => {}
+            Action::Skill | Action::EnhancedSkill if self.eidolon == 0 => {
+                battle.units[actor].counter_state.marked.clear()
+            }
+            Action::Basic | Action::Skill | Action::EnhancedSkill => {}
         }
     }
 

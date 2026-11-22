@@ -537,7 +537,7 @@ impl Mechanics for Sparkle {
         match action {
             Action::Basic => None,
             Action::Ultimate | Action::EnhancedUltimate => Some(0),
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 let preferred = battle
                     .allies()
                     .filter(|&unit| unit != actor && battle.is_targetable(unit))

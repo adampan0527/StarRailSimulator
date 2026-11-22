@@ -335,7 +335,7 @@ impl Mechanics for Qingque {
         target: Option<usize>,
     ) {
         match (action, target) {
-            (Action::Skill, _) => self.draw_skill(battle, actor),
+            (Action::Skill | Action::EnhancedSkill, _) => self.draw_skill(battle, actor),
             (Action::Basic, Some(target)) => self.finish_basic(battle, actor, target),
             (Action::Ultimate, _)
                 if battle.ordinary_actor == Some(actor)
@@ -394,7 +394,7 @@ impl Mechanics for Qingque {
         _target: Option<usize>,
     ) -> Option<u8> {
         match action {
-            Action::Skill => Some(2),
+            Action::Skill | Action::EnhancedSkill => Some(2),
             Action::Ultimate if battle.ordinary_actor != Some(actor) => Some(5),
             Action::Ultimate => {
                 let state = &battle.units[actor].qingque_state;

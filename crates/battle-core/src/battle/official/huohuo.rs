@@ -290,13 +290,11 @@ impl Huohuo {
                 continue;
             }
             let max_energy = battle.plan.units[target].kit.max_energy_milli();
-            if max_energy > 0 {
-                battle.restore_energy_flat(
-                    owner,
-                    target,
-                    percentage_of(max_energy, self.ultimate_energy_bp),
-                );
-            }
+            battle.restore_energy_flat(
+                owner,
+                target,
+                percentage_of(max_energy, self.ultimate_energy_bp),
+            );
             let bonus_attack = if self.enhanced
                 && self.control_resistance
                 && max_energy >= A4_ENERGY_THRESHOLD_MILLI
@@ -411,7 +409,7 @@ impl Mechanics for Huohuo {
     ) -> Option<u8> {
         match action {
             Action::Ultimate => Some(0),
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 let target = target?;
                 let refresh = !Self::provision_active(battle, owner)
                     && (self.talent_energy || self.eidolon >= 1);

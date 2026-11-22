@@ -7,6 +7,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 pub enum Action {
     Basic,
     Skill,
+    EnhancedSkill,
     Ultimate,
     EnhancedUltimate,
 }

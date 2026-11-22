@@ -44,6 +44,7 @@ mod moze;
 mod mydei;
 mod natasha;
 mod pela;
+mod phainon;
 mod qingque;
 mod rappa;
 mod robin;
@@ -93,6 +94,7 @@ pub(super) use {
     march_hunt::MarchHuntState,
     misha::MishaState,
     moze::MozeState,
+    phainon::PhainonState,
     qingque::QingqueState,
     rappa::RappaState,
     robin::RobinState,
@@ -215,7 +217,10 @@ impl OfficialCharacter {
         if self.level != 80
             || self.eidolon > 6
             || (self.energy_capacity == 0
-                && !matches!(self.form_id.as_str(), acheron::FORM | feixiao::FORM))
+                && !matches!(
+                    self.form_id.as_str(),
+                    acheron::FORM | feixiao::FORM | phainon::FORM
+                ))
             || self.energy_capacity > 999
             || stats.hp == 0
             || stats.hp > 100_000
@@ -313,7 +318,7 @@ impl OfficialKit {
             Action::Basic => &self.basic,
             Action::Skill => &self.skill,
             Action::Ultimate => &self.ultimate,
-            Action::EnhancedUltimate => return None,
+            Action::EnhancedSkill | Action::EnhancedUltimate => return None,
         };
         Some(ability.resolve())
     }
@@ -397,6 +402,12 @@ pub(super) trait Mechanics: Send + Sync {
     fn on_active_ability(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
     fn on_countdown_turn(&self, _battle: &mut Battle<'_>, _owner: usize) {}
+
+    fn on_external_energy(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn on_ally_sustain(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn on_enemy_targeted(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     /// Lower bound is both the charge threshold and the energy consumed.
     fn ultimate_energy_range(&self, _action: Action) -> Option<RangeInclusive<u32>> {
@@ -1450,6 +1461,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         tribbie::FORM => Some(tribbie::build),
         mydei::FORM => Some(mydei::build),
         anaxa::FORM => Some(anaxa::build),
+        phainon::FORM => Some(phainon::build),
         cipher::FORM => Some(cipher::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),

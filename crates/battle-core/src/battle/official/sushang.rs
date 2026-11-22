@@ -240,7 +240,7 @@ impl Mechanics for Sushang {
         target: Option<usize>,
     ) {
         match action {
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 if let Some(target) = target {
                     self.resolve_skill(battle, actor, target);
                 }

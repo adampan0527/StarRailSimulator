@@ -49,7 +49,12 @@ export type Setup = {
   boots_speed_tiers_micros: number[];
 };
 
-export type Action = 'basic' | 'skill' | 'ultimate' | 'enhanced_ultimate';
+export type Action =
+  | 'basic'
+  | 'skill'
+  | 'enhanced_skill'
+  | 'ultimate'
+  | 'enhanced_ultimate';
 export type Outcome = 'ongoing' | 'victory' | 'defeat' | 'turn_limit';
 export type Command = {
   decision_index: number;
@@ -103,7 +108,8 @@ type Status =
   | 'patron'
   | 'weaken'
   | 'seam_stitch'
-  | 'supreme_stance';
+  | 'supreme_stance'
+  | 'khaslana';
 type EventKind =
   | {
       event:
@@ -135,6 +141,8 @@ type EventKind =
         | 'pocket_trickshot'
         | 'blade_charge'
         | 'memosprite_charge'
+        | 'coreflame'
+        | 'scourge'
         | 'syzygy'
         | 'moonlight'
         | 'basic_enhancement'

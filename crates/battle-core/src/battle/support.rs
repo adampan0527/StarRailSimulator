@@ -1,5 +1,5 @@
 use crate::{
-    Action, DamageKind,
+    Action, DamageKind, StatusKind,
     fixture::{Ability, Element},
 };
 
@@ -113,6 +113,39 @@ impl OffenseBuffs {
 }
 
 impl Battle<'_> {
+    pub(super) fn notify_ally_sustain(&mut self, source: usize, target: usize) {
+        if source != target
+            && self.is_party_unit(source)
+            && let Some(rules) = self.mechanics(target)
+        {
+            rules.on_ally_sustain(self, target);
+        }
+    }
+
+    pub(super) fn extend_active_buffs_by_one_turn(&mut self, target: usize) {
+        let state = &mut self.units[target];
+        for kind in [StatusKind::Shield, StatusKind::SpeedUp] {
+            if let Some(status) = &mut state.statuses[kind.index()] {
+                status.expires_after_turn = status.expires_after_turn.saturating_add(1);
+            }
+        }
+        for buff in &mut state.ally_buffs {
+            buff.expires_after_turn = buff.expires_after_turn.saturating_add(1);
+        }
+        for shield in &mut state.shields {
+            shield.expires_after_turn = shield.expires_after_turn.saturating_add(1);
+        }
+        if let Some(invigorated) = &mut state.invigoration {
+            invigorated.expires_after_turn = invigorated.expires_after_turn.saturating_add(1);
+        }
+        if let Some(response) = &mut state.lynx_response {
+            response.expires_after_turn = response.expires_after_turn.saturating_add(1);
+        }
+        for heal in &mut state.heals_over_time {
+            heal.turns = heal.turns.saturating_add(1);
+        }
+    }
+
     pub(super) fn apply_ally_buff(
         &mut self,
         source: usize,
@@ -521,11 +554,25 @@ impl Battle<'_> {
 
     pub(super) fn restore_energy_flat(&mut self, source: usize, target: usize, amount_milli: u32) {
         let cap = self.plan.units[target].kit.max_energy_milli();
+        if cap == 0 {
+            self.notify_external_energy(source, target);
+            return;
+        }
         let energy = self.units[target]
             .energy_milli
             .saturating_add(amount_milli)
             .min(cap);
         self.set_energy(source, target, energy);
+    }
+
+    pub(super) fn notify_external_energy(&mut self, source: usize, target: usize) {
+        if source != target
+            && self.is_party_unit(source)
+            && self.is_targetable(target)
+            && let Some(rules) = self.mechanics(target)
+        {
+            rules.on_external_energy(self, target);
+        }
     }
 
     pub(super) fn notify_ally_turn_opening(&mut self, actor: usize, extra: bool) {

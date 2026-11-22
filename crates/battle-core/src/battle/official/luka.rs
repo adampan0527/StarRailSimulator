@@ -229,7 +229,7 @@ impl Mechanics for Luka {
                     state.extra_jabs = 0;
                 }
             }
-            Action::Skill => {
+            Action::Skill | Action::EnhancedSkill => {
                 if self.dispel_trace {
                     battle.dispel_one(actor, target);
                 }

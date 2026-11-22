@@ -28,7 +28,17 @@ impl Battle<'_> {
         if self.extra_turns.active {
             return true;
         }
-        while let Some(actor) = self.extra_turns.pending.pop_front() {
+        loop {
+            let next = if let Some(owner) = self.territory_owner {
+                self.extra_turns
+                    .pending
+                    .iter()
+                    .position(|&actor| actor == owner)
+                    .and_then(|index| self.extra_turns.pending.remove(index))
+            } else {
+                self.extra_turns.pending.pop_front()
+            };
+            let Some(actor) = next else { return false };
             if !self.available_for_ordinary_turn(actor) {
                 continue;
             }
@@ -41,7 +51,6 @@ impl Battle<'_> {
             }
             return true;
         }
-        false
     }
 
     pub(super) fn finish_extra_turn(&mut self) {

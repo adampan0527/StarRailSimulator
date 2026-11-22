@@ -297,7 +297,7 @@ impl Mechanics for Firefly {
         }
         match action {
             Action::Basic => Some(&self.enhanced_basic),
-            Action::Skill => Some(&self.enhanced_skill),
+            Action::Skill | Action::EnhancedSkill => Some(&self.enhanced_skill),
             Action::Ultimate | Action::EnhancedUltimate => None,
         }
     }
@@ -567,7 +567,7 @@ impl Mechanics for Firefly {
     ) -> Option<u8> {
         match action {
             Action::Ultimate => Some(0),
-            Action::Skill => Some(2),
+            Action::Skill | Action::EnhancedSkill => Some(2),
             Action::Basic => Some(3),
             Action::EnhancedUltimate => None,
         }

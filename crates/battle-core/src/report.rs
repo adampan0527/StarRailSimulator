@@ -53,10 +53,11 @@ pub enum StatusKind {
     Weaken,
     SeamStitch,
     SupremeStance,
+    Khaslana,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::SupremeStance.index() + 1;
+    pub(crate) const COUNT: usize = Self::Khaslana.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -94,6 +95,7 @@ impl StatusKind {
             Self::Weaken => 30,
             Self::SeamStitch => 31,
             Self::SupremeStance => 32,
+            Self::Khaslana => 33,
         }
     }
 }
@@ -150,6 +152,14 @@ pub enum EventKind {
         after: u8,
     },
     MemospriteCharge {
+        before: u8,
+        after: u8,
+    },
+    Coreflame {
+        before: u32,
+        after: u32,
+    },
+    Scourge {
         before: u8,
         after: u8,
     },

@@ -4,6 +4,7 @@ import type { Action, BattleEvent, DamageKind, Outcome } from './client';
 export const actionNames: Record<Action, string> = {
   basic: '普攻',
   skill: '战技',
+  enhanced_skill: '强化战技',
   ultimate: '终结技',
   enhanced_ultimate: '强化终结技',
 };
@@ -59,6 +60,7 @@ const statusNames = {
   weaken: '虚弱',
   seam_stitch: '间隙织线',
   supreme_stance: '至高之姿',
+  khaslana: '卡厄斯兰那',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
@@ -112,6 +114,10 @@ function eventTitle({ kind }: BattleEvent): string {
       return '倏忽恩赐充能';
     case 'memosprite_charge':
       return '忆灵充能';
+    case 'coreflame':
+      return '火种变化';
+    case 'scourge':
+      return '毁伤变化';
     case 'mydei_charge':
       return '以血还血充能';
     case 'mydei_enhanced_skill':
@@ -190,6 +196,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'rappa_charge':
     case 'chroma_ink':
     case 'pawned_asset':
+    case 'coreflame':
+    case 'scourge':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'memosprite_charge':
       return `${kind.detail.before}% → ${kind.detail.after}%`;

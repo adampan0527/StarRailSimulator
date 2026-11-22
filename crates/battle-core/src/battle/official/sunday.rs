@@ -258,11 +258,9 @@ impl Sunday {
 
     fn ultimate(&self, battle: &mut Battle<'_>, actor: usize, target: usize) {
         let cap = battle.plan.units[target].kit.max_energy_milli();
-        if cap > 0 {
-            let restored = percentage_of(cap, self.energy_restore_bp);
-            let minimum = 40_000 * u32::from(self.rest_days_longing);
-            battle.restore_energy_flat(actor, target, restored.max(minimum));
-        }
+        let restored = percentage_of(cap, self.energy_restore_bp);
+        let minimum = 40_000 * u32::from(self.rest_days_longing);
+        battle.restore_energy_flat(actor, target, restored.max(minimum));
         let bonus_crit_damage_bp = percentage_of(
             battle.effective_crit_damage_bp(actor),
             self.beatified_ratio_bp,
@@ -362,7 +360,7 @@ impl Mechanics for Sunday {
         }
         match action {
             Action::Ultimate => Some(0),
-            Action::Skill => Some(2),
+            Action::Skill | Action::EnhancedSkill => Some(2),
             Action::Basic | Action::EnhancedUltimate => None,
         }
     }

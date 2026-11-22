@@ -222,7 +222,7 @@ fn offensive_priority(battle: &Battle<'_>, command: &Command) -> u8 {
         {
             1
         }
-        (Action::Skill, true) => 2,
+        (Action::Skill | Action::EnhancedSkill, true) => 2,
         (Action::Basic, _) => 3,
         _ => 4,
     }
