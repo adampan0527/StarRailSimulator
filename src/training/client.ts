@@ -99,7 +99,9 @@ type Status =
   | 'taunt'
   | 'withered_leaf'
   | 'sublimation'
-  | 'vendetta';
+  | 'vendetta'
+  | 'patron'
+  | 'weaken';
 type EventKind =
   | {
       event:

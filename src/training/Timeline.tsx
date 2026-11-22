@@ -55,6 +55,8 @@ const statusNames = {
   withered_leaf: '枯叶',
   sublimation: '升华',
   vendetta: '血仇',
+  patron: '老主顾',
+  weaken: '虚弱',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

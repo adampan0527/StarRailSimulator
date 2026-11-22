@@ -25,6 +25,8 @@ pub(super) enum DebuffKind {
     Standoff,
     Taunt,
     AttackDown,
+    Weaken,
+    Patron,
     AllResistanceDown,
     ResistanceDown(Element),
     Epiphany {
@@ -78,6 +80,8 @@ impl DebuffKind {
             Self::Standoff => StatusKind::Standoff,
             Self::Taunt => StatusKind::Taunt,
             Self::AttackDown => StatusKind::AttackDown,
+            Self::Weaken => StatusKind::Weaken,
+            Self::Patron => StatusKind::Patron,
             Self::AllResistanceDown | Self::ResistanceDown(_) => StatusKind::ResistanceDown,
             Self::Epiphany { .. } => StatusKind::Epiphany,
             Self::ImplantedWeakness(_) | Self::AccumulatedWeakness(_) => {

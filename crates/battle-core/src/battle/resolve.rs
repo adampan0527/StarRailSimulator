@@ -2509,6 +2509,7 @@ impl Battle<'_> {
             if let Some(rules) = ultimate {
                 rules.capture_ultimate_damage(self, actor, target, amount, &credits);
             }
+            self.notify_ally_damage(actor, target, kind, amount);
             self.dummy_damage.push(DummyDamage {
                 av_micros: self.av_micros,
                 actor,
@@ -2619,6 +2620,26 @@ impl Battle<'_> {
         }
     }
 
+    fn notify_ally_damage(&mut self, actor: usize, target: usize, kind: DamageKind, amount: u32) {
+        if !self.tracks_ally_damage
+            || amount == 0
+            || kind == DamageKind::TrueDamage
+            || !self.enemies().contains(&target)
+            || !self.is_party_unit(actor)
+        {
+            return;
+        }
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(mechanics) = self.mechanics(owner)
+                && mechanics.tracks_ally_damage()
+            {
+                // Observe the hit before a defeat can move an enemy mark.
+                mechanics.on_ally_damage(self, owner, actor, target, kind, amount);
+            }
+        }
+    }
+
     fn incoming_reduction_bp(&self, actor: usize, target: usize, kind: DamageKind) -> u32 {
         let personal_bp = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.incoming_damage_reduction_bp(self, target, actor, kind)
@@ -2630,6 +2651,13 @@ impl Battle<'_> {
         let ally_target = self.is_party_unit(target);
         if !enemy_source && !ally_target {
             return 10_000 - remaining_bp;
+        }
+        if enemy_source {
+            for status in &self.units[actor].debuffs {
+                if status.kind == DebuffKind::Weaken {
+                    remaining_bp = remaining_bp * 10_000_u32.saturating_sub(status.bp) / 10_000;
+                }
+            }
         }
         for owner in self.allies().filter(|&owner| self.units[owner].hp > 0) {
             if let Some(mechanics) = self.mechanics(owner) {
@@ -2684,6 +2712,7 @@ impl Battle<'_> {
             Some(actor),
             Some(target),
         );
+        self.notify_ally_damage(actor, target, kind, hp_loss);
         if absorbed > 0 {
             self.deplete_shields(target, amount);
         }
