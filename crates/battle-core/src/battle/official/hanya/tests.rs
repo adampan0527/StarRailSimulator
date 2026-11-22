@@ -7,6 +7,29 @@ use crate::{
 
 use super::{BASIC, FORM, NETHERWORLD, REANIMATED, SCRIVENER, SKILL, TALENT, ULTIMATE};
 
+#[test]
+fn a_directed_attack_only_targets_burden_in_its_declared_scope() {
+    let plan = prepared(&[hanya(0)]);
+    let battle = Battle::start(&plan, LogMode::Detailed);
+    let left = 1;
+    let center = 2;
+    let right = 3;
+    for adjacent in [false, true] {
+        let effects = [fixture::Effect::DirectedAttack { adjacent }];
+        let ability = fixture::Ability {
+            target: fixture::Target::Enemy,
+            energy_milli: 0,
+            effects: &effects,
+        };
+        assert!(super::targets_burden(&battle, left, Some(left), ability));
+        assert_eq!(
+            super::targets_burden(&battle, center, Some(left), ability),
+            adjacent
+        );
+        assert!(!super::targets_burden(&battle, right, Some(left), ability));
+    }
+}
+
 fn hanya_damage_bonus(battle: &Battle<'_>, actor: usize, element: fixture::Element) -> u32 {
     battle
         .offense_buffs_from(

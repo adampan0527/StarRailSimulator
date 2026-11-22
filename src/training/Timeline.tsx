@@ -86,6 +86,10 @@ function eventTitle({ kind }: BattleEvent): string {
       return '琼玉牌变化';
     case 'apotheosis':
       return '升格变化';
+    case 'basic_enhancement':
+      return '普攻强化档位';
+    case 'squama_sacrosancta':
+      return '逆鳞变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -126,6 +130,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'toughness':
     case 'crimson_knot':
     case 'apotheosis':
+    case 'basic_enhancement':
+    case 'squama_sacrosancta':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;
