@@ -4,6 +4,12 @@ import './dpr.css';
 
 const format = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
 
+const memospriteNames = new Map([
+  ['trailblazer.remembrance:mem', '迷迷'],
+  ['character.1402:garmentmaker', '衣匠'],
+  ['character.1407:netherwing', '死龙'],
+]);
+
 export function DprResults({
   result,
   unitName,
@@ -58,9 +64,8 @@ export function DprResults({
                 <li key={sequence}>
                   <span>
                     <span className="muted">{av(hit.av_micros)} AV</span> ·{' '}
-                    {hit.source_id === 'trailblazer.remembrance:mem'
-                      ? '迷迷'
-                      : unitName(hit.source_id)}{' '}
+                    {memospriteNames.get(hit.source_id) ??
+                      unitName(hit.source_id)}{' '}
                     · {actionNames[hit.action]}
                     {hit.kind !== 'direct' && ` · ${damageNames[hit.kind]}`}
                     {hit.critical && ' · 暴击'} ·{' '}

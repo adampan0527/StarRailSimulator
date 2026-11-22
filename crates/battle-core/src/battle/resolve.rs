@@ -446,6 +446,30 @@ impl Battle<'_> {
         );
     }
 
+    pub(super) fn memosprite_hp_hit(
+        &mut self,
+        sprite: usize,
+        target: usize,
+        element: Element,
+        multiplier_bp: u32,
+        toughness: u16,
+    ) {
+        if self.is_targetable(sprite) {
+            self.strike(
+                sprite,
+                target,
+                DamageKind::Direct,
+                Hit {
+                    element,
+                    multiplier_bp,
+                    toughness,
+                    origin: Some(Action::Skill),
+                    scale: DamageScale::MaxHp,
+                },
+            );
+        }
+    }
+
     pub(super) fn attack_hit_with_break_effect(
         &mut self,
         actor: usize,
@@ -546,13 +570,32 @@ impl Battle<'_> {
         {
             rules.after_healing(self, target, restored);
         }
+        if amount > 0 && self.is_targetable(target) && self.is_party_unit(target) {
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(rules) = self.mechanics(owner)
+                {
+                    rules.on_party_healed(self, owner, target, amount);
+                }
+            }
+        }
     }
 
     /// Effective incoming heal before capping to missing HP.
     pub(super) fn incoming_healing_amount(&self, target: usize, amount: u32) -> u32 {
-        let bonus_bp = self
+        let personal_bp = self
             .mechanics(target)
             .map_or(0, |rules| rules.incoming_healing_bonus_bp(self, target));
+        let bonus_bp = if self.is_party_unit(target) {
+            self.allies()
+                .filter(|&owner| self.is_targetable(owner))
+                .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
+                .fold(personal_bp, |total, (owner, rules)| {
+                    total.saturating_add(rules.ally_incoming_healing_bonus_bp(self, owner))
+                })
+        } else {
+            personal_bp
+        };
         amount.saturating_add(percentage_of(amount, bonus_bp))
     }
 
@@ -590,6 +633,9 @@ impl Battle<'_> {
         amount: u32,
         minimum_remaining: u32,
     ) -> u32 {
+        if minimum_remaining == 1 {
+            self.protect_from_fatal_hp_overflow(target, amount);
+        }
         let hp = &mut self.units[target].hp;
         let amount = amount.min(hp.saturating_sub(minimum_remaining));
         *hp -= amount;
@@ -619,7 +665,7 @@ impl Battle<'_> {
     }
 
     fn record_team_hp_loss(&mut self, target: usize, amount: u32) {
-        if !self.allies().contains(&target) || amount == 0 {
+        if !self.is_party_unit(target) || amount == 0 {
             return;
         }
         for owner in self.allies() {
@@ -627,9 +673,27 @@ impl Battle<'_> {
             if (owner == target || self.units[owner].hp > 0)
                 && let Some(mechanics) = self.mechanics(owner)
             {
-                mechanics.record_team_hp_loss(self, owner, amount);
+                if self.allies().contains(&target) {
+                    mechanics.record_team_hp_loss(self, owner, amount);
+                }
+                mechanics.on_party_hp_lost(self, owner, target, amount);
             }
         }
+    }
+
+    fn protect_from_fatal_hp_overflow(&mut self, target: usize, incoming: u32) -> bool {
+        let hp = self.units[target].hp;
+        if hp == 0 || incoming < hp || !self.is_party_unit(target) || !self.can_enemy_target(target)
+        {
+            return false;
+        }
+        let overflow = incoming - (hp - 1);
+        self.allies().any(|owner| {
+            self.is_targetable(owner)
+                && self.mechanics(owner).is_some_and(|mechanics| {
+                    mechanics.absorb_fatal_hp_overflow(self, owner, target, overflow)
+                })
+        })
     }
 
     fn notify_ally_hp_loss(&mut self, target: usize) {
@@ -1202,7 +1266,9 @@ impl Battle<'_> {
                     .is_some_and(|rules| rules.taunts_enemy(self, owner, actor))
         });
         let target = taunt.or_else(|| match kit.target {
-            EnemyTarget::FirstLiving => self.party_units().find(|&unit| self.is_targetable(unit)),
+            EnemyTarget::FirstLiving => {
+                self.party_units().find(|&unit| self.can_enemy_target(unit))
+            }
             EnemyTarget::RandomLiving => self.random_enemy_target(),
         });
         if let Some(target) = target {
@@ -1262,7 +1328,7 @@ impl Battle<'_> {
     fn random_enemy_target(&mut self) -> Option<usize> {
         let mut weighted = self
             .party_units()
-            .filter(|&unit| self.is_targetable(unit))
+            .filter(|&unit| self.can_enemy_target(unit))
             .map(|unit| (unit, self.enemy_targeting_weight(unit)))
             .collect::<Vec<_>>();
         let &(_, first_weight) = weighted.first()?;
@@ -1285,6 +1351,14 @@ impl Battle<'_> {
             roll -= weight;
             None
         })
+    }
+
+    fn can_enemy_target(&self, unit: usize) -> bool {
+        self.is_targetable(unit)
+            && !self
+                .memosprite_owner(unit)
+                .and_then(|owner| self.mechanics(owner))
+                .is_some_and(|rules| rules.memosprite_is_backup())
     }
 
     fn target_auras_from(
@@ -1410,6 +1484,12 @@ impl Battle<'_> {
                     weightless_resistance_down.saturating_add(u32::from(resistance_down_bp));
             }
         }
+        let sprite_penetration = self
+            .memosprite_owner(actor)
+            .and_then(|owner| self.mechanics(owner))
+            .map_or(0, |rules| {
+                rules.memosprite_resistance_penetration_bp(element)
+            });
         let (personal_penetration, personal_defense_ignore, outgoing_damage_factor_bp) =
             self.mechanics(actor).map_or((0, 0, 10_000), |mechanics| {
                 let (ultimate_penetration, ultimate_defense_ignore) =
@@ -1451,6 +1531,7 @@ impl Battle<'_> {
                 .saturating_add(weightless_resistance_down)
                 .saturating_add(field_resistance_down)
                 .saturating_add(personal_penetration)
+                .saturating_add(sprite_penetration)
                 .saturating_add(if element == Element::Wind {
                     self.units[actor].active_penetration_bp
                 } else {
@@ -1776,7 +1857,11 @@ impl Battle<'_> {
         } else {
             scale
         };
-        let mut hit_weakness = self.has_weakness(target, element);
+        let mut hit_weakness = self.has_weakness(target, element)
+            || self
+                .memosprite_owner(actor)
+                .and_then(|owner| self.mechanics(owner))
+                .is_some_and(|rules| rules.memosprite_ignores_weakness());
         let mut personal_toughness_bp = 0;
         if let Some(mechanics) = &mechanics {
             if toughness > 0 {
@@ -1809,9 +1894,9 @@ impl Battle<'_> {
         let crit_rate = source
             .crit_rate_bp
             .saturating_add(self.units[actor].crit_rate_bonus_bp);
-        let max_hp_multiplier_bp = mechanics
-            .as_ref()
-            .map_or(10_000, |rules| rules.max_hp_multiplier_bp(self, actor));
+        let hp_source = self.max_hp_damage_source(actor);
+        let base_hp = self.plan.units[hp_source].stats.hp;
+        let max_hp_multiplier_bp = self.max_hp_multiplier_bp(hp_source);
         let crit = self.resolve_damage(
             actor,
             target,
@@ -1874,7 +1959,7 @@ impl Battle<'_> {
                         view.attack,
                         view.defense,
                         percentage_of(
-                            source.hp.saturating_add(view.bonus.max_hp_flat),
+                            base_hp.saturating_add(view.bonus.max_hp_flat),
                             max_hp_multiplier_bp,
                         ),
                         view.target.stats.hp,
@@ -2351,6 +2436,7 @@ impl Battle<'_> {
         };
         let offense = OffenseContext {
             actor,
+            max_hp_source: self.max_hp_damage_source(actor),
             enemy: self.enemies().contains(&target).then_some(target),
             element,
             kind,
@@ -2667,8 +2753,10 @@ impl Battle<'_> {
         critical: bool,
     ) {
         let absorbed = self.shield_amount(target).min(amount);
+        let incoming = amount - absorbed;
+        let preserved_hp = u32::from(self.protect_from_fatal_hp_overflow(target, incoming));
         let state = &mut self.units[target];
-        let hp_loss = state.hp.min(amount - absorbed);
+        let hp_loss = state.hp.saturating_sub(preserved_hp).min(incoming);
         state.hp -= hp_loss;
         if matches!(self.plan.units[target].kit, Kit::Enemy(_)) {
             self.enemy_hp_lost += hp_loss;
@@ -2717,38 +2805,43 @@ impl Battle<'_> {
             {
                 return;
             }
-            self.emit(EventKind::UnitDefeated, Some(actor), Some(target));
-            if let Some(mechanics) = self.mechanics(target) {
-                mechanics.on_defeated(self, target);
-            }
-            let attack_owner = self.memosprite_owner(actor).unwrap_or(actor);
-            if self.allies().contains(&attack_owner) {
-                self.gain_energy(actor, attack_owner, KILL_ENERGY_MILLI);
-                if let Some(mechanics) = self.mechanics(attack_owner) {
-                    mechanics.after_defeat(self, attack_owner, target);
-                }
-            }
-            if self.enemies().contains(&target) {
-                for owner in self.allies() {
-                    if self.units[owner].hp > 0
-                        && let Some(mechanics) = self.mechanics(owner)
-                    {
-                        mechanics.on_enemy_defeat(self, owner, actor, target);
-                    }
-                }
-            } else if target < self.plan.ally_count {
-                for owner in self.allies() {
-                    if self.units[owner].hp > 0
-                        && let Some(mechanics) = self.mechanics(owner)
-                    {
-                        mechanics.on_ally_defeat(self, owner);
-                    }
-                }
-            }
-            self.clear_defeated_effects(target);
-            self.remove_memosprite_of(target);
-            self.notify_memosprite_departed(target);
+            self.confirm_defeat(actor, target);
         }
+    }
+
+    pub(super) fn confirm_defeat(&mut self, actor: usize, target: usize) {
+        self.units[target].hp = 0;
+        self.emit(EventKind::UnitDefeated, Some(actor), Some(target));
+        if let Some(mechanics) = self.mechanics(target) {
+            mechanics.on_defeated(self, target);
+        }
+        let attack_owner = self.memosprite_owner(actor).unwrap_or(actor);
+        if self.allies().contains(&attack_owner) {
+            self.gain_energy(actor, attack_owner, KILL_ENERGY_MILLI);
+            if let Some(mechanics) = self.mechanics(attack_owner) {
+                mechanics.after_defeat(self, attack_owner, target);
+            }
+        }
+        if self.enemies().contains(&target) {
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.on_enemy_defeat(self, owner, actor, target);
+                }
+            }
+        } else if target < self.plan.ally_count {
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.on_ally_defeat(self, owner);
+                }
+            }
+        }
+        self.clear_defeated_effects(target);
+        self.remove_memosprite_of(target);
+        self.notify_memosprite_departed(target);
     }
 
     pub(super) fn clear_defeated_effects(&mut self, target: usize) {

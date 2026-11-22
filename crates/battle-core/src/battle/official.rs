@@ -9,6 +9,7 @@ mod black_swan;
 mod blade;
 mod boothill;
 mod bronya;
+mod castorice;
 mod clara;
 mod dan_heng;
 mod dan_heng_il;
@@ -73,6 +74,7 @@ pub(super) use {
     black_swan::BlackSwanTarget,
     blade::BladeState,
     boothill::BoothillState,
+    castorice::CastoriceState,
     dan_heng_il::DanHengIlState,
     dr_ratio::DrRatioState,
     feixiao::FeixiaoState,
@@ -211,7 +213,10 @@ impl OfficialCharacter {
         if self.level != 80
             || self.eidolon > 6
             || (self.energy_capacity == 0
-                && !matches!(self.form_id.as_str(), acheron::FORM | feixiao::FORM))
+                && !matches!(
+                    self.form_id.as_str(),
+                    acheron::FORM | castorice::FORM | feixiao::FORM
+                ))
             || self.energy_capacity > 999
             || stats.hp == 0
             || stats.hp > 100_000
@@ -361,6 +366,22 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn memosprite_guarantees_critical(&self, _origin: Option<Action>) -> bool {
         false
+    }
+
+    fn memosprite_is_backup(&self) -> bool {
+        false
+    }
+
+    fn memosprite_uses_owner_max_hp(&self) -> bool {
+        false
+    }
+
+    fn memosprite_ignores_weakness(&self) -> bool {
+        false
+    }
+
+    fn memosprite_resistance_penetration_bp(&self, _element: Element) -> u32 {
+        0
     }
 
     /// Lower bound is both the charge threshold and the energy consumed.
@@ -586,6 +607,38 @@ pub(super) trait Mechanics: Send + Sync {
     fn after_enemy_action(&self, _battle: &mut Battle<'_>, _owner: usize) {}
 
     fn record_team_hp_loss(&self, _battle: &mut Battle<'_>, _owner: usize, _hp_lost: u32) {}
+
+    fn on_party_hp_lost(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _target: usize,
+        _amount: u32,
+    ) {
+    }
+
+    fn absorb_fatal_hp_overflow(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _target: usize,
+        _overflow: u32,
+    ) -> bool {
+        false
+    }
+
+    fn on_party_healed(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _target: usize,
+        _amount: u32,
+    ) {
+    }
+
+    fn ally_incoming_healing_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        0
+    }
 
     fn block_enemy_control(
         &self,
@@ -1399,6 +1452,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         tribbie::FORM => Some(tribbie::build),
         mydei::FORM => Some(mydei::build),
         anaxa::FORM => Some(anaxa::build),
+        castorice::FORM => Some(castorice::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),
         "dan_heng.hunt" => Some(dan_heng::build),

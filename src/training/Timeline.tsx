@@ -108,6 +108,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '倏忽恩赐充能';
     case 'memosprite_charge':
       return '忆灵充能';
+    case 'newbud':
+      return '新蕊变化';
     case 'mydei_charge':
       return '以血还血充能';
     case 'mydei_enhanced_skill':
@@ -186,6 +188,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'rappa_charge':
     case 'chroma_ink':
     case 'pawned_asset':
+    case 'newbud':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'memosprite_charge':
       return `${kind.detail.before}% → ${kind.detail.after}%`;
