@@ -232,6 +232,7 @@ fn combustion(battle: &Battle<'_>, owner: usize) -> bool {
 
 fn enhanced_action(battle: &Battle<'_>, owner: usize) -> bool {
     combustion(battle, owner)
+        && battle.ordinary_actor == Some(owner)
         && !battle.in_follow_up()
         && matches!(battle.action, Some(Action::Basic | Action::Skill))
 }
