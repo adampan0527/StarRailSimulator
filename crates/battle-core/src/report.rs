@@ -150,6 +150,14 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    BasicEnhancement {
+        before: u8,
+        after: u8,
+    },
+    SquamaSacrosancta {
+        before: u8,
+        after: u8,
+    },
     Damage {
         kind: DamageKind,
         amount: u32,

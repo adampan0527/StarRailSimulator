@@ -133,6 +133,7 @@ struct UnitState {
     sparkle_state: official::SparkleState,
     sunday_state: official::SundayState,
     qingque_state: official::QingqueState,
+    dan_heng_il_state: official::DanHengIlState,
     ruan_mei_state: official::RuanMeiState,
     robin_state: official::RobinState,
     boothill_state: official::BoothillState,
@@ -259,6 +260,7 @@ impl<'a> Battle<'a> {
                     sparkle_state: official::SparkleState::default(),
                     sunday_state: official::SundayState::default(),
                     qingque_state: official::QingqueState::default(),
+                    dan_heng_il_state: official::DanHengIlState::default(),
                     ruan_mei_state: official::RuanMeiState::default(),
                     robin_state: official::RobinState::default(),
                     boothill_state: official::BoothillState::default(),
@@ -416,6 +418,13 @@ impl<'a> Battle<'a> {
             .is_some_and(|rules| rules.keeps_turn(command.action));
         let ends_turn = ultimate_cost_milli.is_none() && !keeps_turn;
         self.decision_index += 1;
+        if keeps_turn
+            && mechanics
+                .as_ref()
+                .is_some_and(|rules| rules.prepare_action(self, actor, command.action))
+        {
+            return Ok(());
+        }
         self.action = Some(command.action);
         self.action_target = target;
         let parent_debuff_targets = self.begin_debuff_action();
@@ -612,7 +621,11 @@ impl<'a> Battle<'a> {
             {
                 return Err(BattleError::IllegalTiming);
             }
-            if skill_points == SkillPoints::Spend && self.skill_points == 0 {
+            let shared_cost = self.mechanics(actor).map_or(0, |rules| {
+                rules.shared_skill_point_cost(self, actor, action)
+            });
+            let cost = shared_cost.saturating_add(u8::from(skill_points == SkillPoints::Spend));
+            if self.skill_points < cost {
                 return Err(BattleError::InsufficientSkillPoints);
             }
             None
@@ -1031,7 +1044,12 @@ impl<'a> Battle<'a> {
     }
 
     fn spend_skill_points(&mut self, actor: usize, points: u8) {
-        self.set_skill_points(actor, self.skill_points - points);
+        self.spend_skill_points_with_substitute(actor, points, 0);
+    }
+
+    fn spend_skill_points_with_substitute(&mut self, actor: usize, shared: u8, substitute: u8) {
+        self.set_skill_points(actor, self.skill_points - shared);
+        let points = shared + substitute;
         for owner in self.allies() {
             if self.units[owner].hp > 0
                 && let Some(mechanics) = self.mechanics(owner)

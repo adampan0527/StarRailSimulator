@@ -131,12 +131,13 @@ fn targets_burden(
             target == Some(burden)
                 || ability.effects.iter().any(|effect| match effect {
                     Effect::RandomHits { .. } | Effect::DirectedAreaAttack => true,
-                    Effect::BlastAdjacent { .. } | Effect::MaxHpBlastAdjacent { .. } => target
-                        .is_some_and(|unit| {
-                            battle
-                                .adjacent_enemies(unit)
-                                .any(|neighbor| neighbor == burden)
-                        }),
+                    Effect::BlastAdjacent { .. }
+                    | Effect::MaxHpBlastAdjacent { .. }
+                    | Effect::DirectedAttack { adjacent: true } => target.is_some_and(|unit| {
+                        battle
+                            .adjacent_enemies(unit)
+                            .any(|neighbor| neighbor == burden)
+                    }),
                     _ => false,
                 })
         }

@@ -10,6 +10,7 @@ mod boothill;
 mod bronya;
 mod clara;
 mod dan_heng;
+mod dan_heng_il;
 mod dr_ratio;
 mod feixiao;
 mod fu_xuan;
@@ -59,6 +60,7 @@ pub(super) use {
     black_swan::BlackSwanTarget,
     blade::BladeState,
     boothill::BoothillState,
+    dan_heng_il::DanHengIlState,
     dr_ratio::DrRatioState,
     feixiao::FeixiaoState,
     fu_xuan::FuXuanState,
@@ -348,6 +350,16 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn taunts_enemy(&self, _battle: &Battle<'_>, _owner: usize, _enemy: usize) -> bool {
         false
+    }
+
+    /// Handles a command that only prepares a later action, with no action triggers.
+    fn prepare_action(&self, _battle: &mut Battle<'_>, _actor: usize, _action: Action) -> bool {
+        false
+    }
+
+    /// Payment made by the character's own mechanic after the command is validated.
+    fn shared_skill_point_cost(&self, _battle: &Battle<'_>, _actor: usize, _action: Action) -> u8 {
+        0
     }
 
     fn ability_override(
@@ -1173,6 +1185,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1211" => Some(bailu::build),
         jingliu::FORM => Some(jingliu::build),
         xueyi::FORM => Some(xueyi::build),
+        dan_heng_il::FORM => Some(dan_heng_il::build),
         "character.1215" => Some(hanya::build),
         huohuo::FORM => Some(huohuo::build),
         "character.1218" => Some(jiaoqiu::build),

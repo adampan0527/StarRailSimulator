@@ -120,7 +120,9 @@ type EventKind =
         | 'pocket_trickshot'
         | 'blade_charge'
         | 'syzygy'
-        | 'moonlight';
+        | 'moonlight'
+        | 'basic_enhancement'
+        | 'squama_sacrosancta';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }

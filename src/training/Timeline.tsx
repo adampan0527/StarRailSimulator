@@ -95,6 +95,10 @@ function eventTitle({ kind }: BattleEvent): string {
       return '朔望变化';
     case 'moonlight':
       return '月色变化';
+    case 'basic_enhancement':
+      return '普攻强化档位';
+    case 'squama_sacrosancta':
+      return '逆鳞变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -139,6 +143,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'blade_charge':
     case 'syzygy':
     case 'moonlight':
+    case 'basic_enhancement':
+    case 'squama_sacrosancta':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;
