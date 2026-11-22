@@ -47,10 +47,12 @@ pub enum StatusKind {
     Parry,
     Taunt,
     WitheredLeaf,
+    SeamStitch,
+    SupremeStance,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::WitheredLeaf.index() + 1;
+    pub(crate) const COUNT: usize = Self::SupremeStance.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -82,6 +84,8 @@ impl StatusKind {
             Self::Parry => 24,
             Self::Taunt => 25,
             Self::WitheredLeaf => 26,
+            Self::SeamStitch => 27,
+            Self::SupremeStance => 28,
         }
     }
 }

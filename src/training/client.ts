@@ -97,7 +97,9 @@ type Status =
   | 'befog'
   | 'parry'
   | 'taunt'
-  | 'withered_leaf';
+  | 'withered_leaf'
+  | 'seam_stitch'
+  | 'supreme_stance';
 type EventKind =
   | {
       event:

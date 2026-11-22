@@ -80,11 +80,12 @@ impl SummonTurn {
     }
 }
 
-// Equal AV and advance priority preserve unit order, then summon owner order.
+// Equal AV and advance priority preserve unit order, then summon and countdown owner order.
 #[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 enum TurnSlot {
     Unit(usize),
     Summon(usize),
+    Countdown(usize),
 }
 
 #[derive(Clone, Copy)]
@@ -102,6 +103,7 @@ struct UnitState {
     extra_toughness: Option<ExtraToughness>,
     gauge_quanta: u64,
     summon_turn: Option<SummonTurn>,
+    countdown: Option<SummonTurn>,
     memosprite_max_hp: Option<u32>,
     memosprite_generation: u32,
     normal_turns: u32,
@@ -151,6 +153,7 @@ struct UnitState {
     rappa_state: official::RappaState,
     harmony_trailblazer_state: official::HarmonyTrailblazerState,
     remembrance_trailblazer_state: official::RemembranceTrailblazerState,
+    aglaea_state: official::AglaeaState,
     robin_state: official::RobinState,
     firefly_state: official::FireflyState,
     boothill_state: official::BoothillState,
@@ -220,6 +223,7 @@ pub struct Battle<'a> {
     attack_targets: Vec<usize>,
     attack_damage: Option<u64>,
     tracks_attack_damage: bool,
+    tracks_active_abilities: bool,
     super_break_targets: Vec<resolve::SuperBreakTarget>,
     tracks_super_break: bool,
     attack_index: u32,
@@ -247,6 +251,7 @@ impl<'a> Battle<'a> {
                     extra_toughness: None,
                     gauge_quanta: GAUGE_FULL,
                     summon_turn: None,
+                    countdown: None,
                     memosprite_max_hp: None,
                     memosprite_generation: 0,
                     normal_turns: 0,
@@ -296,6 +301,7 @@ impl<'a> Battle<'a> {
                     rappa_state: official::RappaState::default(),
                     harmony_trailblazer_state: official::HarmonyTrailblazerState::default(),
                     remembrance_trailblazer_state: official::RemembranceTrailblazerState::default(),
+                    aglaea_state: official::AglaeaState::default(),
                     robin_state: official::RobinState::default(),
                     firefly_state: official::FireflyState::default(),
                     boothill_state: official::BoothillState::default(),
@@ -353,6 +359,9 @@ impl<'a> Battle<'a> {
             tracks_attack_damage: plan.units[..plan.ally_count]
                 .iter()
                 .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.tracks_attack_damage())),
+            tracks_active_abilities: plan.units[..plan.ally_count]
+                .iter()
+                .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.tracks_active_abilities())),
             super_break_targets: Vec::new(),
             tracks_super_break: plan.units[..plan.ally_count]
                 .iter()
@@ -490,6 +499,7 @@ impl<'a> Battle<'a> {
         } else if ends_turn && !extra_turn {
             self.reset_gauge(actor);
         }
+        self.notify_active_ability(actor);
         self.notify_ally_targets(actor, target, ability.target, command.action);
         if !keeps_turn || attacking {
             self.activate_attack_bonuses(actor, command.action);
@@ -565,7 +575,12 @@ impl<'a> Battle<'a> {
                         vulnerability_bp: state
                             .debuffs
                             .iter()
-                            .filter(|status| status.kind == DebuffKind::Vulnerability)
+                            .filter(|status| {
+                                matches!(
+                                    status.kind,
+                                    DebuffKind::Vulnerability | DebuffKind::SeamStitch
+                                )
+                            })
                             .map(|status| status.bp)
                             .fold(
                                 state.magnitude(StatusKind::Vulnerability),
@@ -611,6 +626,10 @@ impl<'a> Battle<'a> {
                         } else {
                             format!("summon:{}:{}", self.plan.units[owner].id, summon.name)
                         }
+                    }
+                    TurnSlot::Countdown(owner) => {
+                        let countdown = self.units[owner].countdown?;
+                        format!("summon:{}:{}", self.plan.units[owner].id, countdown.name)
                     }
                 };
                 Some(ActionOrderEntry {
@@ -947,10 +966,14 @@ impl<'a> Battle<'a> {
             .map(|status| u64::from(status.bp))
             .sum();
         let (flat_buff, ratio_buff) = self.support_speed(unit);
-        let speed = stats.base_speed_micros
-            + stats.flat_speed_micros
-            + stats.base_speed_micros * (bonus_bp + ratio_buff) / 10_000
-            + flat_buff;
+        let initial_speed = self
+            .memosprite_owner(unit)
+            .and_then(|owner| self.units[owner].summon_turn)
+            .map_or(stats.base_speed_micros + stats.flat_speed_micros, |timer| {
+                timer.speed_micros
+            });
+        let speed =
+            initial_speed + stats.base_speed_micros * (bonus_bp + ratio_buff) / 10_000 + flat_buff;
         speed
             .saturating_sub(stats.base_speed_micros * slow_bp / 10_000)
             .max(1_000_000)
@@ -993,7 +1016,15 @@ impl<'a> Battle<'a> {
                 TurnSlot::Summon(owner),
             ))
         });
-        units.chain(summons)
+        let countdowns = self.allies().filter_map(|owner| {
+            let countdown = self.units[owner].countdown?;
+            Some((
+                countdown.gauge_quanta.div_ceil(countdown.speed_micros),
+                true,
+                TurnSlot::Countdown(owner),
+            ))
+        });
+        units.chain(summons).chain(countdowns)
     }
 
     fn advance_to_decision(&mut self) {
@@ -1029,9 +1060,22 @@ impl<'a> Battle<'a> {
                         timer.gauge_quanta = timer.gauge_quanta.saturating_sub(consumed);
                     }
                 }
+                if let Some(countdown) = &mut self.units[owner].countdown {
+                    countdown.gauge_quanta = countdown
+                        .gauge_quanta
+                        .saturating_sub(delta * countdown.speed_micros);
+                }
             }
             let actor = match slot {
                 TurnSlot::Unit(actor) => actor,
+                TurnSlot::Countdown(owner) => {
+                    self.units[owner].countdown = None;
+                    if let Some(mechanics) = self.mechanics(owner) {
+                        mechanics.on_countdown_turn(self, owner);
+                    }
+                    self.resolve_wave_or_end();
+                    continue;
+                }
                 TurnSlot::Summon(owner) => {
                     if let Some(summon) = &mut self.units[owner].summon_turn {
                         summon.gauge_quanta = GAUGE_FULL;
@@ -1042,6 +1086,7 @@ impl<'a> Battle<'a> {
                         self.units[sprite].normal_turns += 1;
                         self.emit(EventKind::TurnStarted, Some(sprite), None);
                         if !self.thaw(sprite) {
+                            self.notify_active_ability(sprite);
                             if let Some(mechanics) = self.mechanics(owner) {
                                 mechanics.on_summon_turn(self, owner);
                             }

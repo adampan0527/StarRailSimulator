@@ -1,4 +1,5 @@
 mod acheron;
+mod aglaea;
 mod argenti;
 mod arlan;
 mod asta;
@@ -65,6 +66,7 @@ mod yunli;
 
 pub(super) use {
     acheron::AcheronState,
+    aglaea::AglaeaState,
     aventurine::AventurineState,
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
@@ -357,6 +359,37 @@ pub(super) trait Mechanics: Send + Sync {
     fn memosprite_guarantees_critical(&self, _origin: Option<Action>) -> bool {
         false
     }
+
+    fn memosprite_immune_to_enemy_control(&self, _battle: &Battle<'_>, _owner: usize) -> bool {
+        false
+    }
+
+    fn memosprite_damage_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _sprite: usize,
+        _origin: Option<Action>,
+        _kind: DamageKind,
+    ) -> u32 {
+        0
+    }
+
+    fn memosprite_resistance_penetration_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _element: Element,
+    ) -> u32 {
+        0
+    }
+
+    fn tracks_active_abilities(&self) -> bool {
+        false
+    }
+
+    fn on_active_ability(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
+
+    fn on_countdown_turn(&self, _battle: &mut Battle<'_>, _owner: usize) {}
 
     /// Lower bound is both the charge threshold and the energy consumed.
     fn ultimate_energy_range(&self, _action: Action) -> Option<RangeInclusive<u32>> {
@@ -1313,6 +1346,7 @@ type KitBuilder = fn(&OfficialCharacter) -> Result<OfficialKit, BattleError>;
 
 fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
+        aglaea::FORM => Some(aglaea::build),
         "character.1003" => Some(himeko::build),
         welt::FORM => Some(welt::build),
         "character.1005" => Some(kafka::build),
