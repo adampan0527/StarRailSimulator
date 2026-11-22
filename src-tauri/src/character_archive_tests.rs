@@ -1425,6 +1425,64 @@ fn saved_team_replays_two_memosprites_vendetta_and_recorded_damage() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_netherwing_with_hp_consumption_and_healing() {
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [castorice, mydei, huohuo, lingsha] = [
+        "character.1407",
+        "character.1404",
+        "character.1217",
+        "character.1222",
+    ];
+    for (id, eidolon, cone) in [
+        (castorice, 2, "cone.23040"),
+        (mydei, 6, "cone.23039"),
+        (huohuo, 1, "cone.23017"),
+        (lingsha, 0, "cone.23013"),
+    ] {
+        let mut edit = archive.profile(id).unwrap().edit;
+        edit.eidolon = eidolon;
+        edit.light_cone = Some(LightConeEquipment::Custom(
+            star_rail_battle_core::LightCone {
+                data_id: cone.into(),
+                level: 80,
+                ascension: 6,
+                superimposition: 1,
+            },
+        ));
+        archive.save(id, edit).unwrap();
+    }
+    let team = archive
+        .save_team(
+            None,
+            "死龙、失血与治疗",
+            &[castorice, mydei, huohuo, lingsha].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert_eq!(result.targets.len(), 3);
+    assert_eq!(result.characters.len(), 4);
+    assert!(hits().any(|hit| hit.source_id == "character.1407:netherwing" && hit.amount > 0));
+    assert!(hits().any(|hit| hit.source_id == mydei && hit.amount > 0));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|character| character.own_damage + character.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
