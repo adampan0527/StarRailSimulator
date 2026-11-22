@@ -26,9 +26,9 @@ use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use extra_turn::ExtraTurns;
 use official::{
     AcheronState, AventurineState, BailuState, BlackSwanTarget, DrRatioState, FeixiaoState,
-    FuXuanState, GallagherState, HanyaState, HuohuoState, Invigoration, JingYuanState, LuochaState,
-    LynxResponse, MarchHuntState, Mechanics, MishaState, MozeState, SeeleState, SkillPoints,
-    SushangState, TopazState, WeltState, XueyiState, YanqingState, YukongState,
+    FuXuanState, FugueState, GallagherState, HanyaState, HuohuoState, Invigoration, JingYuanState,
+    LuochaState, LynxResponse, MarchHuntState, Mechanics, MishaState, MozeState, SeeleState,
+    SkillPoints, SushangState, TopazState, WeltState, XueyiState, YanqingState, YukongState,
 };
 pub use official::{
     CombatPath, CombatType, OfficialCharacter, OfficialStats, supports_official_dpr,
@@ -87,11 +87,19 @@ enum TurnSlot {
     Summon(usize),
 }
 
+#[derive(Clone, Copy)]
+struct ExtraToughness {
+    source: usize,
+    remaining: u16,
+    maximum: u16,
+}
+
 #[derive(Clone)]
 struct UnitState {
     hp: u32,
     energy_milli: u32,
     toughness: u16,
+    extra_toughness: Option<ExtraToughness>,
     gauge_quanta: u64,
     summon_turn: Option<SummonTurn>,
     normal_turns: u32,
@@ -135,6 +143,7 @@ struct UnitState {
     qingque_state: official::QingqueState,
     dan_heng_il_state: official::DanHengIlState,
     ruan_mei_state: official::RuanMeiState,
+    fugue_state: FugueState,
     harmony_trailblazer_state: official::HarmonyTrailblazerState,
     robin_state: official::RobinState,
     boothill_state: official::BoothillState,
@@ -224,6 +233,7 @@ impl<'a> Battle<'a> {
                     hp: unit.stats.hp,
                     energy_milli: unit.starting_energy_milli,
                     toughness: unit.kit.max_toughness(),
+                    extra_toughness: None,
                     gauge_quanta: GAUGE_FULL,
                     summon_turn: None,
                     normal_turns: 0,
@@ -267,6 +277,7 @@ impl<'a> Battle<'a> {
                     qingque_state: official::QingqueState::default(),
                     dan_heng_il_state: official::DanHengIlState::default(),
                     ruan_mei_state: official::RuanMeiState::default(),
+                    fugue_state: FugueState::default(),
                     harmony_trailblazer_state: official::HarmonyTrailblazerState::default(),
                     robin_state: official::RobinState::default(),
                     boothill_state: official::BoothillState::default(),

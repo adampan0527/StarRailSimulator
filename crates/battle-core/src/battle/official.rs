@@ -14,6 +14,7 @@ mod dan_heng_il;
 mod dr_ratio;
 mod feixiao;
 mod fu_xuan;
+mod fugue;
 mod gallagher;
 mod gepard;
 mod guinaifen;
@@ -67,6 +68,7 @@ pub(super) use {
     dr_ratio::DrRatioState,
     feixiao::FeixiaoState,
     fu_xuan::FuXuanState,
+    fugue::FugueState,
     hanya::HanyaState,
     huohuo::HuohuoState,
     jade::JadeState,
@@ -737,8 +739,30 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
-    fn ally_toughness_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+    fn ally_toughness_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize, _actor: usize) -> u32 {
         0
+    }
+
+    fn off_element_toughness_bp(&self, _battle: &Battle<'_>, _owner: usize, _actor: usize) -> u16 {
+        0
+    }
+
+    fn ally_break_damage_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+    ) -> u32 {
+        0
+    }
+
+    fn on_ally_first_attack_hit(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _target: usize,
+    ) {
     }
 
     fn prevent_toughness_recovery(
@@ -1230,6 +1254,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         feixiao::FORM => Some(feixiao::build),
         lingsha::FORM => Some(lingsha::build),
         "character.1223" => Some(moze::build),
+        fugue::FORM => Some(fugue::build),
         "character.1301" => Some(gallagher::build),
         argenti::FORM => Some(argenti::build),
         ruan_mei::FORM => Some(ruan_mei::build),

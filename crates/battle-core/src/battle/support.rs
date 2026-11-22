@@ -62,6 +62,8 @@ pub(super) struct OffenseBuffs {
     pub attack_flat: u32,
     pub break_effect_bp: u32,
     pub toughness_efficiency_bp: u32,
+    pub off_element_toughness_bp: u16,
+    pub break_damage_bonus_bp: u32,
     pub max_hp_flat: u32,
     pub defense_bp: u32,
     pub defense_ignore_bp: u32,
@@ -77,6 +79,7 @@ pub(super) struct OffenseContext {
     pub enemy: Option<usize>,
     pub element: Element,
     pub kind: DamageKind,
+    pub break_damage: bool,
     pub follow_up: bool,
     pub summon: bool,
 }
@@ -89,6 +92,12 @@ impl OffenseBuffs {
         self.toughness_efficiency_bp = self
             .toughness_efficiency_bp
             .saturating_add(buff.toughness_efficiency_bp);
+        self.off_element_toughness_bp = self
+            .off_element_toughness_bp
+            .max(buff.off_element_toughness_bp);
+        self.break_damage_bonus_bp = self
+            .break_damage_bonus_bp
+            .saturating_add(buff.break_damage_bonus_bp);
         self.max_hp_flat = self.max_hp_flat.saturating_add(buff.max_hp_flat);
         self.defense_bp = self.defense_bp.saturating_add(buff.defense_bp);
         self.defense_ignore_bp = self
@@ -273,6 +282,7 @@ impl Battle<'_> {
             enemy,
             element,
             kind,
+            break_damage,
             follow_up,
             summon,
         } = context;
@@ -320,7 +330,13 @@ impl Battle<'_> {
                     .saturating_add(mechanics.ally_break_effect_bonus_bp(self, source, target));
                 if kind == DamageKind::SuperBreak {
                     bonuses.toughness_efficiency_bp =
-                        mechanics.ally_toughness_bonus_bp(self, source);
+                        mechanics.ally_toughness_bonus_bp(self, source, target);
+                    bonuses.off_element_toughness_bp =
+                        mechanics.off_element_toughness_bp(self, source, target);
+                }
+                if break_damage {
+                    bonuses.break_damage_bonus_bp =
+                        mechanics.ally_break_damage_bonus_bp(self, source, target);
                 }
             }
             bonuses.max_hp_flat = bonuses
@@ -389,6 +405,7 @@ impl Battle<'_> {
                     enemy: None,
                     element: Element::Physical,
                     kind: DamageKind::Direct,
+                    break_damage: false,
                     follow_up: false,
                     summon: false,
                 },
@@ -405,6 +422,7 @@ impl Battle<'_> {
                 enemy: None,
                 element: Element::Physical,
                 kind: DamageKind::Direct,
+                break_damage: false,
                 follow_up: false,
                 summon: false,
             },
