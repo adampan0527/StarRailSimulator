@@ -342,6 +342,7 @@ impl Mechanics for Acheron {
         target: Option<usize>,
     ) {
         match action {
+            Action::ElationSkill => {}
             Action::Skill => self.gain_dreams(battle, actor, actor, target, 1),
             Action::Ultimate | Action::EnhancedUltimate => {
                 let overflow = battle.units[actor].acheron_state.overflow;

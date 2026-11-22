@@ -9,6 +9,8 @@ pub enum Action {
     Skill,
     Ultimate,
     EnhancedUltimate,
+    #[serde(skip_deserializing)]
+    ElationSkill,
 }
 
 impl Action {

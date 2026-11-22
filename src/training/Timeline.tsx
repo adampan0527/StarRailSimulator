@@ -6,6 +6,7 @@ export const actionNames: Record<Action, string> = {
   skill: '战技',
   ultimate: '终结技',
   enhanced_ultimate: '强化终结技',
+  elation_skill: '欢愉技',
 };
 
 export const damageNames: Record<DamageKind, string> = {
@@ -16,6 +17,7 @@ export const damageNames: Record<DamageKind, string> = {
   additional: '附加伤害',
   follow_up: '追加攻击',
   true_damage: '真实伤害',
+  elation: '欢愉伤害',
 };
 
 export const outcomeNames: Record<Outcome, string> = {
@@ -59,6 +61,8 @@ const statusNames = {
   weaken: '虚弱',
   seam_stitch: '间隙织线',
   supreme_stance: '至高之姿',
+  weal_lots: '爻光结界',
+  woes_whisper: '凶星低语',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
@@ -76,6 +80,12 @@ function eventTitle({ kind }: BattleEvent): string {
       return '额外回合开始';
     case 'triggered_skill':
       return '自动施放战技';
+    case 'aha_instant':
+      return kind.detail.extra ? '额外阿哈时刻' : '阿哈时刻';
+    case 'punchline':
+      return '笑点变化';
+    case 'certified_banger':
+      return '好活当赏变化';
     case 'action':
       return actionNames[kind.detail];
     case 'complete_combustion':
@@ -173,7 +183,11 @@ function eventTitle({ kind }: BattleEvent): string {
 
 function eventDetail({ kind }: BattleEvent) {
   switch (kind.event) {
+    case 'aha_instant':
+      return `${kind.detail.punchline} 笑点`;
     case 'skill_points':
+    case 'punchline':
+    case 'certified_banger':
     case 'blind_bet':
     case 'cloudflame_luster':
     case 'toughness':

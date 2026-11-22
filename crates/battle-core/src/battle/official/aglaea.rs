@@ -350,7 +350,7 @@ impl Mechanics for Aglaea {
                 }
             }
             Action::Ultimate => self.enter_stance(battle, owner),
-            Action::EnhancedUltimate => {}
+            Action::EnhancedUltimate | Action::ElationSkill => {}
         }
     }
 

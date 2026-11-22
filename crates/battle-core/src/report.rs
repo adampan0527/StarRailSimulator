@@ -53,10 +53,12 @@ pub enum StatusKind {
     Weaken,
     SeamStitch,
     SupremeStance,
+    WealLots,
+    WoesWhisper,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::SupremeStance.index() + 1;
+    pub(crate) const COUNT: usize = Self::WoesWhisper.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -94,6 +96,8 @@ impl StatusKind {
             Self::Weaken => 30,
             Self::SeamStitch => 31,
             Self::SupremeStance => 32,
+            Self::WealLots => 33,
+            Self::WoesWhisper => 34,
         }
     }
 }
@@ -108,6 +112,7 @@ pub enum DamageKind {
     Additional,
     FollowUp,
     TrueDamage,
+    Elation,
 }
 
 impl DamageKind {
@@ -123,6 +128,18 @@ pub enum EventKind {
     TurnStarted,
     ExtraTurnStarted,
     TriggeredSkill,
+    AhaInstant {
+        punchline: u32,
+        extra: bool,
+    },
+    Punchline {
+        before: u32,
+        after: u32,
+    },
+    CertifiedBanger {
+        before: u32,
+        after: u32,
+    },
     Action(Action),
     FollowUp,
     EnemyAttack,

@@ -184,6 +184,7 @@ impl Mechanics for Misha {
         _target: Option<usize>,
     ) {
         match action {
+            Action::ElationSkill => {}
             Action::Basic => {}
             Action::Skill => battle.units[actor].misha_state.add_hits(1),
             Action::Ultimate | Action::EnhancedUltimate => {
@@ -244,6 +245,7 @@ impl Mechanics for Misha {
     ) {
         let state = &mut battle.units[actor].misha_state;
         match action {
+            Action::ElationSkill => {}
             Action::Basic => {}
             Action::Skill => {
                 if std::mem::take(&mut state.e6_refund_ready) {

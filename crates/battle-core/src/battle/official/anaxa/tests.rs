@@ -46,6 +46,7 @@ fn anaxa(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             crit_damage_bp: 5_000,
             element_damage_bp: [0; Element::COUNT],
             break_effect_bp: 0,
+            elation_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
             energy_regeneration_bp: 10_000,
@@ -89,6 +90,7 @@ fn finite_plan(team: &[OfficialCharacter], enemies: &[(&'static EnemyKit, u32)])
             id: format!("enemy.{position}"),
             combat_type: None,
             has_control_resistance: false,
+            elation_bp: 0,
             kit: Kit::Enemy(kit),
             stats: crate::fixture::Stats {
                 hp,

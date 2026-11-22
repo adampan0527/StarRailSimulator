@@ -535,6 +535,7 @@ impl Mechanics for Sparkle {
         target: Option<usize>,
     ) -> Option<u8> {
         match action {
+            Action::ElationSkill => None,
             Action::Basic => None,
             Action::Ultimate | Action::EnhancedUltimate => Some(0),
             Action::Skill => {

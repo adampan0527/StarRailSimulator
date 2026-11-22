@@ -49,12 +49,17 @@ export type Setup = {
   boots_speed_tiers_micros: number[];
 };
 
-export type Action = 'basic' | 'skill' | 'ultimate' | 'enhanced_ultimate';
+export type Action =
+  | 'basic'
+  | 'skill'
+  | 'ultimate'
+  | 'enhanced_ultimate'
+  | 'elation_skill';
 export type Outcome = 'ongoing' | 'victory' | 'defeat' | 'turn_limit';
 export type Command = {
   decision_index: number;
   actor_id: string;
-  action: Action;
+  action: Exclude<Action, 'elation_skill'>;
   target_id: string | null;
 };
 
@@ -103,7 +108,9 @@ type Status =
   | 'patron'
   | 'weaken'
   | 'seam_stitch'
-  | 'supreme_stance';
+  | 'supreme_stance'
+  | 'weal_lots'
+  | 'woes_whisper';
 type EventKind =
   | {
       event:
@@ -119,11 +126,14 @@ type EventKind =
         | 'unit_defeated';
     }
   | { event: 'action'; detail: Action }
+  | { event: 'aha_instant'; detail: { punchline: number; extra: boolean } }
   | { event: 'complete_combustion'; detail: { active: boolean } }
   | { event: 'battle_ended'; detail: Outcome }
   | {
       event:
         | 'skill_points'
+        | 'punchline'
+        | 'certified_banger'
         | 'toughness'
         | 'cloudflame_luster'
         | 'crimson_knot'
@@ -237,7 +247,8 @@ export type DamageKind =
   | 'damage_over_time'
   | 'additional'
   | 'follow_up'
-  | 'true_damage';
+  | 'true_damage'
+  | 'elation';
 type DprHit = {
   av_micros: number;
   source_id: string;

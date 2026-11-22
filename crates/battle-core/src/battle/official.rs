@@ -65,6 +65,7 @@ mod tribbie;
 mod welt;
 mod xueyi;
 mod yanqing;
+mod yao_guang;
 mod yukong;
 mod yunli;
 
@@ -142,6 +143,7 @@ pub struct OfficialStats {
     pub crit_rate_bp: u32,
     pub crit_damage_bp: u32,
     pub element_damage_bp: [u32; Element::COUNT],
+    pub elation_bp: u32,
     pub break_effect_bp: u32,
     pub effect_hit_rate_bp: u32,
     pub energy_regeneration_bp: u32,
@@ -239,6 +241,7 @@ impl OfficialCharacter {
             || [
                 stats.crit_rate_bp,
                 stats.crit_damage_bp,
+                stats.elation_bp,
                 stats.break_effect_bp,
                 stats.effect_hit_rate_bp,
                 stats.energy_regeneration_bp,
@@ -318,7 +321,7 @@ impl OfficialKit {
             Action::Basic => &self.basic,
             Action::Skill => &self.skill,
             Action::Ultimate => &self.ultimate,
-            Action::EnhancedUltimate => return None,
+            Action::EnhancedUltimate | Action::ElationSkill => return None,
         };
         Some(ability.resolve())
     }
@@ -347,6 +350,42 @@ pub(super) struct MemospriteProfile {
 }
 
 pub(super) trait Mechanics: Send + Sync {
+    fn elation_participant(&self) -> Option<u16> {
+        None
+    }
+
+    fn certified_banger_duration(&self) -> u32 {
+        2
+    }
+
+    fn on_elation_skill(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _instant: super::elation::AhaInstant,
+    ) {
+    }
+
+    fn personal_elation_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn ally_elation_bp(&self, _battle: &Battle<'_>, _source: usize, _actor: usize) -> u32 {
+        0
+    }
+
+    fn ally_merrymake_bp(&self, _battle: &Battle<'_>, _source: usize, _actor: usize) -> u32 {
+        0
+    }
+
+    fn ally_elation_defense_ignore_bp(&self, _battle: &Battle<'_>, _source: usize) -> u32 {
+        0
+    }
+
+    fn aha_extra_skill_damage_factor_bp(&self) -> u16 {
+        10_000
+    }
+
     fn memosprite_profile(&self, _master: crate::fixture::Stats) -> Option<MemospriteProfile> {
         None
     }
@@ -1444,6 +1483,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
         aglaea::FORM => Some(aglaea::build),
         "character.1003" => Some(himeko::build),
+        yao_guang::FORM => Some(yao_guang::build),
         welt::FORM => Some(welt::build),
         "character.1005" => Some(kafka::build),
         silver_wolf::FORM => Some(silver_wolf::build),

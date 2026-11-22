@@ -231,7 +231,7 @@ impl AllyKit {
             Action::Basic => Some(self.basic),
             Action::Skill => Some(self.skill),
             Action::Ultimate => Some(self.ultimate),
-            Action::EnhancedUltimate => None,
+            Action::EnhancedUltimate | Action::ElationSkill => None,
         }
     }
 }

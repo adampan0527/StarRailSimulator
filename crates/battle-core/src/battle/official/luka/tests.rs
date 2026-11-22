@@ -35,6 +35,7 @@ fn luka(eidolon: u8, idle_speed: u64, traces: &[&str]) -> OfficialCharacter {
             speed_micros: idle_speed,
             crit_rate_bp: 0,
             crit_damage_bp: 5_000,
+            elation_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
             energy_regeneration_bp: 10_000,

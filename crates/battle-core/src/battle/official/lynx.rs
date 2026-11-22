@@ -216,6 +216,7 @@ impl Mechanics for Lynx {
         target: Option<usize>,
     ) {
         match action {
+            Action::ElationSkill => {}
             Action::Skill => {
                 if let Some(target) = target {
                     self.use_skill(battle, actor, target);

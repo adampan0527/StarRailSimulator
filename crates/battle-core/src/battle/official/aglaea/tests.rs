@@ -48,6 +48,7 @@ fn character(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             effect_resistance_bp: 0,
             energy_regeneration_bp: 10_000,
             healing_bp: 0,
+            elation_bp: 0,
         },
         skill_parameters: [
             (BASIC.into(), vec![1.0, 1.0]),

@@ -240,6 +240,7 @@ impl Mechanics for MarchHunt {
         target: Option<usize>,
     ) {
         match action {
+            Action::ElationSkill => {}
             Action::Skill => battle.units[actor].march_hunt_state.shifu = target,
             Action::Ultimate | Action::EnhancedUltimate => {
                 battle.units[actor].march_hunt_state.ultimate_armed = true;

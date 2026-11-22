@@ -14,6 +14,7 @@ pub(super) enum AllyBuffKind {
     CritDamage,
     CritOverflowRatio,
     Damage,
+    ResistancePenetration,
     DefenseIgnore {
         summon: bool,
     },
@@ -67,6 +68,9 @@ pub(super) struct OffenseBuffs {
     pub max_hp_flat: u32,
     pub defense_bp: u32,
     pub defense_ignore_bp: u32,
+    pub resistance_penetration_bp: u32,
+    pub elation_bp: u32,
+    pub merrymake_bp: u32,
     pub damage_bp: u32,
     pub crit_rate_bp: u32,
     pub crit_damage_bp: u32,
@@ -104,6 +108,11 @@ impl OffenseBuffs {
         self.defense_ignore_bp = self
             .defense_ignore_bp
             .saturating_add(buff.defense_ignore_bp);
+        self.resistance_penetration_bp = self
+            .resistance_penetration_bp
+            .saturating_add(buff.resistance_penetration_bp);
+        self.elation_bp = self.elation_bp.saturating_add(buff.elation_bp);
+        self.merrymake_bp = self.merrymake_bp.saturating_add(buff.merrymake_bp);
         self.damage_bp = self.damage_bp.saturating_add(buff.damage_bp);
         self.crit_rate_bp = self.crit_rate_bp.saturating_add(buff.crit_rate_bp);
         self.crit_damage_bp = self.crit_damage_bp.saturating_add(buff.crit_damage_bp);
@@ -316,6 +325,7 @@ impl Battle<'_> {
                 AllyBuffKind::CritDamage => &mut bonuses.crit_damage_bp,
                 AllyBuffKind::CritOverflowRatio => &mut bonuses.crit_overflow_ratio_bp,
                 AllyBuffKind::Damage => &mut bonuses.damage_bp,
+                AllyBuffKind::ResistancePenetration => &mut bonuses.resistance_penetration_bp,
                 AllyBuffKind::DefenseIgnore {
                     summon: applies_to_summon,
                 } if summon == applies_to_summon => &mut bonuses.defense_ignore_bp,
@@ -347,6 +357,13 @@ impl Battle<'_> {
             && let Some(mechanics) = self.mechanics(source)
         {
             if self.is_party_unit(target) && self.is_targetable(source) {
+                if kind == DamageKind::Elation {
+                    bonuses.elation_bp = mechanics.ally_elation_bp(self, source, target);
+                    bonuses.merrymake_bp = mechanics.ally_merrymake_bp(self, source, target);
+                    bonuses.defense_ignore_bp = bonuses
+                        .defense_ignore_bp
+                        .saturating_add(mechanics.ally_elation_defense_ignore_bp(self, source));
+                }
                 bonuses.break_effect_bp = bonuses
                     .break_effect_bp
                     .saturating_add(mechanics.ally_break_effect_bonus_bp(self, source, target));

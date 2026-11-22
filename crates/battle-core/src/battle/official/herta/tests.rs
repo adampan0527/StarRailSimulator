@@ -43,6 +43,7 @@ fn character(eidolon: u8) -> OfficialCharacter {
             crit_damage_bp: 5_000,
             element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
+            elation_bp: 0,
             effect_hit_rate_bp: 0,
             energy_regeneration_bp: 10_000,
             healing_bp: 0,
@@ -69,6 +70,7 @@ fn finite_plan(input: OfficialCharacter, hit_points: &[u32]) -> PreparedBattle {
         plan.units.push(UnitPlan {
             combat_type: None,
             has_control_resistance: false,
+            elation_bp: 0,
             id: format!("enemy.{i}"),
             kit: Kit::Enemy(&ICE_WEAK_ENEMY),
             stats,
