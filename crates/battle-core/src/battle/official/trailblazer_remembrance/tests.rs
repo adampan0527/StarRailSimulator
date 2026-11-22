@@ -365,6 +365,67 @@ fn epic_basic_uses_separate_sources_and_ultimate_is_guaranteed_critical() {
 }
 
 #[test]
+fn epic_basic_triggers_tribbies_field_once_for_each_attack() {
+    let tribbie_id = "character.1403";
+    let mut tribbie = teammate(tribbie_id, CombatPath::Harmony, Element::Quantum, 120);
+    tribbie.eidolon = 1;
+    tribbie.skill_parameters = [
+        ("skill.140301".into(), vec![0.3, 0.15]),
+        ("skill.140302".into(), vec![0.24, 3.0]),
+        ("skill.140303".into(), vec![0.3, 0.3, 0.12, 2.0]),
+        ("skill.140304".into(), vec![0.18]),
+    ]
+    .into();
+    let prepared = plan(&[trailblazer(0, &[EPIC_TRACE]), tribbie], &[1_000; 2]);
+    let mut battle = Battle::start(&prepared, LogMode::Detailed);
+    cast_ultimate(&mut battle);
+    battle.set_energy(0, 0, 0);
+    battle.fill_energy(1);
+    act(&mut battle, tribbie_id, Action::Ultimate, None);
+    let sprite = battle.memosprite(0).unwrap();
+    battle.dummy_damage.clear();
+
+    act(&mut battle, OWNER, Action::Basic, None);
+
+    let basic_commands = battle
+        .log
+        .iter()
+        .flatten()
+        .filter(|event| matches!(event.kind, crate::EventKind::Action(Action::Basic)))
+        .count();
+    assert_eq!(basic_commands, 1);
+    assert_eq!(battle.skill_points, 4);
+    let attacks = battle
+        .dummy_damage
+        .split_inclusive(|hit| hit.kind == DamageKind::TrueDamage)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        attacks.len(),
+        2,
+        "{:?}",
+        battle
+            .dummy_damage
+            .iter()
+            .map(|hit| (hit.actor, hit.kind, hit.amount))
+            .collect::<Vec<_>>()
+    );
+    for (attack, source) in attacks.into_iter().zip([0, sprite]) {
+        assert_eq!(attack.len(), 5);
+        assert!(attack[..2].iter().all(|hit| hit.actor == source));
+        assert!(
+            attack[2..4]
+                .iter()
+                .all(|hit| { hit.actor == 1 && hit.kind == DamageKind::Additional })
+        );
+        let true_damage = &attack[4];
+        assert_eq!(true_damage.actor, 1);
+        assert_eq!(true_damage.kind, DamageKind::TrueDamage);
+        let attack_damage = attack[..4].iter().map(|hit| hit.amount).sum::<u32>();
+        assert_eq!(true_damage.amount, attack_damage * 24 / 100);
+    }
+}
+
+#[test]
 fn mem_normal_skill_bounces_and_tracks_toughness_without_using_skill_points() {
     let prepared = plan(&[trailblazer(0, &[PARABLE])], &[1_000; 3]);
     let mut battle = Battle::start(&prepared, LogMode::Detailed);
