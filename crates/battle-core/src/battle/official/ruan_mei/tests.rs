@@ -175,6 +175,7 @@ fn ruan_mei_skill_adds_efficiency_before_rounding_and_a6_uses_live_break_effect(
     assert_eq!(battle.units[0].energy_milli, 107_000);
     let offense = OffenseContext {
         actor: 1,
+        max_hp_source: 1,
         enemy: Some(2),
         element: Element::Fire,
         kind: DamageKind::Direct,

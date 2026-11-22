@@ -153,6 +153,10 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    Newbud {
+        before: u32,
+        after: u32,
+    },
     BlindBet {
         before: u8,
         after: u8,

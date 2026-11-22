@@ -156,6 +156,7 @@ struct UnitState {
     harmony_trailblazer_state: official::HarmonyTrailblazerState,
     remembrance_trailblazer_state: official::RemembranceTrailblazerState,
     aglaea_state: official::AglaeaState,
+    castorice_state: official::CastoriceState,
     robin_state: official::RobinState,
     firefly_state: official::FireflyState,
     boothill_state: official::BoothillState,
@@ -308,6 +309,7 @@ impl<'a> Battle<'a> {
                     harmony_trailblazer_state: official::HarmonyTrailblazerState::default(),
                     remembrance_trailblazer_state: official::RemembranceTrailblazerState::default(),
                     aglaea_state: official::AglaeaState::default(),
+                    castorice_state: official::CastoriceState::default(),
                     robin_state: official::RobinState::default(),
                     firefly_state: official::FireflyState::default(),
                     boothill_state: official::BoothillState::default(),
@@ -808,6 +810,15 @@ impl<'a> Battle<'a> {
     fn active_memosprite(&self, owner: usize) -> Option<usize> {
         self.memosprite(owner)
             .filter(|&sprite| self.is_targetable(sprite))
+    }
+
+    fn max_hp_damage_source(&self, actor: usize) -> usize {
+        self.memosprite_owner(actor)
+            .filter(|&owner| {
+                self.mechanics(owner)
+                    .is_some_and(|rules| rules.memosprite_uses_owner_max_hp())
+            })
+            .unwrap_or(actor)
     }
 
     fn remove_memosprite_of(&mut self, owner: usize) {

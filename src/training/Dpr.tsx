@@ -7,6 +7,7 @@ const format = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
 const memospriteNames = new Map([
   ['trailblazer.remembrance:mem', '迷迷'],
   ['character.1402:garmentmaker', '衣匠'],
+  ['character.1407:netherwing', '死龙'],
 ]);
 
 export function DprResults({

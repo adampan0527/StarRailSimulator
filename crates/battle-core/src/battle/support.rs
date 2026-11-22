@@ -76,6 +76,7 @@ pub(super) struct OffenseBuffs {
 #[derive(Clone, Copy)]
 pub(super) struct OffenseContext {
     pub actor: usize,
+    pub max_hp_source: usize,
     pub enemy: Option<usize>,
     pub element: Element,
     pub kind: DamageKind,
@@ -293,6 +294,7 @@ impl Battle<'_> {
     ) -> OffenseBuffs {
         let OffenseContext {
             actor: target,
+            max_hp_source,
             enemy,
             element,
             kind,
@@ -318,14 +320,20 @@ impl Battle<'_> {
                     summon: applies_to_summon,
                 } if summon == applies_to_summon => &mut bonuses.defense_ignore_bp,
                 AllyBuffKind::DefensePercent => &mut bonuses.defense_bp,
-                AllyBuffKind::MaxHpFlat => &mut bonuses.max_hp_flat,
                 AllyBuffKind::SpeedFlat
                 | AllyBuffKind::SpeedPercent
                 | AllyBuffKind::EffectResistance
+                | AllyBuffKind::MaxHpFlat
                 | AllyBuffKind::DefenseIgnore { .. } => continue,
             };
             *total = total.saturating_add(buff.value);
         }
+        bonuses.max_hp_flat = self.units[max_hp_source]
+            .ally_buffs
+            .iter()
+            .filter(|buff| buff.source == source && buff.kind == AllyBuffKind::MaxHpFlat)
+            .map(|buff| buff.value)
+            .fold(0, u32::saturating_add);
         if let Some(enemy) = enemy {
             for debuff in self.units[enemy]
                 .debuffs
@@ -355,7 +363,7 @@ impl Battle<'_> {
             }
             bonuses.max_hp_flat = bonuses
                 .max_hp_flat
-                .saturating_add(mechanics.ally_max_hp_bonus(self, source, target));
+                .saturating_add(mechanics.ally_max_hp_bonus(self, source, max_hp_source));
             bonuses.attack_bp = bonuses
                 .attack_bp
                 .saturating_add(mechanics.ally_attack_bonus_bp(self, source, target));
@@ -424,6 +432,7 @@ impl Battle<'_> {
             self.offense_buffs(
                 OffenseContext {
                     actor,
+                    max_hp_source: actor,
                     enemy: None,
                     element: Element::Physical,
                     kind: DamageKind::Direct,
@@ -441,6 +450,7 @@ impl Battle<'_> {
         let buffs = self.offense_buffs(
             OffenseContext {
                 actor,
+                max_hp_source: actor,
                 enemy: None,
                 element: Element::Physical,
                 kind: DamageKind::Direct,

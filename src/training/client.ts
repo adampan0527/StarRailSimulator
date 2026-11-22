@@ -135,6 +135,7 @@ type EventKind =
         | 'pocket_trickshot'
         | 'blade_charge'
         | 'memosprite_charge'
+        | 'newbud'
         | 'syzygy'
         | 'moonlight'
         | 'basic_enhancement'
