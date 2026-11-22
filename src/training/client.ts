@@ -94,7 +94,9 @@ type Status =
   | 'unnerved'
   | 'thanatoplum_rebloom'
   | 'standoff'
-  | 'befog';
+  | 'befog'
+  | 'parry'
+  | 'taunt';
 type EventKind =
   | {
       event:

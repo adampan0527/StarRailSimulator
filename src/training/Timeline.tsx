@@ -50,6 +50,8 @@ const statusNames = {
   thanatoplum_rebloom: '残梅绽',
   standoff: '绝命对峙',
   befog: '醇醉',
+  parry: '格挡',
+  taunt: '嘲讽',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
