@@ -51,10 +51,12 @@ pub enum StatusKind {
     Vendetta,
     Patron,
     Weaken,
+    SeamStitch,
+    SupremeStance,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Weaken.index() + 1;
+    pub(crate) const COUNT: usize = Self::SupremeStance.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -90,6 +92,8 @@ impl StatusKind {
             Self::Vendetta => 28,
             Self::Patron => 29,
             Self::Weaken => 30,
+            Self::SeamStitch => 31,
+            Self::SupremeStance => 32,
         }
     }
 }

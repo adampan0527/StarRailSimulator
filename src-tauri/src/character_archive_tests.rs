@@ -141,6 +141,49 @@ fn every_registered_official_variant_runs_from_a_saved_loadout() {
 
 #[cfg(bundled_catalog)]
 #[test]
+fn saved_aglaea_accepts_fractional_flat_hp_at_lower_talent_levels() {
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let aglaea = "character.1402";
+    profiles.ensure_profile(aglaea).unwrap();
+    let mut loadout = catalog.default_loadout_at(aglaea, "base", 80, 6).unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "衣匠低级天赋",
+            &[Some(aglaea.into()), None, None, None],
+        )
+        .unwrap();
+
+    for level in [2, 4] {
+        loadout
+            .config
+            .skill_levels
+            .insert("skill.140204".into(), level);
+        profiles
+            .save_preset(aglaea, "base", &loadout, true)
+            .unwrap();
+        let readiness = archive.dpr_readiness(&team.id).unwrap();
+        assert!(readiness.unsupported_characters.is_empty());
+        let result = readiness.result.unwrap();
+        assert!(
+            result
+                .targets
+                .iter()
+                .flat_map(|target| &target.hits)
+                .any(|hit| hit.source_id == "character.1402:garmentmaker")
+        );
+    }
+}
+
+#[cfg(bundled_catalog)]
+#[test]
 fn welt_fixed_dpr_uses_default_and_saved_base_variant() {
     let dir = TestData::new();
     let welt = "character.1004";

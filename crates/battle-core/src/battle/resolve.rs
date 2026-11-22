@@ -663,8 +663,15 @@ impl Battle<'_> {
     }
 
     pub(super) fn resists_enemy_control(&mut self, actor: usize, target: usize) -> bool {
-        if !self.enemies().contains(&actor) || !self.allies().contains(&target) {
+        if !self.enemies().contains(&actor) || !self.is_party_unit(target) {
             return false;
+        }
+        if let Some(owner) = self.memosprite_owner(target)
+            && self
+                .mechanics(owner)
+                .is_some_and(|rules| rules.memosprite_immune_to_enemy_control(self, owner))
+        {
+            return true;
         }
         if self
             .mechanics(target)
@@ -1207,6 +1214,7 @@ impl Battle<'_> {
         });
         if let Some(target) = target {
             let was_shielded = self.shield_amount(target) > 0;
+            self.notify_active_ability(actor);
             self.begin_attack();
             self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
             self.enemy_action = Some(actor);
@@ -1346,7 +1354,9 @@ impl Battle<'_> {
         let legacy_vulnerability = state.statuses[StatusKind::Vulnerability.index()]
             .filter(|status| allow_source(status.source))
             .map_or(0, |status| status.magnitude);
-        let mut vulnerability = legacy_vulnerability.saturating_add(sum(DebuffKind::Vulnerability));
+        let mut vulnerability = legacy_vulnerability
+            .saturating_add(sum(DebuffKind::Vulnerability))
+            .saturating_add(sum(DebuffKind::SeamStitch));
         if event.kind != DamageKind::DamageOverTime
             && let Some(standoff) = state
                 .debuffs
@@ -1431,6 +1441,12 @@ impl Battle<'_> {
                     mechanics.outgoing_damage_factor_bp(),
                 )
             });
+        let sprite_penetration = self.memosprite_owner(actor).map_or(0, |owner| {
+            self.mechanics(owner).map_or(0, |rules| {
+                rules.memosprite_resistance_penetration_bp(self, owner, element)
+            })
+        });
+        let personal_penetration = personal_penetration.saturating_add(sprite_penetration);
         let mut stats = plan.stats;
         stats.hp = self.effective_max_hp(target);
         stats.defense = self.defense(target);
@@ -1799,6 +1815,12 @@ impl Battle<'_> {
                 .saturating_add(mechanics.break_effect_bonus_bp(self, actor));
             multiplier_bp =
                 mechanics.damage_multiplier_bp(self, actor, target, origin, kind, multiplier_bp);
+        }
+        if let Some(owner) = self.memosprite_owner(actor)
+            && let Some(rules) = self.mechanics(owner)
+        {
+            source.element_damage_bp[element_index] = source.element_damage_bp[element_index]
+                .saturating_add(rules.memosprite_damage_bonus_bp(self, actor, origin, kind));
         }
         let flat_damage_bp = mechanics.as_ref().map_or(0, |mechanics| {
             mechanics.flat_damage_base_bp(self, actor, origin, kind)
@@ -2456,6 +2478,7 @@ impl Battle<'_> {
                     matches!(
                         status.kind,
                         DebuffKind::DefenseDown
+                            | DebuffKind::SeamStitch
                             | DebuffKind::DefenseBug
                             | DebuffKind::Vulnerability
                             | DebuffKind::Weightless { .. }
@@ -2784,6 +2807,7 @@ impl Battle<'_> {
         let state = &mut self.units[target];
         state.statuses.fill(None);
         state.summon_turn = None;
+        state.countdown = None;
         state.shields.clear();
         state.shocks.clear();
         state.frozen = None;

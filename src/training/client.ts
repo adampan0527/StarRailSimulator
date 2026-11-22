@@ -101,7 +101,9 @@ type Status =
   | 'sublimation'
   | 'vendetta'
   | 'patron'
-  | 'weaken';
+  | 'weaken'
+  | 'seam_stitch'
+  | 'supreme_stance';
 type EventKind =
   | {
       event:

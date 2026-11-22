@@ -538,6 +538,20 @@ impl Battle<'_> {
         }
     }
 
+    pub(super) fn notify_active_ability(&mut self, actor: usize) {
+        if !self.tracks_active_abilities {
+            return;
+        }
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(rules) = self.mechanics(owner)
+                && rules.tracks_active_abilities()
+            {
+                rules.on_active_ability(self, owner, actor);
+            }
+        }
+    }
+
     pub(super) fn notify_ally_action_started(
         &mut self,
         actor: usize,

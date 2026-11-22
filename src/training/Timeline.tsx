@@ -57,6 +57,8 @@ const statusNames = {
   vendetta: '血仇',
   patron: '老主顾',
   weaken: '虚弱',
+  seam_stitch: '间隙织线',
+  supreme_stance: '至高之姿',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
