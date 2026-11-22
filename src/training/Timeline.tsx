@@ -53,6 +53,7 @@ const statusNames = {
   parry: '格挡',
   taunt: '嘲讽',
   withered_leaf: '枯叶',
+  sublimation: '升华',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

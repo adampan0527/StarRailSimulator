@@ -32,11 +32,22 @@ pub(super) enum DebuffKind {
         effect_resistance_down_bp: u16,
     },
     ImplantedWeakness(Element),
+    AccumulatedWeakness(Element),
+    Sublimation {
+        blocks_action: bool,
+    },
 }
 
 impl DebuffKind {
     fn is_control(self) -> bool {
-        matches!(self, Self::BreakImprisonment | Self::SkillImprisonment)
+        matches!(
+            self,
+            Self::BreakImprisonment
+                | Self::SkillImprisonment
+                | Self::Sublimation {
+                    blocks_action: true
+                }
+        )
     }
 
     pub(super) fn is_speed_down(self) -> bool {
@@ -69,7 +80,20 @@ impl DebuffKind {
             Self::AttackDown => StatusKind::AttackDown,
             Self::AllResistanceDown | Self::ResistanceDown(_) => StatusKind::ResistanceDown,
             Self::Epiphany { .. } => StatusKind::Epiphany,
-            Self::ImplantedWeakness(_) => StatusKind::WeaknessImplanted,
+            Self::ImplantedWeakness(_) | Self::AccumulatedWeakness(_) => {
+                StatusKind::WeaknessImplanted
+            }
+            Self::Sublimation { .. } => StatusKind::Sublimation,
+        }
+    }
+
+    pub(super) fn grants_weakness(self, element: Element) -> bool {
+        match self {
+            Self::Sublimation { .. } => true,
+            Self::ImplantedWeakness(weakness) | Self::AccumulatedWeakness(weakness) => {
+                weakness == element
+            }
+            _ => false,
         }
     }
 
@@ -495,6 +519,21 @@ impl Battle<'_> {
             }
         }
         false
+    }
+
+    pub(super) fn expire_sublimation(&mut self, target: usize) -> bool {
+        // Sublimation expires before the enemy's turn-opening effects.
+        let mut blocks_action = false;
+        while let Some(status) = self.units[target]
+            .debuffs
+            .iter()
+            .find(|status| matches!(status.kind, DebuffKind::Sublimation { .. }))
+            .copied()
+        {
+            blocks_action |= status.kind.is_control();
+            self.remove_debuff(status.source, target, status.kind);
+        }
+        blocks_action
     }
 
     pub(super) fn expire_debuffs(&mut self, target: usize) {

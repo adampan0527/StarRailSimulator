@@ -12,6 +12,7 @@ pub(crate) struct DamageTarget {
     pub damage_reduction_bp: u32,
     pub break_damage_bonus_bp: u32,
     pub damage_share_bp: u16,
+    pub outgoing_damage_factor_bp: u32,
     pub toughness: u16,
     pub max_toughness: u16,
 }
@@ -49,6 +50,12 @@ fn damage_after_reduction(numerator: u128, denominator: u128, target: DamageTarg
             BP * BP,
             reduction_factor * u128::from(target.damage_share_bp),
         )
+    };
+    let outgoing_factor = u128::from(target.outgoing_damage_factor_bp);
+    let (scale, factor) = if outgoing_factor == BP {
+        (scale, factor)
+    } else {
+        (scale * BP, factor * outgoing_factor)
     };
     let amount =
         (numerator / denominator * factor + numerator % denominator * factor / denominator) / scale;

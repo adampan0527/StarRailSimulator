@@ -129,6 +129,7 @@ struct UnitState {
     luka_state: LukaState,
     himeko_charge: u8,
     the_herta_state: official::TheHertaState,
+    anaxa_state: official::AnaxaState,
     the_herta_interpretation: u8,
     march_hunt_state: MarchHuntState,
     moze_state: MozeState,
@@ -274,6 +275,7 @@ impl<'a> Battle<'a> {
                     luka_state: LukaState::default(),
                     himeko_charge: 0,
                     the_herta_state: official::TheHertaState::default(),
+                    anaxa_state: official::AnaxaState::default(),
                     the_herta_interpretation: 0,
                     march_hunt_state: MarchHuntState::default(),
                     moze_state: MozeState::default(),
@@ -842,7 +844,7 @@ impl<'a> Battle<'a> {
             || self.units[unit]
                 .debuffs
                 .iter()
-                .any(|status| status.kind == combat_status::DebuffKind::ImplantedWeakness(element))
+                .any(|status| status.kind.grants_weakness(element))
     }
 
     fn is_elite(&self, unit: usize) -> bool {
@@ -1090,6 +1092,7 @@ impl<'a> Battle<'a> {
     }
 
     fn resolve_enemy_turn(&mut self, actor: usize) {
+        let sublimation_blocks_action = self.expire_sublimation(actor);
         for owner in self.allies() {
             if self.units[owner].hp > 0
                 && let Some(mechanics) = self.mechanics(owner)
@@ -1123,6 +1126,10 @@ impl<'a> Battle<'a> {
                 self.set_toughness(actor, actor, kit.max_toughness());
             }
             self.reset_gauge(actor);
+            if sublimation_blocks_action {
+                self.finish_turn(actor);
+                return;
+            }
             let parent_debuff_targets = self.begin_debuff_action();
             for owner in self.allies() {
                 if self.units[owner].hp > 0
