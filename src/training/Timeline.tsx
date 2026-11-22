@@ -11,6 +11,7 @@ export const actionNames: Record<Action, string> = {
 export const damageNames: Record<DamageKind, string> = {
   direct: '伤害',
   weakness_break: '击破伤害',
+  super_break: '超击破伤害',
   damage_over_time: '持续伤害',
   additional: '附加伤害',
   follow_up: '追加攻击',

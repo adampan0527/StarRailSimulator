@@ -47,6 +47,7 @@ mod sunday;
 mod sushang;
 mod tingyun;
 mod topaz;
+mod trailblazer_harmony;
 mod welt;
 mod xueyi;
 mod yanqing;
@@ -77,6 +78,7 @@ pub(super) use {
     sparkle::SparkleState,
     sunday::SundayState,
     topaz::TopazState,
+    trailblazer_harmony::HarmonyTrailblazerState,
     welt::WeltState,
     xueyi::XueyiState,
     yukong::YukongState,
@@ -827,7 +829,26 @@ pub(super) trait Mechanics: Send + Sync {
         (0, 0)
     }
 
-    fn ally_break_effect_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+    fn ally_break_effect_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _target: usize,
+    ) -> u32 {
+        0
+    }
+
+    fn provides_super_break(&self) -> bool {
+        false
+    }
+
+    fn super_break_multiplier_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _target: usize,
+    ) -> u16 {
         0
     }
 
@@ -1194,6 +1215,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         march_hunt::FORM => Some(march_hunt::build),
         "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),
+        trailblazer_harmony::FORM => Some(trailblazer_harmony::build),
         "character.1209" => Some(yanqing::build),
         _ => None,
     }

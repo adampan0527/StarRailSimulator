@@ -1,6 +1,7 @@
 use crate::fixture::{BREAK_BASE_AT_LEVEL_30, Element, Stats};
 
 const BP: u128 = 10_000;
+const LEVEL_80_BREAK_BASE_X_BP: u128 = 37_675_533;
 
 #[derive(Clone, Copy)]
 pub(crate) struct DamageTarget {
@@ -26,6 +27,14 @@ fn resist_factor(target: DamageTarget, element: Element) -> u128 {
 fn defense_factor(source_defense: u128, target: DamageTarget) -> u128 {
     source_defense * BP
         + u128::from(target.stats.defense) * BP.saturating_sub(u128::from(target.defense_down_bp))
+}
+
+fn break_base_x_bp(level: u16) -> u128 {
+    if level == 80 {
+        LEVEL_80_BREAK_BASE_X_BP
+    } else {
+        u128::from(BREAK_BASE_AT_LEVEL_30) * BP
+    }
 }
 
 fn damage_after_reduction(numerator: u128, denominator: u128, target: DamageTarget) -> u32 {
@@ -78,11 +87,7 @@ pub(crate) fn weakness_break(
     ratio_bp: u16,
 ) -> u32 {
     let defense_points = defense_points(source.level);
-    let base = if source.level == 80 {
-        37_675_533
-    } else {
-        u128::from(BREAK_BASE_AT_LEVEL_30) * BP
-    };
+    let base = break_base_x_bp(source.level);
     let numerator = base
         * u128::from(element.break_multiplier_bp())
         * (20 + u128::from(target.max_toughness))
@@ -95,6 +100,26 @@ pub(crate) fn weakness_break(
     damage_after_reduction(numerator, denominator, target)
 }
 
+/// Toughness uses the same scale as the rest of combat, with 10 for an ordinary Basic ATK.
+pub(crate) fn super_break(
+    source: Stats,
+    target: DamageTarget,
+    element: Element,
+    toughness: u32,
+    ratio_bp: u16,
+) -> u32 {
+    let defense = defense_points(source.level);
+    let numerator = break_base_x_bp(source.level)
+        * u128::from(toughness)
+        * u128::from(ratio_bp)
+        * (BP + u128::from(source.break_effect_bp))
+        * defense
+        * resist_factor(target, element)
+        * (BP + u128::from(target.vulnerability_bp));
+    let denominator = 10 * BP.pow(4) * defense_factor(defense, target);
+    damage_after_reduction(numerator, denominator, target)
+}
+
 pub(crate) fn break_status(
     source: Stats,
     target: DamageTarget,
@@ -103,24 +128,23 @@ pub(crate) fn break_status(
 ) -> u32 {
     let defense = defense_points(source.level);
     let toughness = if target.toughness > 0 { 9_000 } else { BP };
-    const LEVEL_80_BASE_X_BP: u128 = 37_675_533;
     let large_dummy = target.max_toughness >= 120;
     let base = match element {
         Element::Imaginary => return 0, // Imprisonment deals no periodic damage.
-        Element::Ice | Element::Fire => LEVEL_80_BASE_X_BP,
-        Element::Quantum => LEVEL_80_BASE_X_BP * (20 + u128::from(target.max_toughness)) / 40,
-        Element::Thunder => 2 * LEVEL_80_BASE_X_BP,
+        Element::Ice | Element::Fire => LEVEL_80_BREAK_BASE_X_BP,
+        Element::Quantum => LEVEL_80_BREAK_BASE_X_BP * (20 + u128::from(target.max_toughness)) / 40,
+        Element::Thunder => 2 * LEVEL_80_BREAK_BASE_X_BP,
         Element::Wind => {
             if large_dummy {
-                3 * LEVEL_80_BASE_X_BP
+                3 * LEVEL_80_BREAK_BASE_X_BP
             } else {
-                LEVEL_80_BASE_X_BP
+                LEVEL_80_BREAK_BASE_X_BP
             }
         }
         Element::Physical => {
             let hp_bp = if large_dummy { 700 } else { 1_600 };
             let from_hp = u128::from(target.stats.hp) * hp_bp;
-            let cap = LEVEL_80_BASE_X_BP * 2 * (20 + u128::from(target.max_toughness)) / 40;
+            let cap = LEVEL_80_BREAK_BASE_X_BP * 2 * (20 + u128::from(target.max_toughness)) / 40;
             from_hp.min(cap)
         }
     };

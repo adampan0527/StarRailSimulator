@@ -220,7 +220,12 @@ impl Mechanics for RuanMei {
         self.break_efficiency_bp * u32::from(overtones_active(battle, owner))
     }
 
-    fn ally_break_effect_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+    fn ally_break_effect_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _target: usize,
+    ) -> u32 {
         BREAK_EFFECT_AURA_BP * u32::from(self.break_effect_aura)
     }
 

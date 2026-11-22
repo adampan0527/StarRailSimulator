@@ -61,6 +61,7 @@ pub(super) struct OffenseBuffs {
     pub attack_bp: u32,
     pub attack_flat: u32,
     pub break_effect_bp: u32,
+    pub toughness_efficiency_bp: u32,
     pub max_hp_flat: u32,
     pub defense_bp: u32,
     pub defense_ignore_bp: u32,
@@ -85,6 +86,9 @@ impl OffenseBuffs {
         self.attack_bp = self.attack_bp.saturating_add(buff.attack_bp);
         self.attack_flat = self.attack_flat.saturating_add(buff.attack_flat);
         self.break_effect_bp = self.break_effect_bp.saturating_add(buff.break_effect_bp);
+        self.toughness_efficiency_bp = self
+            .toughness_efficiency_bp
+            .saturating_add(buff.toughness_efficiency_bp);
         self.max_hp_flat = self.max_hp_flat.saturating_add(buff.max_hp_flat);
         self.defense_bp = self.defense_bp.saturating_add(buff.defense_bp);
         self.defense_ignore_bp = self
@@ -237,7 +241,7 @@ impl Battle<'_> {
             .filter(|&owner| self.is_targetable(owner))
             .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
             .fold(buffs, |total, (owner, rules)| {
-                total.saturating_add(rules.ally_break_effect_bonus_bp(self, owner))
+                total.saturating_add(rules.ally_break_effect_bonus_bp(self, owner, actor))
             })
     }
 
@@ -310,7 +314,11 @@ impl Battle<'_> {
             if self.allies().contains(&target) && self.is_targetable(source) {
                 bonuses.break_effect_bp = bonuses
                     .break_effect_bp
-                    .saturating_add(mechanics.ally_break_effect_bonus_bp(self, source));
+                    .saturating_add(mechanics.ally_break_effect_bonus_bp(self, source, target));
+                if kind == DamageKind::SuperBreak {
+                    bonuses.toughness_efficiency_bp =
+                        mechanics.ally_toughness_bonus_bp(self, source);
+                }
             }
             bonuses.max_hp_flat = bonuses
                 .max_hp_flat

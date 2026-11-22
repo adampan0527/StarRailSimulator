@@ -134,6 +134,7 @@ struct UnitState {
     sunday_state: official::SundayState,
     qingque_state: official::QingqueState,
     ruan_mei_state: official::RuanMeiState,
+    harmony_trailblazer_state: official::HarmonyTrailblazerState,
     robin_state: official::RobinState,
     boothill_state: official::BoothillState,
     blade_state: official::BladeState,
@@ -196,6 +197,8 @@ pub struct Battle<'a> {
     action: Option<Action>,
     action_target: Option<usize>,
     attack_targets: Vec<usize>,
+    super_break_targets: Vec<resolve::SuperBreakTarget>,
+    tracks_super_break: bool,
     attack_index: u32,
     enemy_turn: Option<usize>,
     enemy_action: Option<usize>,
@@ -260,6 +263,7 @@ impl<'a> Battle<'a> {
                     sunday_state: official::SundayState::default(),
                     qingque_state: official::QingqueState::default(),
                     ruan_mei_state: official::RuanMeiState::default(),
+                    harmony_trailblazer_state: official::HarmonyTrailblazerState::default(),
                     robin_state: official::RobinState::default(),
                     boothill_state: official::BoothillState::default(),
                     blade_state: official::BladeState::default(),
@@ -308,6 +312,10 @@ impl<'a> Battle<'a> {
             action: None,
             action_target: None,
             attack_targets: Vec::new(),
+            super_break_targets: Vec::new(),
+            tracks_super_break: plan.units[..plan.ally_count]
+                .iter()
+                .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.provides_super_break())),
             attack_index: 0,
             enemy_turn: None,
             enemy_action: None,
@@ -774,6 +782,7 @@ impl<'a> Battle<'a> {
 
     fn begin_attack(&mut self) {
         self.attack_targets.clear();
+        self.super_break_targets.clear();
         self.attack_index += 1;
     }
 

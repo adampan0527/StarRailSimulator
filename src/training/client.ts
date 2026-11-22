@@ -204,6 +204,7 @@ type DamageCredit = { unit_id: string; amount: number };
 export type DamageKind =
   | 'direct'
   | 'weakness_break'
+  | 'super_break'
   | 'damage_over_time'
   | 'additional'
   | 'follow_up'
