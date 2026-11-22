@@ -61,6 +61,7 @@ pub(super) struct OffenseBuffs {
     pub attack_bp: u32,
     pub attack_flat: u32,
     pub break_effect_bp: u32,
+    pub off_element_toughness_bp: u16,
     pub toughness_efficiency_bp: u32,
     pub max_hp_flat: u32,
     pub defense_bp: u32,
@@ -86,6 +87,9 @@ impl OffenseBuffs {
         self.attack_bp = self.attack_bp.saturating_add(buff.attack_bp);
         self.attack_flat = self.attack_flat.saturating_add(buff.attack_flat);
         self.break_effect_bp = self.break_effect_bp.saturating_add(buff.break_effect_bp);
+        self.off_element_toughness_bp = self
+            .off_element_toughness_bp
+            .max(buff.off_element_toughness_bp);
         self.toughness_efficiency_bp = self
             .toughness_efficiency_bp
             .saturating_add(buff.toughness_efficiency_bp);
@@ -220,15 +224,19 @@ impl Battle<'_> {
     }
 
     pub(super) fn support_speed(&self, actor: usize) -> (u64, u64) {
-        let auras: u64 = self
+        let (flat_auras, ratio_auras) = self
             .allies()
             .filter(|&owner| self.units[owner].hp > 0)
             .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
-            .map(|(owner, rules)| u64::from(rules.ally_speed_bonus_bp(self, owner, actor)))
-            .sum();
+            .fold((0, 0), |(flat, ratio), (owner, rules)| {
+                (
+                    flat + rules.ally_flat_speed_micros(self, owner, actor),
+                    ratio + u64::from(rules.ally_speed_bonus_bp(self, owner, actor)),
+                )
+            });
         (
-            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedFlat)),
-            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedPercent)) + auras,
+            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedFlat)) + flat_auras,
+            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedPercent)) + ratio_auras,
         )
     }
 
@@ -246,9 +254,11 @@ impl Battle<'_> {
     }
 
     pub(super) fn effective_break_effect(&self, actor: usize) -> u32 {
-        let own_bonus = self
-            .mechanics(actor)
-            .map_or(0, |rules| rules.break_effect_bonus_bp(self, actor));
+        let own_bonus = self.mechanics(actor).map_or(0, |rules| {
+            rules
+                .break_effect_bonus_bp(self, actor)
+                .saturating_add(rules.break_effect_from_attack_bp(self, actor, None))
+        });
         self.plan.units[actor]
             .stats
             .break_effect_bp
@@ -318,6 +328,8 @@ impl Battle<'_> {
                 if kind == DamageKind::SuperBreak {
                     bonuses.toughness_efficiency_bp =
                         mechanics.ally_toughness_bonus_bp(self, source);
+                    bonuses.off_element_toughness_bp =
+                        mechanics.off_element_toughness_bp(self, source, target);
                 }
             }
             bonuses.max_hp_flat = bonuses
