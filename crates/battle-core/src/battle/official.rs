@@ -23,6 +23,7 @@ mod herta;
 mod himeko;
 mod hook;
 mod huohuo;
+mod jade;
 mod jiaoqiu;
 mod jing_yuan;
 mod jingliu;
@@ -68,6 +69,7 @@ pub(super) use {
     fu_xuan::FuXuanState,
     hanya::HanyaState,
     huohuo::HuohuoState,
+    jade::JadeState,
     jiaoqiu::Field as JiaoqiuField,
     jing_yuan::JingYuanState,
     jingliu::JingliuState,
@@ -878,6 +880,11 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    /// Flat speed in millionths of one speed point.
+    fn ally_flat_speed_micros(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u64 {
+        0
+    }
+
     fn speed_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         0
     }
@@ -1234,6 +1241,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         robin::FORM => Some(robin::build),
         "character.1312" => Some(misha::build),
         sunday::FORM => Some(sunday::build),
+        jade::FORM => Some(jade::build),
         boothill::FORM => Some(boothill::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         march_hunt::FORM => Some(march_hunt::build),

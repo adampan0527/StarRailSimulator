@@ -167,6 +167,17 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    DebtCollector {
+        active: bool,
+    },
+    JadeCharge {
+        before: u8,
+        after: u8,
+    },
+    PawnedAsset {
+        before: u8,
+        after: u8,
+    },
     Damage {
         kind: DamageKind,
         amount: u32,
