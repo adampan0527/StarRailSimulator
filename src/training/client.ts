@@ -110,6 +110,7 @@ type EventKind =
         | 'unit_defeated';
     }
   | { event: 'action'; detail: Action }
+  | { event: 'complete_combustion'; detail: { active: boolean } }
   | { event: 'battle_ended'; detail: Outcome }
   | {
       event:

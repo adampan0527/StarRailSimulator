@@ -258,9 +258,11 @@ impl Battle<'_> {
     }
 
     pub(super) fn effective_break_effect(&self, actor: usize) -> u32 {
-        let own_bonus = self
-            .mechanics(actor)
-            .map_or(0, |rules| rules.break_effect_bonus_bp(self, actor));
+        let own_bonus = self.mechanics(actor).map_or(0, |rules| {
+            rules
+                .break_effect_bonus_bp(self, actor)
+                .saturating_add(rules.break_effect_from_attack_bp(self, actor, None))
+        });
         self.plan.units[actor]
             .stats
             .break_effect_bp

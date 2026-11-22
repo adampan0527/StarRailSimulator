@@ -178,6 +178,9 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    CompleteCombustion {
+        active: bool,
+    },
     Damage {
         kind: DamageKind,
         amount: u32,

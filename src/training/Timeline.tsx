@@ -69,6 +69,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '自动施放战技';
     case 'action':
       return actionNames[kind.detail];
+    case 'complete_combustion':
+      return kind.detail.active ? '进入完全燃烧' : '结束完全燃烧';
     case 'enemy_attack':
       return '敌方攻击';
     case 'follow_up':

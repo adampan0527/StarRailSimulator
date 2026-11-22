@@ -13,6 +13,7 @@ mod dan_heng;
 mod dan_heng_il;
 mod dr_ratio;
 mod feixiao;
+mod firefly;
 mod fu_xuan;
 mod fugue;
 mod gallagher;
@@ -67,6 +68,7 @@ pub(super) use {
     dan_heng_il::DanHengIlState,
     dr_ratio::DrRatioState,
     feixiao::FeixiaoState,
+    firefly::FireflyState,
     fu_xuan::FuXuanState,
     fugue::FugueState,
     hanya::HanyaState,
@@ -334,6 +336,10 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn can_use_basic(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
+        true
+    }
+
+    fn can_use_ultimate(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         true
     }
 
@@ -864,6 +870,23 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn break_effect_from_attack_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _attack: Option<u32>,
+    ) -> u32 {
+        0
+    }
+
+    fn own_break_vulnerability_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn super_break_multiplier_for_effect(&self, multiplier_bp: u16, _effect_bp: u32) -> u16 {
+        multiplier_bp
+    }
+
     /// Critical rate and critical damage provided by the resolved break effect.
     fn crit_from_break_effect_bp(&self, _break_effect_bp: u32) -> (u32, u32) {
         (0, 0)
@@ -1199,6 +1222,7 @@ pub fn supports_official_dpr_variant(form_id: &str, variant: &str) -> bool {
                         | welt::FORM
                         | black_swan::FORM
                         | blade::FORM
+                        | firefly::FORM
                         | silver_wolf::FORM
                         | huohuo::FORM
                         | jingliu::FORM
@@ -1253,6 +1277,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1218" => Some(jiaoqiu::build),
         feixiao::FORM => Some(feixiao::build),
         lingsha::FORM => Some(lingsha::build),
+        firefly::FORM => Some(firefly::build),
         "character.1223" => Some(moze::build),
         fugue::FORM => Some(fugue::build),
         "character.1301" => Some(gallagher::build),

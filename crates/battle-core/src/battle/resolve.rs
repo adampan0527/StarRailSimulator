@@ -83,6 +83,10 @@ impl SuperBreakSegment {
 #[derive(Clone, Copy)]
 enum DamageScale {
     Attack,
+    BreakScaledAttack {
+        break_ratio_bp: u16,
+        break_cap_bp: u16,
+    },
     Defense,
     StackedAttack {
         multiplier_bp: u32,
@@ -108,7 +112,7 @@ impl DamageScale {
     ) -> u64 {
         let ratio = u64::from(multiplier_bp);
         match self {
-            Self::Attack => u64::from(attack) * ratio,
+            Self::Attack | Self::BreakScaledAttack { .. } => u64::from(attack) * ratio,
             Self::Defense => u64::from(defense) * ratio,
             Self::StackedAttack { multiplier_bp, .. } => {
                 u64::from(attack) * u64::from(multiplier_bp)
@@ -392,6 +396,28 @@ impl Battle<'_> {
             u32::from(multiplier_bp),
             toughness,
             DamageScale::Attack,
+        );
+    }
+
+    pub(super) fn attack_hit_with_break_effect(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+        break_scale: (u16, u16),
+    ) {
+        self.attack_hit_scaled(
+            actor,
+            target,
+            element,
+            u32::from(multiplier_bp),
+            toughness,
+            DamageScale::BreakScaledAttack {
+                break_ratio_bp: break_scale.0,
+                break_cap_bp: break_scale.1,
+            },
         );
     }
 
@@ -1231,6 +1257,10 @@ impl Battle<'_> {
         if event.kind.is_break() {
             vulnerability =
                 vulnerability.saturating_add(sum_matching(&DebuffKind::is_break_vulnerability));
+            if let Some(rules) = self.mechanics(actor) {
+                vulnerability =
+                    vulnerability.saturating_add(rules.own_break_vulnerability_bp(self, actor));
+            }
         }
         let mut field_defense_down = 0_u32;
         let mut field_resistance_down = 0_u32;
@@ -1689,6 +1719,19 @@ impl Battle<'_> {
                 adjusted.crit_damage_bp = adjusted
                     .crit_damage_bp
                     .saturating_add(view.bonus.crit_damage_bp);
+                let multiplier_bp = match scale {
+                    DamageScale::BreakScaledAttack {
+                        break_ratio_bp,
+                        break_cap_bp,
+                    } => multiplier_bp.saturating_add(percentage_of(
+                        source
+                            .break_effect_bp
+                            .saturating_add(view.bonus.break_effect_bp)
+                            .min(u32::from(break_cap_bp)),
+                        u32::from(break_ratio_bp),
+                    )),
+                    _ => multiplier_bp,
+                };
                 let base_bp = scale
                     .base_bp(
                         view.attack,
@@ -1839,9 +1882,7 @@ impl Battle<'_> {
             if source.level == 80
                 && let Some(action) = origin
             {
-                let break_effect = source
-                    .break_effect_bp
-                    .saturating_add(self.support_break_effect(actor));
+                let break_effect = self.effective_break_effect(actor);
                 match element {
                     Element::Ice if self.roll_status(actor, target, 15_000, true) => {
                         self.apply_break_freeze(actor, target, action);
@@ -1921,9 +1962,10 @@ impl Battle<'_> {
                 if !self.is_targetable(*target) || !self.is_targetable(owner) {
                     continue;
                 }
-                let multiplier = self.mechanics(owner).map_or(0, |rules| {
-                    rules.super_break_multiplier_bp(self, owner, actor, *target)
-                });
+                let Some(rules) = self.mechanics(owner) else {
+                    continue;
+                };
+                let multiplier = rules.super_break_multiplier_bp(self, owner, actor, *target);
                 if multiplier == 0 {
                     continue;
                 }
@@ -1944,6 +1986,8 @@ impl Battle<'_> {
                             ))
                         })
                         .sum();
+                    let multiplier = rules
+                        .super_break_multiplier_for_effect(multiplier, adjusted.break_effect_bp);
                     damage::super_break(adjusted, view.target, *element, toughness, multiplier)
                 });
                 self.record_half_hp_crossing(*target, hp_before);
@@ -2111,7 +2155,8 @@ impl Battle<'_> {
         let main_recipient = recipient(target, distribution.map_or(10_000, |(_, bp)| 10_000 - bp));
         let distributed_recipient = distribution.map(|(unit, bp)| recipient(unit, bp));
         let applied_buffs = self.offense_buffs(offense, |_| true);
-        let derived_critical = crit_rate_bp.and_then(|_| self.mechanics(actor));
+        let actor_mechanics = self.mechanics(actor);
+        let derived_critical = crit_rate_bp.and(actor_mechanics.as_ref());
         let crit_rate_from_defense = |defense| {
             derived_critical
                 .as_ref()
@@ -2164,10 +2209,16 @@ impl Battle<'_> {
                     .crit_damage_bp
                     .saturating_add(percentage_of(overflow, bonus.crit_overflow_ratio_bp));
             }
+            let attack = self.attack_with_buffs(actor, bonus);
+            if let Some(rules) = &actor_mechanics {
+                bonus.break_effect_bp = bonus
+                    .break_effect_bp
+                    .saturating_add(rules.break_effect_from_attack_bp(self, actor, Some(attack)));
+            }
             let amount = calculate(DamageView {
                 target: defender,
                 bonus,
-                attack: self.attack_with_buffs(actor, bonus),
+                attack,
                 defense,
                 critical,
             });
