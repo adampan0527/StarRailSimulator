@@ -53,6 +53,7 @@ mod sushang;
 mod tingyun;
 mod topaz;
 mod trailblazer_harmony;
+mod trailblazer_remembrance;
 mod welt;
 mod xueyi;
 mod yanqing;
@@ -90,6 +91,7 @@ pub(super) use {
     sunday::SundayState,
     topaz::TopazState,
     trailblazer_harmony::HarmonyTrailblazerState,
+    trailblazer_remembrance::RemembranceTrailblazerState,
     welt::WeltState,
     xueyi::XueyiState,
     yukong::YukongState,
@@ -319,7 +321,37 @@ pub(super) struct YanqingState {
     pub target_was_frozen: bool,
 }
 
+pub(super) struct MemospriteProfile {
+    pub name: &'static str,
+    pub stats: crate::fixture::Stats,
+}
+
 pub(super) trait Mechanics: Send + Sync {
+    fn memosprite_profile(&self, _master: crate::fixture::Stats) -> Option<MemospriteProfile> {
+        None
+    }
+
+    fn on_memosprite_departed(&self, _battle: &mut Battle<'_>, _owner: usize, _sprite: usize) {}
+
+    fn on_memosprite_turn_finished(&self, _battle: &mut Battle<'_>, _owner: usize, _sprite: usize) {
+    }
+
+    fn on_ally_energy_restored(&self, _battle: &mut Battle<'_>, _owner: usize, _amount_milli: u32) {
+    }
+
+    fn memosprite_true_damage_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _source: usize,
+    ) -> u32 {
+        0
+    }
+
+    fn memosprite_guarantees_critical(&self, _origin: Option<Action>) -> bool {
+        false
+    }
+
     /// Lower bound is both the charge threshold and the energy consumed.
     fn ultimate_energy_range(&self, _action: Action) -> Option<RangeInclusive<u32>> {
         None
@@ -388,6 +420,16 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn resolve_special_attack(&self, _battle: &mut Battle<'_>, _actor: usize, _target: usize) {}
+
+    fn attack_source(
+        &self,
+        _battle: &Battle<'_>,
+        actor: usize,
+        _action: Action,
+        _ability: Ability<'_>,
+    ) -> usize {
+        actor
+    }
 
     fn observes_enemy_debuffs(&self) -> bool {
         false
@@ -1310,6 +1352,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),
         trailblazer_harmony::FORM => Some(trailblazer_harmony::build),
+        trailblazer_remembrance::FORM => Some(trailblazer_remembrance::build),
         "character.1209" => Some(yanqing::build),
         _ => None,
     }

@@ -135,6 +135,10 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    MemospriteCharge {
+        before: u8,
+        after: u8,
+    },
     BlindBet {
         before: u8,
         after: u8,

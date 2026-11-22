@@ -35,6 +35,7 @@ const E6_OVERFLOW_RATIO_BP: u32 = 20_000;
 #[derive(Clone, Copy)]
 struct Beatified {
     target: usize,
+    sprite: Option<(usize, u32)>,
     bonus_crit_damage_bp: u32,
     turns: u8,
 }
@@ -169,7 +170,10 @@ impl Sunday {
         battle.units[owner]
             .sunday_state
             .beatified
-            .filter(|blessing| blessing.target == target)
+            .filter(|blessing| {
+                blessing.target == target
+                    || blessing.sprite == Some((target, battle.units[target].memosprite_generation))
+            })
     }
 
     fn apply_talent(&self, battle: &mut Battle<'_>, actor: usize, target: usize) {
@@ -181,24 +185,30 @@ impl Sunday {
             1
         };
         battle.units[actor].sunday_state.talent_stacks[target] = stacks;
-        battle.apply_ally_buff_with_id(
-            actor,
-            target,
-            AllyBuffKind::CritRate,
-            self.crit_rate_bp * u32::from(stacks),
-            self.crit_turns,
-            Some(TALENT),
-        );
-        if self.eidolon >= 6 {
+        for recipient in Self::buff_targets(battle, target).into_iter().flatten() {
             battle.apply_ally_buff_with_id(
                 actor,
-                target,
-                AllyBuffKind::CritOverflowRatio,
-                E6_OVERFLOW_RATIO_BP,
+                recipient,
+                AllyBuffKind::CritRate,
+                self.crit_rate_bp * u32::from(stacks),
                 self.crit_turns,
                 Some(TALENT),
             );
+            if self.eidolon >= 6 {
+                battle.apply_ally_buff_with_id(
+                    actor,
+                    recipient,
+                    AllyBuffKind::CritOverflowRatio,
+                    E6_OVERFLOW_RATIO_BP,
+                    self.crit_turns,
+                    Some(TALENT),
+                );
+            }
         }
+    }
+
+    fn buff_targets(battle: &Battle<'_>, target: usize) -> [Option<usize>; 2] {
+        [Some(target), battle.active_memosprite(target)]
     }
 
     fn skill(&self, battle: &mut Battle<'_>, actor: usize, target: usize) {
@@ -206,28 +216,32 @@ impl Sunday {
             battle.cleanse_one(actor, target);
         }
         let extra = u32::from(has_combat_summon(battle, target)) * self.summon_damage_bp;
-        battle.apply_ally_buff_with_id(
-            actor,
-            target,
-            AllyBuffKind::Damage,
-            self.damage_bp + extra,
-            self.damage_turns,
-            Some(SKILL),
-        );
+        for recipient in Self::buff_targets(battle, target).into_iter().flatten() {
+            battle.apply_ally_buff_with_id(
+                actor,
+                recipient,
+                AllyBuffKind::Damage,
+                self.damage_bp + extra,
+                self.damage_turns,
+                Some(SKILL),
+            );
+        }
         self.apply_talent(battle, actor, target);
         if self.eidolon >= 1 {
-            for (summon, bp) in [
-                (false, E1_CHARACTER_DEF_IGNORE_BP),
-                (true, E1_SUMMON_DEF_IGNORE_BP),
-            ] {
-                battle.apply_ally_buff_with_id(
-                    actor,
-                    target,
-                    AllyBuffKind::DefenseIgnore { summon },
-                    bp,
-                    2,
-                    Some(SKILL),
-                );
+            for recipient in Self::buff_targets(battle, target).into_iter().flatten() {
+                for (summon, bp) in [
+                    (false, E1_CHARACTER_DEF_IGNORE_BP),
+                    (true, E1_SUMMON_DEF_IGNORE_BP),
+                ] {
+                    battle.apply_ally_buff_with_id(
+                        actor,
+                        recipient,
+                        AllyBuffKind::DefenseIgnore { summon },
+                        bp,
+                        2,
+                        Some(SKILL),
+                    );
+                }
             }
         }
         if Self::beatified(battle, actor, target).is_some() {
@@ -254,9 +268,13 @@ impl Sunday {
             self.beatified_ratio_bp,
         )
         .saturating_add(self.beatified_flat_bp);
+        let sprite = battle
+            .active_memosprite(target)
+            .map(|sprite| (sprite, battle.units[sprite].memosprite_generation));
         let state = &mut battle.units[actor].sunday_state;
         state.beatified = Some(Beatified {
             target,
+            sprite,
             bonus_crit_damage_bp,
             turns: self.beatified_turns,
         });

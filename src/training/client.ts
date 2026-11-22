@@ -124,6 +124,7 @@ type EventKind =
         | 'apotheosis'
         | 'pocket_trickshot'
         | 'blade_charge'
+        | 'memosprite_charge'
         | 'syzygy'
         | 'moonlight'
         | 'basic_enhancement'
