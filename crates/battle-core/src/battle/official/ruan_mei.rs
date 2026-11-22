@@ -216,7 +216,7 @@ impl Mechanics for RuanMei {
         self.damage_bonus_bp + extra
     }
 
-    fn ally_toughness_bonus_bp(&self, battle: &Battle<'_>, owner: usize) -> u32 {
+    fn ally_toughness_bonus_bp(&self, battle: &Battle<'_>, owner: usize, _actor: usize) -> u32 {
         self.break_efficiency_bp * u32::from(overtones_active(battle, owner))
     }
 

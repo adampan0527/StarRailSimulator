@@ -194,6 +194,10 @@ pub enum EventKind {
         before: u16,
         after: u16,
     },
+    CloudflameLuster {
+        before: u16,
+        after: u16,
+    },
     WeaknessBroken,
     GaugeShifted {
         before_quanta: u64,

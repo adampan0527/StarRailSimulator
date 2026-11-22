@@ -10,6 +10,7 @@ pub(crate) struct DamageTarget {
     pub defense_down_bp: u32,
     pub resistance_down_bp: u32,
     pub damage_reduction_bp: u32,
+    pub break_damage_bonus_bp: u32,
     pub damage_share_bp: u16,
     pub toughness: u16,
     pub max_toughness: u16,
@@ -97,7 +98,7 @@ pub(crate) fn weakness_break(
         * (BP + u128::from(source.break_effect_bp))
         * u128::from(ratio_bp);
     let denominator = BP.pow(5) * 40 * defense_factor(defense_points, target);
-    damage_after_reduction(numerator, denominator, target)
+    break_damage_after_reduction(numerator, denominator, target)
 }
 
 /// Toughness uses the same scale as the rest of combat, with 10 for an ordinary Basic ATK.
@@ -117,7 +118,7 @@ pub(crate) fn super_break(
         * resist_factor(target, element)
         * (BP + u128::from(target.vulnerability_bp));
     let denominator = 10 * BP.pow(4) * defense_factor(defense, target);
-    damage_after_reduction(numerator, denominator, target)
+    break_damage_after_reduction(numerator, denominator, target)
 }
 
 pub(crate) fn break_status(
@@ -155,5 +156,16 @@ pub(crate) fn break_status(
         * (BP + u128::from(target.vulnerability_bp))
         * toughness;
     let denominator = BP.pow(4) * defense_factor(defense, target);
-    damage_after_reduction(numerator, denominator, target)
+    break_damage_after_reduction(numerator, denominator, target)
+}
+
+fn break_damage_after_reduction(numerator: u128, denominator: u128, target: DamageTarget) -> u32 {
+    if target.break_damage_bonus_bp == 0 {
+        return damage_after_reduction(numerator, denominator, target);
+    }
+    damage_after_reduction(
+        numerator * (BP + u128::from(target.break_damage_bonus_bp)),
+        denominator * BP,
+        target,
+    )
 }

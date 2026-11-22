@@ -114,6 +114,7 @@ type EventKind =
       event:
         | 'skill_points'
         | 'toughness'
+        | 'cloudflame_luster'
         | 'crimson_knot'
         | 'blind_bet'
         | 'apotheosis'

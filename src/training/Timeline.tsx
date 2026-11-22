@@ -112,6 +112,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '延长触电';
     case 'shock_expired':
       return '触电结束';
+    case 'cloudflame_luster':
+      return '云火昭变化';
     case 'toughness':
       return '韧性变化';
     case 'weakness_broken':
@@ -137,6 +139,7 @@ function eventDetail({ kind }: BattleEvent) {
   switch (kind.event) {
     case 'skill_points':
     case 'blind_bet':
+    case 'cloudflame_luster':
     case 'toughness':
     case 'crimson_knot':
     case 'apotheosis':
