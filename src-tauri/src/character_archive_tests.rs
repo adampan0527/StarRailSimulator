@@ -1175,6 +1175,55 @@ fn saved_team_replays_super_break_and_lingshas_summon() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_tracks_super_break_providers_alongside_jades_follow_up() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [firefly, fugue, trailblazer, jade] = [
+        "character.1310",
+        "character.1225",
+        "trailblazer.harmony",
+        "character.1314",
+    ];
+    let team = archive
+        .save_team(
+            None,
+            "云火昭与伴舞",
+            &[firefly, fugue, trailblazer, jade].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| hit.source_id == jade && hit.kind == DamageKind::FollowUp));
+    assert!(hits().any(|hit| hit.source_id == firefly && hit.kind == DamageKind::SuperBreak));
+    for provider in [fugue, trailblazer] {
+        assert!(hits().any(|hit| {
+            hit.kind == DamageKind::SuperBreak
+                && hit
+                    .credits
+                    .iter()
+                    .any(|credit| credit.unit_id == provider && credit.amount > 0)
+        }));
+    }
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
