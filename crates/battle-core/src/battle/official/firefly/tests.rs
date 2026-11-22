@@ -311,6 +311,21 @@ fn firefly_caps_the_direct_attack_scaling_and_uses_the_higher_super_break_tier()
 }
 
 #[test]
+fn firefly_prior_break_dot_detonated_on_an_ally_turn_uses_no_enhanced_skill_defense_ignore() {
+    let prepared = plan(&[firefly(true, 1, [true; 3]), tingyun()], &[120]);
+    let mut battle = Battle::start(&prepared, LogMode::Detailed);
+    transform(&mut battle);
+    battle.set_toughness(0, 2, 0);
+    battle.ordinary_actor = Some(1);
+    battle.action = Some(Action::Skill);
+    battle.break_dot_hit(0, 2, FIRE, Action::Skill, 10_000);
+    let hit = &battle.dummy_damage[0];
+    assert_eq!(hit.kind, DamageKind::DamageOverTime);
+    // Base Fire Break DoT × (1 + 261% Break Effect) × 2/3 defense multiplier.
+    assert_eq!(hit.amount, 9_067);
+}
+
+#[test]
 fn firefly_defensive_talent_and_e6_use_the_matching_state_and_element() {
     let prepared = plan(&[firefly(true, 6, [true; 3])], &[120]);
     let mut battle = Battle::start(&prepared, LogMode::Detailed);
