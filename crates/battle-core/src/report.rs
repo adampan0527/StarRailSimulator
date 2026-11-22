@@ -43,10 +43,11 @@ pub enum StatusKind {
     Unnerved,
     ThanatoplumRebloom,
     Standoff,
+    Befog,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Standoff.index() + 1;
+    pub(crate) const COUNT: usize = Self::Befog.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -74,6 +75,7 @@ impl StatusKind {
             Self::Unnerved => 20,
             Self::ThanatoplumRebloom => 21,
             Self::Standoff => 22,
+            Self::Befog => 23,
         }
     }
 }

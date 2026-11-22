@@ -27,6 +27,7 @@ mod jiaoqiu;
 mod jing_yuan;
 mod jingliu;
 mod kafka;
+mod lingsha;
 mod luka;
 mod luocha;
 mod lynx;
@@ -70,6 +71,7 @@ pub(super) use {
     jiaoqiu::Field as JiaoqiuField,
     jing_yuan::JingYuanState,
     jingliu::JingliuState,
+    lingsha::LingshaState,
     march_hunt::MarchHuntState,
     misha::MishaState,
     moze::MozeState,
@@ -868,6 +870,10 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn attack_bonus_from_break_effect_bp(&self, _break_effect_bp: u32) -> u32 {
+        0
+    }
+
     fn ally_speed_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
         0
     }
@@ -1125,6 +1131,10 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn target_defense_down_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
     fn elemental_resistance_down_bp(
         &self,
         _battle: &Battle<'_>,
@@ -1211,6 +1221,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         huohuo::FORM => Some(huohuo::build),
         "character.1218" => Some(jiaoqiu::build),
         feixiao::FORM => Some(feixiao::build),
+        lingsha::FORM => Some(lingsha::build),
         "character.1223" => Some(moze::build),
         "character.1301" => Some(gallagher::build),
         argenti::FORM => Some(argenti::build),

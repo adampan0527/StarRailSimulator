@@ -93,7 +93,8 @@ type Status =
   | 'ultimate_vulnerability'
   | 'unnerved'
   | 'thanatoplum_rebloom'
-  | 'standoff';
+  | 'standoff'
+  | 'befog';
 type EventKind =
   | {
       event:

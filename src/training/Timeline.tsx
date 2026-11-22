@@ -49,6 +49,7 @@ const statusNames = {
   unnerved: '惊惶',
   thanatoplum_rebloom: '残梅绽',
   standoff: '绝命对峙',
+  befog: '醇醉',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

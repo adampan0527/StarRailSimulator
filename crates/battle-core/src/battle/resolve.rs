@@ -979,7 +979,7 @@ impl Battle<'_> {
         }
     }
 
-    fn follow_up_hit(
+    pub(super) fn follow_up_hit(
         &mut self,
         actor: usize,
         target: usize,
@@ -1154,6 +1154,9 @@ impl Battle<'_> {
                     .saturating_add(
                         mechanics.elemental_resistance_down_bp(self, owner, target, element),
                     );
+                aura.defense_down_bp = aura
+                    .defense_down_bp
+                    .saturating_add(mechanics.target_defense_down_bp(self, owner, target));
                 aura
             })
     }
@@ -1211,7 +1214,8 @@ impl Battle<'_> {
             vulnerability = vulnerability.saturating_add(sum(DebuffKind::DotVulnerability));
         }
         if event.kind.is_break() {
-            vulnerability = vulnerability.saturating_add(sum(DebuffKind::Besotted));
+            vulnerability =
+                vulnerability.saturating_add(sum_matching(&DebuffKind::is_break_vulnerability));
         }
         let mut field_defense_down = 0_u32;
         let mut field_resistance_down = 0_u32;
@@ -2131,7 +2135,7 @@ impl Battle<'_> {
                             && self.is_ultimate_damage(actor, &event))
                         || (status.kind == DebuffKind::DotVulnerability
                             && kind == DamageKind::DamageOverTime)
-                        || (status.kind == DebuffKind::Besotted && kind.is_break())
+                        || (status.kind.is_break_vulnerability() && kind.is_break())
                 })
                 .map(|status| status.source)
                 .chain(
