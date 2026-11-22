@@ -35,6 +35,7 @@
 | 第十八批 | [波提欧](characters/boothill.md)、[刃（原版与强化版）](characters/blade.md)、[镜流（原版与强化版）](characters/jingliu.md) |
 | 第十九批 | [丹恒·饮月](characters/dan-heng-il.md)、[同谐开拓者](characters/trailblazer-harmony.md)、[灵砂](characters/lingsha.md) |
 | 第二十批 | [翡翠](characters/jade.md)、[忘归人](characters/fugue.md)、[流萤（原版与强化版）](characters/firefly.md) |
+| 第二十一批 | [云璃](characters/yunli.md)、[乱破](characters/rappa.md)、[大黑塔](characters/the-herta.md) |
 
 - 正式角色的有效技能等级从档案解析，技能倍率来自冻结的 4.7.0 快照。面板计算纳入配装静态属性，生命、攻击与防御四舍五入为整数，速度保留百万分位，倍率以万分比计算。光锥和遗器战斗触发效果、秘技及客户端逐事件对照待补。
 - 固定靶机保持满生命，正常排程、承受击破、冻结和触电。80 级击破基值使用 3767.5533。雷击破触电在目标回合开始结算，冰击破冻结跳过一次行动并将下一次行动提前 50%。这些结算属于当前靶场规则。合成回放仍使用原合成版本。[游戏内冰击破教程](https://hsr.gachabase.net/tutorials/battle/2202/weakness-break-ice/beta?lang=en)
@@ -62,6 +63,7 @@
 - 波提欧对峙时锁定强化普攻目标，并按击破与击败累计优势口袋。刃和镜流共用实际生命消耗的结算入口，分别累计刃的追击充能和镜流强化版的生命事件。保存配队复验刃的追击、镜流的直伤、波提欧的击破和阮·梅的助攻。[配队回归](../src-tauri/src/character_archive_tests.rs)
 - 饮月可在同一回合准备三档强化普攻，确认时优先支付逆鳞。同谐开拓者的伴舞把攻击中命中已击破目标的有效削韧段按目标结算为超击破。灵砂的浮元独立排程，醇醉同时增加击破和超击破伤害。保存四人配队以花火补充战技点，复验饮月普攻、浮元追击及伴舞和醇醉的超击破贡献。[配队回归](../src-tauri/src/character_archive_tests.rs)
 - 翡翠按实际命中目标数累计追击，收债人的生命消耗使用共用入口。忘归人的云火昭可以造成第二次弱点击破，狐祈按目标区分削韧效率。流萤原版与强化版共用完全燃烧的独立时钟，并按所选版本结算弱点植入、击破和超击破。保存配队复验翡翠追击、流萤超击破，以及忘归人与伴舞各自的辅助贡献。[配队回归](../src-tauri/src/character_archive_tests.rs)
+- 云璃的格挡可在下一回合结束时触发反击，有限敌人场景另测实际受击。乱破按真实击破增加充能，三段强化普攻保留目标各自的削韧与超击破。大黑塔的多段伤害按实际扩散范围结算，并支持解读叠加、重排和跨波转移。[配队与档案回归](../src-tauri/src/character_archive_tests.rs)
 
 ## 后续归因扩展
 

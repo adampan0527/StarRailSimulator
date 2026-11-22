@@ -1224,6 +1224,54 @@ fn saved_team_tracks_super_break_providers_alongside_jades_follow_up() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_parry_counters_and_erudition_damage() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [yunli, rappa, the_herta, fugue] = [
+        "character.1221",
+        "character.1317",
+        "character.1401",
+        "character.1225",
+    ];
+    let team = archive
+        .save_team(
+            None,
+            "格挡与智识连携",
+            &[yunli, rappa, the_herta, fugue].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| {
+        hit.source_id == yunli && hit.action == Action::Ultimate && hit.kind == DamageKind::FollowUp
+    }));
+    assert!(hits().any(|hit| hit.source_id == rappa && hit.kind == DamageKind::SuperBreak));
+    assert!(result.targets.iter().all(|target| {
+        target
+            .hits
+            .iter()
+            .any(|hit| hit.source_id == the_herta && hit.kind == DamageKind::Direct)
+    }));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
