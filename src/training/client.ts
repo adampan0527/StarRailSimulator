@@ -96,7 +96,8 @@ type Status =
   | 'standoff'
   | 'befog'
   | 'parry'
-  | 'taunt';
+  | 'taunt'
+  | 'withered_leaf';
 type EventKind =
   | {
       event:
@@ -129,6 +130,8 @@ type EventKind =
         | 'basic_enhancement'
         | 'squama_sacrosancta'
         | 'jade_charge'
+        | 'rappa_charge'
+        | 'chroma_ink'
         | 'pawned_asset';
       detail: { before: number; after: number };
     }

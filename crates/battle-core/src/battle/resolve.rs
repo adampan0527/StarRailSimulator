@@ -1824,49 +1824,20 @@ impl Battle<'_> {
             },
         );
 
-        if toughness > 0 && self.units[target].hp > 0 {
-            let normal_before = self.units[target].toughness;
-            let extra = self
-                .live_extra_toughness(target)
-                .filter(|pool| pool.remaining > 0);
+        if toughness > 0 {
             let segment = SuperBreakSegment {
                 base: toughness,
                 personal_efficiency_bp: personal_toughness_bp,
-                full_toughness: hit_weakness || (normal_before == 0 && extra.is_some()),
+                full_toughness: hit_weakness,
             };
-            let (team_toughness_bp, off_element_bp) = self.toughness_support(actor);
-            let reduction = segment.scaled(team_toughness_bp, off_element_bp);
-            if self.tracks_super_break
-                && normal_before == 0
-                && reduction > 0
-                && matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
-                && origin.is_some()
-                && self.allies().contains(&actor)
-                && self.enemies().contains(&target)
-                && self.is_targetable(target)
-            {
-                self.record_super_break_segment(target, element, segment);
-            }
-            if normal_before > 0 && reduction > 0 {
-                let after = normal_before.saturating_sub(reduction);
-                self.set_toughness(actor, target, after);
-                self.notify_toughness_reduced(actor, target, origin, normal_before - after);
-                if after == 0 {
-                    self.resolve_weakness_break(actor, target, element, origin, source);
-                }
-            }
-            let overflow = reduction.saturating_sub(normal_before);
-            if self.is_targetable(target)
-                && overflow > 0
-                && let Some(pool) = extra
-            {
-                let after = pool.remaining.saturating_sub(overflow);
-                self.set_extra_toughness(actor, target, after);
-                self.notify_toughness_reduced(actor, target, origin, pool.remaining - after);
-                if after == 0 {
-                    self.resolve_weakness_break(actor, target, element, origin, source);
-                }
-            }
+            self.apply_attack_toughness(
+                actor,
+                target,
+                (element, segment),
+                origin,
+                source,
+                matches!(kind, DamageKind::Direct | DamageKind::FollowUp),
+            );
         }
         if crit
             && kind != DamageKind::Direct
@@ -1897,6 +1868,61 @@ impl Battle<'_> {
                     off_element.max(rules.off_element_toughness_bp(self, owner, actor)),
                 )
             })
+    }
+
+    fn apply_attack_toughness(
+        &mut self,
+        actor: usize,
+        target: usize,
+        impact: (Element, SuperBreakSegment),
+        origin: Option<Action>,
+        source: crate::fixture::Stats,
+        collect_super_break: bool,
+    ) {
+        if self.units[target].hp == 0 {
+            return;
+        }
+        let (element, mut segment) = impact;
+        let normal_before = self.units[target].toughness;
+        let extra = self
+            .live_extra_toughness(target)
+            .filter(|pool| pool.remaining > 0);
+        segment.full_toughness |= normal_before == 0 && extra.is_some();
+        let (team_toughness_bp, off_element_bp) = self.toughness_support(actor);
+        let reduction = segment.scaled(team_toughness_bp, off_element_bp);
+        if reduction == 0 {
+            return;
+        }
+        if self.tracks_super_break
+            && collect_super_break
+            && normal_before == 0
+            && origin.is_some()
+            && self.allies().contains(&actor)
+            && self.enemies().contains(&target)
+            && self.is_targetable(target)
+        {
+            self.record_super_break_segment(target, element, segment);
+        }
+        if normal_before > 0 {
+            let after = normal_before.saturating_sub(reduction);
+            self.set_toughness(actor, target, after);
+            self.notify_toughness_reduced(actor, target, origin, normal_before - after);
+            if after == 0 {
+                self.resolve_weakness_break(actor, target, element, origin, source);
+            }
+        }
+        let overflow = reduction.saturating_sub(normal_before);
+        if self.is_targetable(target)
+            && overflow > 0
+            && let Some(pool) = extra
+        {
+            let after = pool.remaining.saturating_sub(overflow);
+            self.set_extra_toughness(actor, target, after);
+            self.notify_toughness_reduced(actor, target, origin, pool.remaining - after);
+            if after == 0 {
+                self.resolve_weakness_break(actor, target, element, origin, source);
+            }
+        }
     }
 
     fn notify_toughness_reduced(
@@ -2126,7 +2152,7 @@ impl Battle<'_> {
         ratio_bp: u16,
     ) {
         let event = Self::break_damage_event(origin, kind);
-        self.resolve_break_status_hit(actor, target, element, event, ratio_bp, u16::MAX);
+        self.resolve_break_status_hit(actor, target, element, event, u32::from(ratio_bp), u16::MAX);
     }
 
     pub(super) fn break_hit_capped(
@@ -2139,7 +2165,52 @@ impl Battle<'_> {
         max_toughness: u16,
     ) {
         let event = Self::break_damage_event(origin, DamageKind::WeaknessBreak);
-        self.resolve_break_status_hit(actor, target, element, event, ratio_bp, max_toughness);
+        self.resolve_break_status_hit(
+            actor,
+            target,
+            element,
+            event,
+            u32::from(ratio_bp),
+            max_toughness,
+        );
+    }
+
+    /// Resolves an added Break hit and its weakness-ignoring Toughness as part of the current attack.
+    pub(super) fn attack_break_hit(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        origin: Action,
+        ratio_bp: u32,
+        toughness: u16,
+    ) {
+        let hp_before = self.units[target].hp;
+        let event = Self::break_damage_event(origin, DamageKind::WeaknessBreak);
+        self.resolve_break_status_hit(actor, target, element, event, ratio_bp, u16::MAX);
+        let mut source = self.plan.units[actor].stats;
+        let mut personal_efficiency_bp = 0;
+        if let Some(rules) = self.mechanics(actor) {
+            source.break_effect_bp = source
+                .break_effect_bp
+                .saturating_add(rules.break_effect_bonus_bp(self, actor));
+            personal_efficiency_bp =
+                rules.toughness_bonus_bp(self, actor, Some(origin), DamageKind::WeaknessBreak);
+        }
+        let segment = SuperBreakSegment {
+            base: toughness,
+            personal_efficiency_bp,
+            full_toughness: true,
+        };
+        self.apply_attack_toughness(
+            actor,
+            target,
+            (element, segment),
+            Some(origin),
+            source,
+            true,
+        );
+        self.record_half_hp_crossing(target, hp_before);
     }
 
     fn break_damage_event(origin: Action, kind: DamageKind) -> DamageEvent {
@@ -2159,7 +2230,7 @@ impl Battle<'_> {
         target: usize,
         element: Element,
         event: DamageEvent,
-        ratio_bp: u16,
+        ratio_bp: u32,
         max_toughness: u16,
     ) {
         if self.units[target].hp == 0 {

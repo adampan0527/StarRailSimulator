@@ -85,7 +85,7 @@ pub(crate) fn weakness_break(
     source: Stats,
     target: DamageTarget,
     element: Element,
-    ratio_bp: u16,
+    ratio_bp: u32,
 ) -> u32 {
     let defense_points = defense_points(source.level);
     let base = break_base_x_bp(source.level);
@@ -125,7 +125,7 @@ pub(crate) fn break_status(
     source: Stats,
     target: DamageTarget,
     element: Element,
-    ratio_bp: u16,
+    ratio_bp: u32,
 ) -> u32 {
     let defense = defense_points(source.level);
     let toughness = if target.toughness > 0 { 9_000 } else { BP };

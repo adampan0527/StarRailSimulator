@@ -41,6 +41,7 @@ mod moze;
 mod natasha;
 mod pela;
 mod qingque;
+mod rappa;
 mod robin;
 mod ruan_mei;
 mod sampo;
@@ -83,6 +84,7 @@ pub(super) use {
     misha::MishaState,
     moze::MozeState,
     qingque::QingqueState,
+    rappa::RappaState,
     robin::RobinState,
     ruan_mei::RuanMeiState,
     seele::SeeleState,
@@ -1301,6 +1303,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         acheron::FORM => Some(acheron::build),
         robin::FORM => Some(robin::build),
         "character.1312" => Some(misha::build),
+        rappa::FORM => Some(rappa::build),
         sunday::FORM => Some(sunday::build),
         jade::FORM => Some(jade::build),
         boothill::FORM => Some(boothill::build),
