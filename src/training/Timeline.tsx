@@ -53,6 +53,7 @@ const statusNames = {
   parry: '格挡',
   taunt: '嘲讽',
   withered_leaf: '枯叶',
+  vendetta: '血仇',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
@@ -104,6 +105,10 @@ function eventTitle({ kind }: BattleEvent): string {
       return '优势口袋变化';
     case 'blade_charge':
       return '倏忽恩赐充能';
+    case 'mydei_charge':
+      return '以血还血充能';
+    case 'mydei_enhanced_skill':
+      return kind.detail.godslayer ? '弑神登神' : '弑王成王';
     case 'syzygy':
       return '朔望变化';
     case 'moonlight':
@@ -179,6 +184,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'chroma_ink':
     case 'pawned_asset':
       return `${kind.detail.before} → ${kind.detail.after}`;
+    case 'mydei_charge':
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;
     case 'flying_aureus':

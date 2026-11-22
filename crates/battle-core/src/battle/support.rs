@@ -216,12 +216,19 @@ impl Battle<'_> {
         if !self.allies().contains(&actor) {
             return max_hp;
         }
-        self.allies()
+        let total = self
+            .allies()
             .filter(|&owner| Some(owner) != source)
             .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
             .fold(max_hp, |hp, (owner, rules)| {
                 hp.saturating_add(rules.ally_max_hp_bonus(self, owner, actor))
-            })
+            });
+        percentage_of(total, self.max_hp_multiplier_bp(actor))
+    }
+
+    pub(super) fn max_hp_multiplier_bp(&self, actor: usize) -> u32 {
+        self.mechanics(actor)
+            .map_or(10_000, |rules| rules.max_hp_multiplier_bp(self, actor))
     }
 
     fn ally_buff_total(&self, actor: usize, kind: AllyBuffKind) -> u32 {
@@ -483,9 +490,14 @@ impl Battle<'_> {
 
     pub(super) fn defense_with_buff(&self, actor: usize, buff_bp: u32) -> u32 {
         let stats = self.plan.units[actor].stats;
-        let personal_bp = self
-            .mechanics(actor)
-            .map_or(0, |rules| rules.defense_bonus_bp(self, actor));
+        let mechanics = self.mechanics(actor);
+        if mechanics
+            .as_ref()
+            .is_some_and(|rules| rules.defense_is_zero(self, actor))
+        {
+            return 0;
+        }
+        let personal_bp = mechanics.map_or(0, |rules| rules.defense_bonus_bp(self, actor));
         stats.defense.saturating_add(percentage_of(
             stats.base_defense,
             buff_bp.saturating_add(personal_bp),
@@ -551,6 +563,16 @@ impl Battle<'_> {
                 {
                     rules.after_ordinary_turn(self, owner, actor);
                 }
+            }
+        }
+    }
+
+    pub(super) fn notify_unit_action_finished(&mut self, actor: usize) {
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(rules) = self.mechanics(owner)
+            {
+                rules.on_unit_action_finished(self, owner, actor);
             }
         }
     }

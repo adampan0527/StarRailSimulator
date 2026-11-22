@@ -16,6 +16,10 @@ impl Battle<'_> {
         self.extra_turns.pending.push_back(actor);
     }
 
+    pub(super) fn cancel_queued_extra_turn(&mut self, actor: usize) {
+        self.extra_turns.pending.retain(|&pending| pending != actor);
+    }
+
     pub(super) fn in_extra_turn(&self, actor: usize) -> bool {
         self.extra_turns.active && self.ordinary_actor == Some(actor)
     }

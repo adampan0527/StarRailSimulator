@@ -155,6 +155,7 @@ struct UnitState {
     jade_state: official::JadeState,
     tribbie_state: official::TribbieState,
     blade_state: official::BladeState,
+    mydei_state: official::MydeiState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
     misha_state: MishaState,
@@ -297,6 +298,7 @@ impl<'a> Battle<'a> {
                     jade_state: official::JadeState::default(),
                     tribbie_state: official::TribbieState::default(),
                     blade_state: official::BladeState::default(),
+                    mydei_state: official::MydeiState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
                     misha_state: MishaState::default(),
@@ -417,6 +419,12 @@ impl<'a> Battle<'a> {
 
     /// Validate the whole command before consuming resources, rolling randomness or advancing time.
     pub fn apply(&mut self, command: &Command) -> Result<(), BattleError> {
+        self.resolve_command(command)?;
+        self.advance_to_decision();
+        Ok(())
+    }
+
+    fn resolve_command(&mut self, command: &Command) -> Result<(), BattleError> {
         if self.outcome != Outcome::Ongoing {
             return Err(BattleError::BattleEnded);
         }
@@ -515,13 +523,8 @@ impl<'a> Battle<'a> {
             self.finish_turn(actor);
             self.ordinary_actor = None;
         }
+        self.notify_unit_action_finished(actor);
         self.resolve_wave_or_end();
-        if self.outcome == Outcome::Ongoing
-            && !self.start_extra_turn()
-            && self.ordinary_actor.is_none()
-        {
-            self.advance_to_decision();
-        }
         Ok(())
     }
 
@@ -905,8 +908,23 @@ impl<'a> Battle<'a> {
 
     fn advance_to_decision(&mut self) {
         while self.outcome == Outcome::Ongoing {
-            if self.start_extra_turn() {
-                return;
+            self.start_extra_turn();
+            if let Some(actor) = self.ordinary_actor {
+                if !self
+                    .mechanics(actor)
+                    .is_some_and(|rules| rules.prepare_automatic_skill(self, actor))
+                {
+                    return;
+                }
+                let actions = self.legal_actions();
+                // Keep an ultimate window open if there is a choice to make.
+                let [command] = actions.as_slice() else {
+                    return;
+                };
+                if command.action != Action::Skill || self.resolve_command(command).is_err() {
+                    return;
+                }
+                continue;
             }
             if self.normal_turns == TURN_LIMIT {
                 self.end(Outcome::TurnLimit);
@@ -948,6 +966,7 @@ impl<'a> Battle<'a> {
                         mechanics.on_summon_turn(self, owner);
                     }
                     self.finish_debuff_action(owner, parent_debuff_targets);
+                    self.notify_unit_action_finished(owner);
                     self.resolve_wave_or_end();
                     continue;
                 }
@@ -972,7 +991,6 @@ impl<'a> Battle<'a> {
                         }
                     }
                     self.ordinary_actor = Some(actor);
-                    return;
                 }
                 Kit::Enemy(_) | Kit::Dummy { .. } => {
                     self.enemy_turn = Some(actor);
@@ -1002,6 +1020,7 @@ impl<'a> Battle<'a> {
         if self.units[actor].hp == 0 {
             return;
         }
+        let mut acted = false;
         if !self.thaw(actor) {
             let kit = &self.plan.units[actor].kit;
             if self.units[actor].toughness == 0 {
@@ -1028,10 +1047,14 @@ impl<'a> Battle<'a> {
             }
             if let Kit::Enemy(enemy) = kit {
                 self.resolve_enemy(actor, enemy);
+                acted = true;
             }
             self.finish_debuff_action(actor, parent_debuff_targets);
         }
         self.finish_turn(actor);
+        if acted {
+            self.notify_unit_action_finished(actor);
+        }
     }
 
     fn resolve_wave_or_end(&mut self) {

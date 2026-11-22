@@ -1772,6 +1772,9 @@ impl Battle<'_> {
         let crit_rate = source
             .crit_rate_bp
             .saturating_add(self.units[actor].crit_rate_bonus_bp);
+        let max_hp_multiplier_bp = mechanics
+            .as_ref()
+            .map_or(10_000, |rules| rules.max_hp_multiplier_bp(self, actor));
         let crit = self.resolve_damage(
             actor,
             target,
@@ -1826,7 +1829,10 @@ impl Battle<'_> {
                     .base_bp(
                         view.attack,
                         view.defense,
-                        source.hp.saturating_add(view.bonus.max_hp_flat),
+                        percentage_of(
+                            source.hp.saturating_add(view.bonus.max_hp_flat),
+                            max_hp_multiplier_bp,
+                        ),
                         view.target.stats.hp,
                         multiplier_bp,
                     )
@@ -2613,7 +2619,7 @@ impl Battle<'_> {
         if hp_loss > 0
             && let Some(mechanics) = self.mechanics(target)
         {
-            mechanics.after_hp_loss(self, target, hp_loss);
+            mechanics.after_hp_loss(self, target, actor, hp_loss);
         }
         if hp_loss > 0 {
             self.notify_ally_hp_loss(target);

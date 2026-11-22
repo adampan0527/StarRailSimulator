@@ -273,7 +273,7 @@ impl Mechanics for Yanqing {
         );
     }
 
-    fn after_hp_loss(&self, battle: &mut Battle<'_>, actor: usize, _hp_lost: u32) {
+    fn after_hp_loss(&self, battle: &mut Battle<'_>, actor: usize, _source: usize, _hp_lost: u32) {
         battle.units[actor]
             .yanqing_state
             .soulsteel_expires_after_turn = 0;
