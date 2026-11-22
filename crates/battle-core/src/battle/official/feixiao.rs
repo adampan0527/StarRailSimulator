@@ -356,7 +356,7 @@ impl Mechanics for Feixiao {
         self.formshift
     }
 
-    fn follow_up_counts_as_ultimate(&self) -> bool {
+    fn follow_up_counts_as_ultimate(&self, _origin: Option<Action>) -> bool {
         self.eidolon == 6
     }
 

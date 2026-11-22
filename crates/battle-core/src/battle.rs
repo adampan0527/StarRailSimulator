@@ -138,6 +138,7 @@ struct UnitState {
     harmony_trailblazer_state: official::HarmonyTrailblazerState,
     robin_state: official::RobinState,
     boothill_state: official::BoothillState,
+    yunli_state: official::YunliState,
     jade_state: official::JadeState,
     blade_state: official::BladeState,
     gallagher_state: GallagherState,
@@ -270,6 +271,7 @@ impl<'a> Battle<'a> {
                     harmony_trailblazer_state: official::HarmonyTrailblazerState::default(),
                     robin_state: official::RobinState::default(),
                     boothill_state: official::BoothillState::default(),
+                    yunli_state: official::YunliState::default(),
                     jade_state: official::JadeState::default(),
                     blade_state: official::BladeState::default(),
                     gallagher_state: GallagherState::default(),
@@ -601,6 +603,12 @@ impl<'a> Battle<'a> {
             Kit::Enemy(_) | Kit::Dummy { .. } => return Err(BattleError::InvalidActor),
         };
         let ultimate_cost_milli = if action.is_ultimate() {
+            if self
+                .mechanics(actor)
+                .is_some_and(|rules| !rules.can_use_ultimate(self, actor))
+            {
+                return Err(BattleError::IllegalTiming);
+            }
             match self
                 .mechanics(actor)
                 .and_then(|mechanics| mechanics.alternate_ultimate_resource_ready(self, actor))

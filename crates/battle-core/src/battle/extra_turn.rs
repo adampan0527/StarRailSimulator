@@ -41,12 +41,16 @@ impl Battle<'_> {
     }
 
     pub(super) fn finish_extra_turn(&mut self) {
+        let actor = self.ordinary_actor;
         self.extra_turns.active = false;
         self.ordinary_actor = self
             .extra_turns
             .interrupted
             .take()
             .filter(|&actor| self.available_for_ordinary_turn(actor));
+        if let Some(actor) = actor {
+            self.notify_battle_turn_finished(actor, true);
+        }
     }
 
     pub(super) fn close_turn_before_suspension(&mut self, actor: usize) {

@@ -144,6 +144,13 @@ pub(super) struct FollowUpAttack {
     pub first_hit: Option<(u16, u16)>,
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct FollowUpBounces {
+    pub hit_count: u8,
+    pub multiplier_bp: u16,
+    pub toughness_half_units: u16,
+}
+
 #[derive(Clone)]
 pub(super) struct FollowUp {
     actor: usize,
@@ -165,6 +172,11 @@ enum FollowUpTargets {
     SingleBlast {
         target: usize,
         adjacent: (u16, u16),
+    },
+    CounterBlast {
+        target: Option<usize>,
+        adjacent: (u16, u16),
+        bounces: Option<FollowUpBounces>,
     },
     Random {
         hit_count: u8,
@@ -189,7 +201,7 @@ impl Battle<'_> {
                 .is_some_and(|action| kit.mechanics.primary_attack_counts_as_ultimate(action)),
             (DamageKind::Direct, _) => event.origin.is_some_and(Action::is_ultimate),
             (DamageKind::FollowUp, Kit::Official(kit)) => {
-                kit.mechanics.follow_up_counts_as_ultimate()
+                kit.mechanics.follow_up_counts_as_ultimate(event.origin)
             }
             _ => false,
         }
@@ -822,6 +834,28 @@ impl Battle<'_> {
             .push_back(PendingAttack::TriggeredSkill { actor, target });
     }
 
+    pub(super) fn queue_counter_blast(
+        &mut self,
+        actor: usize,
+        target: Option<usize>,
+        origin: Action,
+        attack: FollowUpAttack,
+        adjacent: (u16, u16),
+        bounces: Option<FollowUpBounces>,
+    ) {
+        self.pending_follow_ups
+            .push_back(PendingAttack::FollowUp(FollowUp {
+                actor,
+                targets: FollowUpTargets::CounterBlast {
+                    target,
+                    adjacent,
+                    bounces,
+                },
+                origin,
+                attack,
+            }));
+    }
+
     pub(super) fn perform_triggered_skill(
         &mut self,
         actor: usize,
@@ -874,11 +908,12 @@ impl Battle<'_> {
                 FollowUpTargets::All | FollowUpTargets::Random { .. } => None,
                 FollowUpTargets::Single(unit)
                 | FollowUpTargets::SingleBlast { target: unit, .. } => Some(unit),
-                FollowUpTargets::SingleOrRandom(Some(unit)) if self.is_targetable(unit) => {
-                    Some(unit)
-                }
-                FollowUpTargets::SingleOrRandom(_) => {
-                    let Some(unit) = self.random_living_enemy() else {
+                FollowUpTargets::SingleOrRandom(target)
+                | FollowUpTargets::CounterBlast { target, .. } => {
+                    let Some(unit) = target
+                        .filter(|&unit| self.is_targetable(unit))
+                        .or_else(|| self.random_living_enemy())
+                    else {
                         continue;
                     };
                     Some(unit)
@@ -952,7 +987,9 @@ impl Battle<'_> {
                             toughness,
                         );
                     }
-                    if let FollowUpTargets::SingleBlast { adjacent, .. } = targets {
+                    if let FollowUpTargets::SingleBlast { adjacent, .. }
+                    | FollowUpTargets::CounterBlast { adjacent, .. } = targets
+                    {
                         for neighbor in self.adjacent_enemies(target) {
                             self.follow_up_hit(
                                 actor,
@@ -966,6 +1003,41 @@ impl Battle<'_> {
                     }
                     if let Some(mechanics) = &mechanics {
                         mechanics.after_follow_up_hit(self, actor, target, origin);
+                    }
+                }
+                if let FollowUpTargets::CounterBlast {
+                    bounces: Some(bounces),
+                    ..
+                } = targets
+                {
+                    // Carry fractional toughness between hits on each enemy within this attack.
+                    let mut fractional_targets = Vec::new();
+                    for _ in 0..bounces.hit_count {
+                        let Some(target) = self.random_living_enemy() else {
+                            break;
+                        };
+                        let mut toughness = bounces.toughness_half_units / 2;
+                        if bounces.toughness_half_units % 2 != 0 {
+                            if let Some(slot) =
+                                fractional_targets.iter().position(|&unit| unit == target)
+                            {
+                                fractional_targets.swap_remove(slot);
+                                toughness += 1;
+                            } else {
+                                fractional_targets.push(target);
+                            }
+                        }
+                        self.follow_up_hit(
+                            actor,
+                            target,
+                            origin,
+                            attack.element,
+                            bounces.multiplier_bp,
+                            toughness,
+                        );
+                        if let Some(mechanics) = &mechanics {
+                            mechanics.after_follow_up_hit(self, actor, target, origin);
+                        }
                     }
                 }
                 self.gain_energy(actor, actor, attack.energy_milli);
@@ -2507,6 +2579,7 @@ impl Battle<'_> {
             }
         }
         self.notify_ordinary_turn_finished(actor);
+        self.notify_battle_turn_finished(actor, false);
     }
 
     pub(super) fn gain_energy(&mut self, actor: usize, target: usize, amount_milli: u32) {

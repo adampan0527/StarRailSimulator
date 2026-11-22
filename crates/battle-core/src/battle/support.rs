@@ -529,6 +529,16 @@ impl Battle<'_> {
             }
         }
     }
+
+    pub(super) fn notify_battle_turn_finished(&mut self, actor: usize, extra: bool) {
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(rules) = self.mechanics(owner)
+            {
+                rules.after_battle_turn(self, owner, actor, extra);
+            }
+        }
+    }
 }
 
 pub(super) fn percentage_of(value: u32, bp: u32) -> u32 {

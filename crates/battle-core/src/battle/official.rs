@@ -55,6 +55,7 @@ mod welt;
 mod xueyi;
 mod yanqing;
 mod yukong;
+mod yunli;
 
 pub(super) use {
     acheron::AcheronState,
@@ -88,6 +89,7 @@ pub(super) use {
     welt::WeltState,
     xueyi::XueyiState,
     yukong::YukongState,
+    yunli::YunliState,
 };
 
 use std::{collections::BTreeMap, ops::RangeInclusive, sync::Arc};
@@ -328,6 +330,10 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn can_use_skill(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
+        true
+    }
+
+    fn can_use_ultimate(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         true
     }
 
@@ -979,6 +985,15 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn after_ordinary_turn(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
+    fn after_battle_turn(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _extra: bool,
+    ) {
+    }
+
     fn on_ally_energy_full(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
     fn skill_point_cap_bonus(&self) -> u8 {
@@ -1072,7 +1087,7 @@ pub(super) trait Mechanics: Send + Sync {
         action.is_ultimate()
     }
 
-    fn follow_up_counts_as_ultimate(&self) -> bool {
+    fn follow_up_counts_as_ultimate(&self, _origin: Option<Action>) -> bool {
         false
     }
 
@@ -1243,6 +1258,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         sunday::FORM => Some(sunday::build),
         jade::FORM => Some(jade::build),
         boothill::FORM => Some(boothill::build),
+        yunli::FORM => Some(yunli::build),
         "dan_heng.hunt" => Some(dan_heng::build),
         march_hunt::FORM => Some(march_hunt::build),
         "march_7th.preservation" => Some(march_preservation::build),
