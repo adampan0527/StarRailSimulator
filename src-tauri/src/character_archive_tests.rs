@@ -1371,6 +1371,60 @@ fn saved_team_replays_memosprite_and_true_damage_providers() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_two_memosprites_vendetta_and_recorded_damage() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [aglaea, mydei, cipher, trailblazer] = [
+        "character.1402",
+        "character.1404",
+        "character.1406",
+        "trailblazer.remembrance",
+    ];
+    for (id, eidolon) in [(aglaea, 1), (mydei, 6)] {
+        let mut edit = archive.profile(id).unwrap().edit;
+        edit.eidolon = eidolon;
+        archive.save(id, edit).unwrap();
+    }
+    let team = archive
+        .save_team(
+            None,
+            "衣匠、迷迷与逐击真伤",
+            &[aglaea, mydei, cipher, trailblazer].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert_eq!(result.targets.len(), 3);
+    assert_eq!(result.characters.len(), 4);
+    for sprite in ["character.1402:garmentmaker", "trailblazer.remembrance:mem"] {
+        assert!(hits().any(|hit| hit.source_id == sprite && hit.amount > 0));
+    }
+    assert!(hits().any(|hit| {
+        hit.source_id == mydei
+            && hit.action == star_rail_battle_core::Action::Skill
+            && hit.kind == DamageKind::Direct
+    }));
+    assert!(hits().any(|hit| hit.source_id == cipher && hit.kind == DamageKind::TrueDamage));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|character| character.own_damage + character.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
