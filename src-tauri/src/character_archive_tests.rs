@@ -1117,6 +1117,64 @@ fn saved_team_replays_hp_consumption_and_boothills_breaks() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_team_replays_super_break_and_lingshas_summon() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [imbibitor_lunae, trailblazer, lingsha, sparkle] = [
+        "character.1213",
+        "trailblazer.harmony",
+        "character.1222",
+        "character.1306",
+    ];
+    let team = archive
+        .save_team(
+            None,
+            "伴舞与浮元",
+            &[imbibitor_lunae, trailblazer, lingsha, sparkle].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| {
+        hit.source_id == imbibitor_lunae
+            && hit.kind == DamageKind::Direct
+            && hit.action == Action::Basic
+    }));
+    assert!(hits().any(|hit| hit.source_id == lingsha && hit.kind == DamageKind::FollowUp));
+    assert!(hits().any(|hit| {
+        hit.kind == DamageKind::SuperBreak
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == trailblazer && credit.amount > 0)
+    }));
+    assert!(hits().any(|hit| {
+        hit.kind == DamageKind::SuperBreak
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == lingsha && credit.amount > 0)
+    }));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|actor| actor.own_damage + actor.assist_damage)
+            .sum::<u64>()
+    );
+    assert_eq!(result, run());
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
