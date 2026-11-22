@@ -99,6 +99,12 @@ function eventTitle({ kind }: BattleEvent): string {
       return '普攻强化档位';
     case 'squama_sacrosancta':
       return '逆鳞变化';
+    case 'debt_collector':
+      return kind.detail.active ? '指定收债人' : '收债人结束';
+    case 'jade_charge':
+      return '翡翠天赋充能';
+    case 'pawned_asset':
+      return '当品变化';
     case 'damage':
       return damageNames[kind.detail.kind];
     case 'heal':
@@ -145,6 +151,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'moonlight':
     case 'basic_enhancement':
     case 'squama_sacrosancta':
+    case 'jade_charge':
+    case 'pawned_asset':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;

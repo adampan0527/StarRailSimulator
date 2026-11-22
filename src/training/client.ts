@@ -122,10 +122,13 @@ type EventKind =
         | 'syzygy'
         | 'moonlight'
         | 'basic_enhancement'
-        | 'squama_sacrosancta';
+        | 'squama_sacrosancta'
+        | 'jade_charge'
+        | 'pawned_asset';
       detail: { before: number; after: number };
     }
   | { event: 'energy'; detail: { before_milli: number; after_milli: number } }
+  | { event: 'debt_collector'; detail: { active: boolean } }
   | {
       event: 'flying_aureus';
       detail: { before_halves: number; after_halves: number };

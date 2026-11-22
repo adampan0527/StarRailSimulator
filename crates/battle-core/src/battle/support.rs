@@ -216,16 +216,19 @@ impl Battle<'_> {
     }
 
     pub(super) fn support_speed(&self, actor: usize) -> (u64, u64) {
-        let auras: u64 = self
-            .allies()
+        let buff_speed = (
+            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedFlat)),
+            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedPercent)),
+        );
+        self.allies()
             .filter(|&owner| self.units[owner].hp > 0)
             .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
-            .map(|(owner, rules)| u64::from(rules.ally_speed_bonus_bp(self, owner, actor)))
-            .sum();
-        (
-            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedFlat)),
-            u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedPercent)) + auras,
-        )
+            .fold(buff_speed, |(flat, ratio), (owner, rules)| {
+                (
+                    flat + rules.ally_flat_speed_micros(self, owner, actor),
+                    ratio + u64::from(rules.ally_speed_bonus_bp(self, owner, actor)),
+                )
+            })
     }
 
     pub(super) fn support_break_effect(&self, actor: usize) -> u32 {
