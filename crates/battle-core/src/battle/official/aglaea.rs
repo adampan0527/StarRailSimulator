@@ -6,10 +6,7 @@ use crate::{
 };
 
 use super::{
-    super::{
-        Battle, SummonTurn, combat_status::DebuffKind, resolve::DamageTargetAura,
-        support::percentage_of,
-    },
+    super::{Battle, SummonTurn, combat_status::DebuffKind, resolve::DamageTargetAura},
     CombatPath, Mechanics, MemospriteProfile, OfficialAbility, OfficialCharacter, OfficialKit,
     SkillPoints,
 };
@@ -34,9 +31,9 @@ const SPEEDING_SOL: &str = "trace.1402103";
 const LIGHTNING: Element = Element::Thunder;
 const GARMENTMAKER: &str = "garmentmaker";
 const COUNTDOWN: &str = "supreme-stance";
-const SPEED_SCALE: u64 = 1_000_000;
+const MICROS_PER_UNIT: u64 = 1_000_000;
 const ENERGY_CAPACITY: u32 = 350;
-const COUNTDOWN_SPEED_MICROS: u64 = 100 * SPEED_SCALE;
+const COUNTDOWN_SPEED_MICROS: u64 = 100 * MICROS_PER_UNIT;
 
 #[derive(Clone, Default)]
 pub(in crate::battle) struct AglaeaState {
@@ -50,12 +47,12 @@ struct Aglaea {
     myopics_doom: bool,
     last_thread: bool,
     speeding_sol: bool,
-    healing_bp: u32,
-    stance_speed_bp_per_stack: u32,
+    healing_ratio_micros: u64,
+    stance_speed_ratio_micros_per_stack: u64,
     seam_damage_bp: u16,
     sprite_speed_ratio_bp: u64,
     sprite_hp_ratio_bp: u32,
-    sprite_hp_base: u32,
+    sprite_hp_base_halves: u16,
     joint_basic: OfficialAbility,
     joint_owner_bp: [u16; 2],
     joint_sprite_bp: [u16; 2],
@@ -86,7 +83,7 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
     if ultimate[3] != 100.0
         || talent[3] != 0.35
         || !(180.0..=990.0).contains(&talent[5])
-        || talent[5].fract() != 0.0
+        || (talent[5] * 2.0).fract() != 0.0
         || !(44.0..=63.8).contains(&sprite_talent[0])
         || sprite_talent[2] != 6.0
         || sprite_arrival[0] != 1.0
@@ -124,12 +121,12 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
             myopics_doom: has_trace(MYOPICS_DOOM),
             last_thread: has_trace(LAST_THREAD),
             speeding_sol: has_trace(SPEEDING_SOL),
-            healing_bp: u32::from(ratio_bp(SKILL, skill[0])?),
-            stance_speed_bp_per_stack: u32::from(ratio_bp(ULTIMATE, ultimate[0])?),
+            healing_ratio_micros: ratio_micros(SKILL, skill[0])?,
+            stance_speed_ratio_micros_per_stack: ratio_micros(ULTIMATE, ultimate[0])?,
             seam_damage_bp: ratio_bp(TALENT, talent[0])?,
             sprite_speed_ratio_bp: u64::from(ratio_bp(TALENT, talent[3])?),
             sprite_hp_ratio_bp: u32::from(ratio_bp(TALENT, talent[4])?),
-            sprite_hp_base: talent[5] as u32,
+            sprite_hp_base_halves: (talent[5] * 2.0) as u16,
             joint_basic: OfficialAbility {
                 target: Target::Enemy,
                 energy_milli: 20_000,
@@ -148,7 +145,8 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
                 ratio_bp(GARMENTMAKER_SKILL, sprite_skill[0])?,
                 ratio_bp(GARMENTMAKER_SKILL, sprite_skill[1])?,
             ],
-            sprite_speed_micros_per_stack: (sprite_talent[0] * SPEED_SCALE as f64).round() as u64,
+            sprite_speed_micros_per_stack: (sprite_talent[0] * MICROS_PER_UNIT as f64).round()
+                as u64,
             sprite_speed_stack_cap: sprite_talent[2] as u8 + u8::from(input.eidolon >= 4),
             sprite_arrival_advance_bp: ratio_bp(GARMENTMAKER_ARRIVAL, sprite_arrival[0])?,
             sprite_departure_energy_milli: (sprite_departure[0] * 1_000.0) as u32,
@@ -168,6 +166,14 @@ fn ratio_bp(id: &str, value: f64) -> Result<u16, BattleError> {
     Ok(bp as u16)
 }
 
+fn ratio_micros(id: &str, value: f64) -> Result<u64, BattleError> {
+    let scaled = (value * MICROS_PER_UNIT as f64).round();
+    if !(1.0..=MICROS_PER_UNIT as f64).contains(&scaled) {
+        return Err(invalid(id));
+    }
+    Ok(scaled as u64)
+}
+
 fn in_stance(battle: &Battle<'_>, owner: usize) -> bool {
     battle.units[owner].countdown.is_some()
 }
@@ -178,7 +184,10 @@ fn is_pair_member(battle: &Battle<'_>, owner: usize, actor: usize) -> bool {
 
 impl Aglaea {
     fn garmentmaker_hp(&self, master_max_hp: u32) -> u32 {
-        percentage_of(master_max_hp, self.sprite_hp_ratio_bp).saturating_add(self.sprite_hp_base)
+        // The flat bonus can contain half a point at Talent level 2 or 4.
+        let hp_scaled = u64::from(master_max_hp) * u64::from(self.sprite_hp_ratio_bp)
+            + u64::from(self.sprite_hp_base_halves) * 5_000;
+        (hp_scaled / 10_000).min(u64::from(u32::MAX)) as u32
     }
 
     fn summon(&self, battle: &mut Battle<'_>, owner: usize) {
@@ -265,11 +274,11 @@ impl Aglaea {
             return 0;
         }
         let speed = battle.speed_micros(actor);
-        if speed > 320 * SPEED_SCALE {
+        if speed > 320 * MICROS_PER_UNIT {
             6_000
-        } else if speed > 240 * SPEED_SCALE {
+        } else if speed > 240 * MICROS_PER_UNIT {
             3_000
-        } else if speed > 160 * SPEED_SCALE {
+        } else if speed > 160 * MICROS_PER_UNIT {
             1_000
         } else {
             0
@@ -332,8 +341,9 @@ impl Mechanics for Aglaea {
             }
             Action::Skill => {
                 if let Some(sprite) = battle.active_memosprite(owner) {
-                    let healing = percentage_of(battle.effective_max_hp(sprite), self.healing_bp);
-                    battle.heal_unit(owner, sprite, healing);
+                    let max_hp = u64::from(battle.effective_max_hp(sprite));
+                    let healing = max_hp * self.healing_ratio_micros / MICROS_PER_UNIT;
+                    battle.heal_unit(owner, sprite, healing as u32);
                 } else {
                     self.summon(battle, owner);
                     battle.advance_ally_immediate(owner, owner);
@@ -480,16 +490,17 @@ impl Mechanics for Aglaea {
         in_stance(battle, owner)
     }
 
-    fn speed_bonus_bp(&self, battle: &Battle<'_>, owner: usize) -> u32 {
-        self.stance_speed_bp_per_stack
-            * u32::from(in_stance(battle, owner))
-            * u32::from(battle.units[owner].aglaea_state.speed_stacks)
-    }
-
     fn ally_flat_speed_micros(&self, battle: &Battle<'_>, owner: usize, target: usize) -> u64 {
+        let stacks = u64::from(battle.units[owner].aglaea_state.speed_stacks);
+        if target == owner && in_stance(battle, owner) {
+            // The intermediate Ultimate rows include half basis points per stack.
+            return battle.plan.units[owner].stats.base_speed_micros
+                * self.stance_speed_ratio_micros_per_stack
+                * stacks
+                / MICROS_PER_UNIT;
+        }
         if battle.memosprite_owner(target) == Some(owner) {
-            self.sprite_speed_micros_per_stack
-                * u64::from(battle.units[owner].aglaea_state.speed_stacks)
+            self.sprite_speed_micros_per_stack * stacks
         } else {
             0
         }
@@ -504,7 +515,7 @@ impl Mechanics for Aglaea {
             .active_memosprite(owner)
             .map_or(0, |sprite| battle.speed_micros(sprite));
         let owner_speed = battle.speed_micros(owner);
-        let bonus = (72 * owner_speed + 36 * sprite_speed) / (10 * SPEED_SCALE);
+        let bonus = (72 * owner_speed + 36 * sprite_speed) / (10 * MICROS_PER_UNIT);
         bonus.min(u64::from(u32::MAX)) as u32
     }
 

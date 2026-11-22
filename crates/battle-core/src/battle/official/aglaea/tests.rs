@@ -125,6 +125,20 @@ fn accepts_frozen_kit_and_rejects_incomplete_or_invalid_rows() {
 }
 
 #[test]
+fn lower_skill_levels_keep_fractional_hp_and_speed_until_the_final_conversion() {
+    let mut input = character(0, &[]);
+    input.skill_parameters.get_mut(TALENT).unwrap()[4..].copy_from_slice(&[0.4675, 247.5]);
+    input.skill_parameters.get_mut(ULTIMATE).unwrap()[0] = 0.13125;
+    let prepared = plan(&[input]);
+    let mut battle = Battle::start(&prepared, LogMode::Off);
+    cast_ultimate(&mut battle);
+    let sprite = battle.active_memosprite(0).unwrap();
+    assert_eq!(battle.hp(sprite), (715, 715));
+    battle.units[0].aglaea_state.speed_stacks = 1;
+    assert_eq!(battle.speed_micros(0), 213_125_000);
+}
+
+#[test]
 fn first_skill_summons_and_advances_both_and_repeated_skill_only_heals() {
     let prepared = plan(&[character(0, &[])]);
     let mut battle = Battle::start(&prepared, LogMode::Detailed);
