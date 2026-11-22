@@ -272,7 +272,9 @@ impl Battle<'_> {
         if self.units[target].hp == 0
             && !matches!(
                 effect,
-                Effect::BlastAdjacent { .. } | Effect::RandomHits { .. }
+                Effect::BlastAdjacent { .. }
+                    | Effect::MaxHpBlastAdjacent { .. }
+                    | Effect::RandomHits { .. }
             )
         {
             return;
@@ -909,6 +911,7 @@ impl Battle<'_> {
         let previous_target = self.action_target.replace(target);
         let previous_follow_up = std::mem::take(&mut self.resolving_follow_up);
         let previous_attack_targets = std::mem::take(&mut self.attack_targets);
+        let previous_attack_damage = self.attack_damage.take();
         let previous_super_break_targets = std::mem::take(&mut self.super_break_targets);
         let parent_debuff_targets = self.begin_debuff_action();
         self.begin_attack();
@@ -919,6 +922,7 @@ impl Battle<'_> {
         self.notify_ally_action_finished(actor, Action::Skill);
         self.finish_debuff_action(actor, parent_debuff_targets);
         self.attack_targets = previous_attack_targets;
+        self.attack_damage = previous_attack_damage;
         self.super_break_targets = previous_super_break_targets;
         self.resolving_follow_up = previous_follow_up;
         self.action_target = previous_target;
@@ -1136,6 +1140,18 @@ impl Battle<'_> {
             }
         }
         self.resolve_super_breaks(actor, origin, &super_break_targets);
+        if let Some(damage) = self.attack_damage.take()
+            && landed
+        {
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(mechanics) = self.mechanics(owner)
+                    && mechanics.tracks_attack_damage()
+                {
+                    mechanics.after_ally_attack_damage(self, owner, origin, damage);
+                }
+            }
+        }
         let crossed_half = std::mem::take(&mut self.crossed_half);
         if crossed_half.is_empty() {
             return;
@@ -2454,6 +2470,20 @@ impl Battle<'_> {
             if let Some((recipient, amount)) = distributed_damage {
                 self.deal_damage(actor, recipient, kind, amount, critical);
             }
+        }
+        if offense.enemy.is_some()
+            && self.allies().contains(&actor)
+            && matches!(
+                kind,
+                DamageKind::Direct
+                    | DamageKind::FollowUp
+                    | DamageKind::Additional
+                    | DamageKind::WeaknessBreak
+                    | DamageKind::SuperBreak
+            )
+            && let Some(total) = &mut self.attack_damage
+        {
+            *total = total.saturating_add(u64::from(amount));
         }
         if amount > 0
             && kind == DamageKind::DamageOverTime

@@ -153,6 +153,7 @@ struct UnitState {
     boothill_state: official::BoothillState,
     yunli_state: official::YunliState,
     jade_state: official::JadeState,
+    tribbie_state: official::TribbieState,
     blade_state: official::BladeState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
@@ -214,6 +215,8 @@ pub struct Battle<'a> {
     action: Option<Action>,
     action_target: Option<usize>,
     attack_targets: Vec<usize>,
+    attack_damage: Option<u64>,
+    tracks_attack_damage: bool,
     super_break_targets: Vec<resolve::SuperBreakTarget>,
     tracks_super_break: bool,
     attack_index: u32,
@@ -292,6 +295,7 @@ impl<'a> Battle<'a> {
                     boothill_state: official::BoothillState::default(),
                     yunli_state: official::YunliState::default(),
                     jade_state: official::JadeState::default(),
+                    tribbie_state: official::TribbieState::default(),
                     blade_state: official::BladeState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
@@ -339,6 +343,10 @@ impl<'a> Battle<'a> {
             action: None,
             action_target: None,
             attack_targets: Vec::new(),
+            attack_damage: None,
+            tracks_attack_damage: plan.units[..plan.ally_count]
+                .iter()
+                .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.tracks_attack_damage())),
             super_break_targets: Vec::new(),
             tracks_super_break: plan.units[..plan.ally_count]
                 .iter()
@@ -826,6 +834,7 @@ impl<'a> Battle<'a> {
 
     fn begin_attack(&mut self) {
         self.attack_targets.clear();
+        self.attack_damage = self.tracks_attack_damage.then_some(0);
         self.super_break_targets.clear();
         self.attack_index += 1;
     }
@@ -1026,16 +1035,21 @@ impl<'a> Battle<'a> {
     }
 
     fn resolve_wave_or_end(&mut self) {
-        if !self.allies().any(|unit| self.units[unit].hp > 0) {
-            self.end(Outcome::Defeat);
-        } else if !self.enemies().any(|unit| self.units[unit].hp > 0) {
+        loop {
+            if !self.allies().any(|unit| self.units[unit].hp > 0) {
+                self.end(Outcome::Defeat);
+                return;
+            }
+            if self.enemies().any(|unit| self.units[unit].hp > 0) {
+                return;
+            }
             if self.wave_index + 1 == self.plan.wave_ends.len() {
                 self.end(Outcome::Victory);
-            } else {
-                self.wave_index += 1;
-                self.emit(EventKind::WaveStarted, None, None);
-                self.notify_wave_start();
+                return;
             }
+            self.wave_index += 1;
+            self.emit(EventKind::WaveStarted, None, None);
+            self.notify_wave_start();
         }
     }
 
@@ -1047,6 +1061,7 @@ impl<'a> Battle<'a> {
                 mechanics.on_wave_start(self, owner);
             }
         }
+        self.resolve_follow_ups();
     }
 
     fn end(&mut self, outcome: Outcome) {

@@ -205,6 +205,10 @@ impl Battle<'_> {
     }
 
     pub(super) fn effective_max_hp(&self, actor: usize) -> u32 {
+        self.effective_max_hp_excluding(actor, None)
+    }
+
+    pub(super) fn effective_max_hp_excluding(&self, actor: usize, source: Option<usize>) -> u32 {
         let max_hp = self.plan.units[actor]
             .stats
             .hp
@@ -213,6 +217,7 @@ impl Battle<'_> {
             return max_hp;
         }
         self.allies()
+            .filter(|&owner| Some(owner) != source)
             .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
             .fold(max_hp, |hp, (owner, rules)| {
                 hp.saturating_add(rules.ally_max_hp_bonus(self, owner, actor))
