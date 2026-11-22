@@ -1,4 +1,5 @@
 mod acheron;
+mod anaxa;
 mod argenti;
 mod arlan;
 mod asta;
@@ -63,6 +64,7 @@ mod yunli;
 
 pub(super) use {
     acheron::AcheronState,
+    anaxa::AnaxaState,
     aventurine::AventurineState,
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
@@ -623,6 +625,10 @@ pub(super) trait Mechanics: Send + Sync {
         _action: Option<Action>,
         _kind: DamageKind,
     ) -> u16 {
+        10_000
+    }
+
+    fn outgoing_damage_factor_bp(&self) -> u32 {
         10_000
     }
 
@@ -1309,6 +1315,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         sunday::FORM => Some(sunday::build),
         jade::FORM => Some(jade::build),
         the_herta::FORM => Some(the_herta::build),
+        anaxa::FORM => Some(anaxa::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),
         "dan_heng.hunt" => Some(dan_heng::build),

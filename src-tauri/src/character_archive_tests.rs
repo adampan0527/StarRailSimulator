@@ -1746,3 +1746,48 @@ fn opens_the_legacy_team_and_saves_independent_named_formations() {
     assert_eq!(legacy.slots, legacy_slots);
     assert_eq!(created.slots, slots);
 }
+
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_anaxa_team_replays_extra_skills_and_credits_erudition_bonus() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let anaxa = "character.1405";
+    let argenti = "character.1302";
+    let team = archive
+        .save_team(
+            None,
+            "那刻夏和银枝",
+            &[Some(anaxa.into()), Some(argenti.into()), None, None],
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let mut skill_hits = std::collections::BTreeMap::new();
+    for hit in result.targets.iter().flat_map(|target| &target.hits) {
+        if hit.source_id == anaxa && hit.action == Action::Skill && hit.kind == DamageKind::Direct {
+            *skill_hits.entry(hit.av_micros).or_insert(0) += 1;
+        }
+    }
+    assert!(skill_hits.values().any(|&count| count == 10));
+    assert!(
+        result
+            .targets
+            .iter()
+            .flat_map(|target| &target.hits)
+            .any(|hit| {
+                hit.source_id == argenti
+                    && hit
+                        .credits
+                        .iter()
+                        .any(|credit| credit.unit_id == anaxa && credit.amount > 0)
+            })
+    );
+    assert_eq!(result, run());
+}

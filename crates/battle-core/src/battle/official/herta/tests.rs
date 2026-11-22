@@ -68,6 +68,7 @@ fn finite_plan(input: OfficialCharacter, hit_points: &[u32]) -> PreparedBattle {
         stats.hp = hp;
         plan.units.push(UnitPlan {
             combat_type: None,
+            has_control_resistance: false,
             id: format!("enemy.{i}"),
             kit: Kit::Enemy(&ICE_WEAK_ENEMY),
             stats,

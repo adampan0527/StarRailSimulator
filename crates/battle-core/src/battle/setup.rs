@@ -52,6 +52,7 @@ impl Kit {
 pub(super) struct UnitPlan {
     pub id: String,
     pub combat_type: Option<CombatType>,
+    pub has_control_resistance: bool,
     pub kit: Kit,
     pub stats: Stats,
     pub starting_energy_milli: u32,
@@ -96,6 +97,7 @@ impl PreparedBattle {
             units.push(UnitPlan {
                 id: character.unit_id.clone(),
                 combat_type: Some(character.combat_type),
+                has_control_resistance: false,
                 kit: Kit::Official(Arc::new(kit)),
                 stats,
                 starting_energy_milli,
@@ -175,6 +177,7 @@ impl PreparedBattle {
             }
             units.push(UnitPlan {
                 combat_type: None,
+                has_control_resistance: false,
                 id,
                 kit: Kit::Ally(kit),
                 stats,
@@ -188,6 +191,7 @@ impl PreparedBattle {
                 let kit = fixture::enemy(&enemy.enemy_id, enemy.level)?;
                 units.push(UnitPlan {
                     combat_type: None,
+                    has_control_resistance: false,
                     id,
                     kit: Kit::Enemy(kit),
                     stats: kit.stats,
@@ -225,6 +229,7 @@ impl PreparedBattle {
                 .enumerate()
                 .map(|(position, &max_toughness)| UnitPlan {
                     combat_type: None,
+                    has_control_resistance: false,
                     // The colon keeps internal analysis IDs distinct from input unit IDs.
                     id: format!("dpr:{}", position + 1),
                     kit: Kit::Dummy { max_toughness },

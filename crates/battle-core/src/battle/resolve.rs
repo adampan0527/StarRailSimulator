@@ -1362,8 +1362,8 @@ impl Battle<'_> {
                     weightless_resistance_down.saturating_add(u32::from(resistance_down_bp));
             }
         }
-        let (personal_penetration, personal_defense_ignore) =
-            self.mechanics(actor).map_or((0, 0), |mechanics| {
+        let (personal_penetration, personal_defense_ignore, outgoing_damage_factor_bp) =
+            self.mechanics(actor).map_or((0, 0, 10_000), |mechanics| {
                 let (ultimate_penetration, ultimate_defense_ignore) =
                     if self.is_ultimate_damage(actor, event) {
                         (
@@ -1380,6 +1380,7 @@ impl Battle<'_> {
                     mechanics
                         .defense_ignore_bp(self, actor, target)
                         .saturating_add(ultimate_defense_ignore),
+                    mechanics.outgoing_damage_factor_bp(),
                 )
             });
         let mut stats = plan.stats;
@@ -1390,6 +1391,7 @@ impl Battle<'_> {
             damage_reduction_bp: 0,
             break_damage_bonus_bp: 0,
             damage_share_bp: 10_000,
+            outgoing_damage_factor_bp,
             vulnerability_bp: vulnerability,
             defense_down_bp: sum(DebuffKind::DefenseDown)
                 .saturating_add(sum(DebuffKind::DefenseBug))
