@@ -34,6 +34,7 @@ fn guinaifen(eidolon: u8, traces: &[&str]) -> OfficialCharacter {
             crit_damage_bp: 5_000,
             element_damage_bp: [0; crate::Element::COUNT],
             break_effect_bp: 0,
+            elation_bp: 0,
             effect_hit_rate_bp: 2_500,
             energy_regeneration_bp: 10_000,
             healing_bp: 0,

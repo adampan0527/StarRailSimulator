@@ -175,6 +175,7 @@ impl Mechanics for JingYuan {
         _target: Option<usize>,
     ) {
         let added_hits = match action {
+            Action::ElationSkill => return,
             Action::Basic => return,
             Action::Skill => SKILL_ADDED_HITS,
             Action::Ultimate | Action::EnhancedUltimate => ULTIMATE_ADDED_HITS,

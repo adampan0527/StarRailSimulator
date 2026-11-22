@@ -149,6 +149,7 @@ impl Mechanics for Clara {
         _target: Option<usize>,
     ) {
         match action {
+            Action::ElationSkill => {}
             Action::Ultimate | Action::EnhancedUltimate => {
                 let state = &mut battle.units[actor];
                 state.counter_state.enhanced_charges = self.enhanced_charges;

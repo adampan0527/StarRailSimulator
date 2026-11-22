@@ -166,6 +166,7 @@ impl Mechanics for Tingyun {
     ) {
         let Some(target) = target else { return };
         match action {
+            Action::ElationSkill => {}
             Action::Skill => {
                 let cap = scale_attack(battle.effective_attack(actor), self.attack_cap_micros);
                 let expires = battle.units[target].normal_turns + self.benediction_turns;
@@ -312,6 +313,7 @@ impl Mechanics for Tingyun {
         let current = recipient(battle, actor);
         let preferred = preferred_recipient(battle, actor);
         match action {
+            Action::ElationSkill => None,
             Action::Skill => Some(if current.is_none() && target == preferred {
                 2
             } else {

@@ -145,6 +145,7 @@ impl Mechanics for Argenti {
     fn ultimate_energy_range(&self, action: Action) -> Option<RangeInclusive<u32>> {
         let max = ENERGY_CAP * 1_000;
         match action {
+            Action::ElationSkill => None,
             Action::Ultimate => Some(ULTIMATE_COST * 1_000..=max - 1),
             Action::EnhancedUltimate => Some(max..=max),
             Action::Basic | Action::Skill => None,

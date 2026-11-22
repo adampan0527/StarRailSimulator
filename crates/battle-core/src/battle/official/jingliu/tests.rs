@@ -55,6 +55,7 @@ fn jingliu(novaflare: bool, eidolon: u8, traces: bool) -> OfficialCharacter {
             crit_damage_bp: 5_000,
             element_damage_bp: [0; Element::COUNT],
             break_effect_bp: 0,
+            elation_bp: 0,
             effect_hit_rate_bp: 0,
             effect_resistance_bp: 0,
             energy_regeneration_bp: 10_000,

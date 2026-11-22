@@ -81,6 +81,7 @@ impl Catalog {
             crit_rate_bp: ratio(panel.crit_rate),
             crit_damage_bp: ratio(panel.crit_damage),
             element_damage_bp: panel.elemental_damage.map(|value| ratio(Some(value))),
+            elation_bp: ratio(panel.elation),
             effect_hit_rate_bp: ratio(panel.effect_hit_rate),
             effect_resistance_bp: ratio(panel.effect_resistance),
             break_effect_bp: ratio(panel.break_effect),

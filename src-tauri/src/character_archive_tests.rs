@@ -141,6 +141,57 @@ fn every_registered_official_variant_runs_from_a_saved_loadout() {
 
 #[cfg(bundled_catalog)]
 #[test]
+fn saved_yao_guang_runs_elation_from_low_skill_levels() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let yao_guang = "character.1502";
+    profiles.ensure_profile(yao_guang).unwrap();
+    let mut loadout = catalog
+        .default_loadout_at(yao_guang, "base", 80, 6)
+        .unwrap();
+    loadout.config.eidolon = 0;
+    for level in loadout.config.skill_levels.values_mut() {
+        *level = 1;
+    }
+    profiles
+        .save_preset(yao_guang, "低级技能", &loadout, true)
+        .unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "爻光低级技能",
+            &[Some(yao_guang.into()), None, None, None],
+        )
+        .unwrap();
+    let capture = || {
+        let readiness = archive.dpr_readiness(&team.id).unwrap();
+        assert!(readiness.unsupported_characters.is_empty());
+        readiness.result.unwrap()
+    };
+    let result = capture();
+    assert_eq!(result, capture());
+    assert!(
+        result
+            .targets
+            .iter()
+            .flat_map(|target| &target.hits)
+            .any(|hit| hit.kind == DamageKind::Elation
+                && hit.action == Action::ElationSkill
+                && hit.source_id == yao_guang)
+    );
+    assert_eq!(result.characters[0].own_damage, result.total_damage);
+}
+
+#[cfg(bundled_catalog)]
+#[test]
 fn welt_fixed_dpr_uses_default_and_saved_base_variant() {
     let dir = TestData::new();
     let welt = "character.1004";

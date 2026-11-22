@@ -51,10 +51,12 @@ pub enum StatusKind {
     Vendetta,
     Patron,
     Weaken,
+    WealLots,
+    WoesWhisper,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Weaken.index() + 1;
+    pub(crate) const COUNT: usize = Self::WoesWhisper.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -90,6 +92,8 @@ impl StatusKind {
             Self::Vendetta => 28,
             Self::Patron => 29,
             Self::Weaken => 30,
+            Self::WealLots => 31,
+            Self::WoesWhisper => 32,
         }
     }
 }
@@ -104,6 +108,7 @@ pub enum DamageKind {
     Additional,
     FollowUp,
     TrueDamage,
+    Elation,
 }
 
 impl DamageKind {
@@ -119,6 +124,18 @@ pub enum EventKind {
     TurnStarted,
     ExtraTurnStarted,
     TriggeredSkill,
+    AhaInstant {
+        punchline: u32,
+        extra: bool,
+    },
+    Punchline {
+        before: u32,
+        after: u32,
+    },
+    CertifiedBanger {
+        before: u32,
+        after: u32,
+    },
     Action(Action),
     FollowUp,
     EnemyAttack,

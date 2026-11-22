@@ -99,6 +99,10 @@ enum DamageScale {
         flat_base_bp: u64,
     },
     TargetHpCapped(u16),
+    Elation {
+        punchline: u32,
+        factor_bp: u16,
+    },
 }
 
 impl DamageScale {
@@ -132,6 +136,7 @@ impl DamageScale {
             Self::TargetHpCapped(cap_bp) => {
                 (u64::from(target_hp) * ratio).min(u64::from(attack) * u64::from(cap_bp))
             }
+            Self::Elation { .. } => 0,
         }
     }
 }
@@ -143,6 +148,16 @@ pub(super) struct PeriodicHit {
     pub stacks: u8,
     pub ratio_bp: u16,
     pub origin: Action,
+}
+
+pub(super) struct ElationHit {
+    pub element: Element,
+    pub multiplier_bp: u32,
+    pub punchline: u32,
+    pub toughness: u16,
+    pub origin: Action,
+    pub factor_bp: u16,
+    pub assisted_by: Option<usize>,
 }
 
 pub(super) struct CounterAttack {
@@ -941,6 +956,7 @@ impl Battle<'_> {
         let previous_follow_up = std::mem::take(&mut self.resolving_follow_up);
         let previous_attack_targets = std::mem::take(&mut self.attack_targets);
         let previous_attack_damage = self.attack_damage.take();
+        let previous_attack_spent_points = self.attack_spent_skill_points;
         let previous_super_break_targets = std::mem::take(&mut self.super_break_targets);
         let parent_debuff_targets = self.begin_debuff_action();
         self.begin_attack();
@@ -952,6 +968,7 @@ impl Battle<'_> {
         self.finish_debuff_action(actor, parent_debuff_targets);
         self.attack_targets = previous_attack_targets;
         self.attack_damage = previous_attack_damage;
+        self.attack_spent_skill_points = previous_attack_spent_points;
         self.super_break_targets = previous_super_break_targets;
         self.resolving_follow_up = previous_follow_up;
         self.action_target = previous_target;
@@ -1346,7 +1363,9 @@ impl Battle<'_> {
         let legacy_vulnerability = state.statuses[StatusKind::Vulnerability.index()]
             .filter(|status| allow_source(status.source))
             .map_or(0, |status| status.magnitude);
-        let mut vulnerability = legacy_vulnerability.saturating_add(sum(DebuffKind::Vulnerability));
+        let mut vulnerability = legacy_vulnerability
+            .saturating_add(sum(DebuffKind::Vulnerability))
+            .saturating_add(sum(DebuffKind::WoesWhisper));
         if event.kind != DamageKind::DamageOverTime
             && let Some(standoff) = state
                 .debuffs
@@ -1664,6 +1683,26 @@ impl Battle<'_> {
         self.strike_scaled(actor, target, kind, impact, 10_000, None)
     }
 
+    pub(super) fn elation_hit(&mut self, actor: usize, target: usize, hit: ElationHit) {
+        self.strike_scaled(
+            actor,
+            target,
+            DamageKind::Elation,
+            Hit {
+                element: hit.element,
+                multiplier_bp: hit.multiplier_bp,
+                toughness: hit.toughness,
+                origin: Some(hit.origin),
+                scale: DamageScale::Elation {
+                    punchline: hit.punchline,
+                    factor_bp: hit.factor_bp,
+                },
+            },
+            10_000,
+            hit.assisted_by,
+        );
+    }
+
     pub(super) fn periodic_hit(&mut self, actor: usize, target: usize, dot: PeriodicHit) {
         let (multiplier_bp, scale) = match dot.damage {
             DotScale::Attack(bp) => (
@@ -1721,7 +1760,9 @@ impl Battle<'_> {
         if hp_before == 0 {
             return false;
         }
-        if matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
+        let is_attack = matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
+            || (kind == DamageKind::Elation && assisted_by.is_none());
+        if is_attack
             && origin.is_some()
             && matches!(
                 self.plan.units[actor].kit,
@@ -1812,6 +1853,14 @@ impl Battle<'_> {
         let max_hp_multiplier_bp = mechanics
             .as_ref()
             .map_or(10_000, |rules| rules.max_hp_multiplier_bp(self, actor));
+        let intrinsic_elation = if kind == DamageKind::Elation {
+            let actor_elation = self.intrinsic_elation_bp(actor);
+            assisted_by.map_or(actor_elation, |owner| {
+                actor_elation.max(self.intrinsic_elation_bp(owner))
+            })
+        } else {
+            0
+        };
         let crit = self.resolve_damage(
             actor,
             target,
@@ -1856,6 +1905,26 @@ impl Battle<'_> {
                 adjusted.crit_damage_bp = adjusted
                     .crit_damage_bp
                     .saturating_add(view.bonus.crit_damage_bp);
+                if let DamageScale::Elation {
+                    punchline,
+                    factor_bp,
+                } = scale
+                {
+                    let elation_bp = intrinsic_elation.saturating_add(view.bonus.elation_bp);
+                    return damage::elation(
+                        adjusted,
+                        view.target,
+                        element,
+                        damage::ElationDamage {
+                            multiplier_bp,
+                            elation_bp,
+                            merrymake_bp: view.bonus.merrymake_bp,
+                            punchline,
+                            factor_bp,
+                        },
+                        view.critical,
+                    );
+                }
                 let multiplier_bp = match scale {
                     DamageScale::BreakScaledAttack {
                         break_ratio_bp,
@@ -1904,7 +1973,7 @@ impl Battle<'_> {
                 (element, segment),
                 origin,
                 source,
-                matches!(kind, DamageKind::Direct | DamageKind::FollowUp),
+                is_attack,
             );
         }
         if crit
@@ -2408,6 +2477,9 @@ impl Battle<'_> {
             defender.defense_down_bp = defender
                 .defense_down_bp
                 .saturating_add(bonus.defense_ignore_bp);
+            defender.resistance_down_bp = defender
+                .resistance_down_bp
+                .saturating_add(bonus.resistance_penetration_bp);
             let defense = self.defense_with_buff(actor, bonus.defense_bp);
             let (break_crit_rate, break_crit_damage) = crit_from_break(bonus);
             let total_crit_rate = crit_rate_bp
@@ -2458,6 +2530,7 @@ impl Battle<'_> {
                         DebuffKind::DefenseDown
                             | DebuffKind::DefenseBug
                             | DebuffKind::Vulnerability
+                            | DebuffKind::WoesWhisper
                             | DebuffKind::Weightless { .. }
                     ) || self.epiphany_applies(status.kind, target)
                         || status.kind.reduces_resistance_to(element)
@@ -2536,6 +2609,7 @@ impl Battle<'_> {
                 DamageKind::Direct
                     | DamageKind::FollowUp
                     | DamageKind::Additional
+                    | DamageKind::Elation
                     | DamageKind::WeaknessBreak
                     | DamageKind::SuperBreak
             )
@@ -2911,7 +2985,7 @@ impl Battle<'_> {
         }
     }
 
-    fn apply_status(
+    pub(super) fn apply_status(
         &mut self,
         actor: usize,
         target: usize,
@@ -2935,6 +3009,7 @@ impl Battle<'_> {
     }
 
     pub(super) fn finish_turn(&mut self, actor: usize) {
+        self.expire_certified_banger(actor);
         self.expire_debuffs(actor);
         self.expire_shields(actor);
         self.expire_ally_buffs(actor);

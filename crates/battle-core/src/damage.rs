@@ -2,6 +2,7 @@ use crate::fixture::{BREAK_BASE_AT_LEVEL_30, Element, Stats};
 
 const BP: u128 = 10_000;
 const LEVEL_80_BREAK_BASE_X_BP: u128 = 37_675_533;
+const LEVEL_80_ELATION_BASE_X_BP: u128 = LEVEL_80_BREAK_BASE_X_BP * 2;
 
 #[derive(Clone, Copy)]
 pub(crate) struct DamageTarget {
@@ -86,6 +87,39 @@ pub(crate) fn direct(
         * toughness;
     let denominator = BP.pow(5) * defense_factor(defense_points, target);
     damage_after_reduction(numerator, denominator, target)
+}
+
+pub(crate) struct ElationDamage {
+    pub multiplier_bp: u32,
+    pub elation_bp: u32,
+    pub merrymake_bp: u32,
+    pub punchline: u32,
+    pub factor_bp: u16,
+}
+
+pub(crate) fn elation(
+    mut source: Stats,
+    target: DamageTarget,
+    element: Element,
+    attack: ElationDamage,
+    critical: bool,
+) -> u32 {
+    let punchline = u128::from(attack.punchline);
+    let base_bp = LEVEL_80_ELATION_BASE_X_BP
+        * u128::from(attack.multiplier_bp)
+        * (BP + u128::from(attack.elation_bp))
+        * (BP + u128::from(attack.merrymake_bp))
+        * (240 + 6 * punchline)
+        * u128::from(attack.factor_bp)
+        / ((240 + punchline) * BP.pow(4));
+    source.element_damage_bp[element.index()] = 0;
+    direct(
+        source,
+        target,
+        element,
+        u64::try_from(base_bp).unwrap_or(u64::MAX),
+        critical,
+    )
 }
 
 pub(crate) fn weakness_break(

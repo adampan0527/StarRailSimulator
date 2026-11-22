@@ -15,7 +15,9 @@ export function BattlePanel({ battle, playing, busy, issue, onAct }: Props) {
   const titleId = useId();
   const decisionHeading = useRef<HTMLHeadingElement>(null);
   const unitName = (id: string) =>
-    names.find((entry) => entry.id === id)?.name ?? id;
+    id === 'summon:aha'
+      ? '阿哈'
+      : (names.find((entry) => entry.id === id)?.name ?? id);
   const activeName =
     snapshot.ordinary_actor_id && unitName(snapshot.ordinary_actor_id);
   const actorLabel =

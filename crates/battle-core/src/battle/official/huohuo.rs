@@ -410,6 +410,7 @@ impl Mechanics for Huohuo {
         target: Option<usize>,
     ) -> Option<u8> {
         match action {
+            Action::ElationSkill => None,
             Action::Ultimate => Some(0),
             Action::Skill => {
                 let target = target?;

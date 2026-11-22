@@ -1,5 +1,6 @@
 mod analysis;
 mod combat_status;
+mod elation;
 mod extra_turn;
 mod official;
 mod periodic;
@@ -23,6 +24,7 @@ pub use analysis::{
     VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory,
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
+use elation::{AHA_ACTION_ORDER_ID, AhaState};
 use extra_turn::ExtraTurns;
 use official::{
     AcheronState, AventurineState, BailuState, BlackSwanTarget, DrRatioState, FeixiaoState,
@@ -85,6 +87,7 @@ impl SummonTurn {
 enum TurnSlot {
     Unit(usize),
     Summon(usize),
+    Aha,
 }
 
 #[derive(Clone, Copy)]
@@ -220,6 +223,8 @@ pub struct Battle<'a> {
     crossed_half: Vec<usize>,
     action: Option<Action>,
     action_target: Option<usize>,
+    aha: Option<AhaState>,
+    attack_spent_skill_points: bool,
     attack_targets: Vec<usize>,
     attack_damage: Option<u64>,
     tracks_attack_damage: bool,
@@ -355,6 +360,8 @@ impl<'a> Battle<'a> {
             crossed_half: Vec::new(),
             action: None,
             action_target: None,
+            aha: None,
+            attack_spent_skill_points: false,
             attack_targets: Vec::new(),
             attack_damage: None,
             tracks_attack_damage: plan.units[..plan.ally_count]
@@ -379,6 +386,7 @@ impl<'a> Battle<'a> {
             enemy_debuff_targets: None,
         };
         battle.emit(EventKind::WaveStarted, None, None);
+        battle.setup_aha();
         for actor in battle.allies() {
             if let Some(mechanics) = battle.mechanics(actor) {
                 mechanics.on_battle_start(&mut battle, actor);
@@ -541,6 +549,7 @@ impl<'a> Battle<'a> {
             self.ordinary_actor = None;
         }
         self.notify_unit_action_finished(actor);
+        self.resolve_aha_extra_turn();
         self.resolve_wave_or_end();
         Ok(())
     }
@@ -576,7 +585,12 @@ impl<'a> Battle<'a> {
                         vulnerability_bp: state
                             .debuffs
                             .iter()
-                            .filter(|status| status.kind == DebuffKind::Vulnerability)
+                            .filter(|status| {
+                                matches!(
+                                    status.kind,
+                                    DebuffKind::Vulnerability | DebuffKind::WoesWhisper
+                                )
+                            })
                             .map(|status| status.bp)
                             .fold(
                                 state.magnitude(StatusKind::Vulnerability),
@@ -615,6 +629,7 @@ impl<'a> Battle<'a> {
             .filter_map(|(remaining_av_micros, _, slot)| {
                 let unit_id = match slot {
                     TurnSlot::Unit(unit) => self.plan.units[unit].id.clone(),
+                    TurnSlot::Aha => AHA_ACTION_ORDER_ID.to_owned(),
                     TurnSlot::Summon(owner) => {
                         let summon = self.units[owner].summon_turn?;
                         if let Some(sprite) = self.memosprite(owner) {
@@ -633,6 +648,9 @@ impl<'a> Battle<'a> {
     }
 
     fn check_action(&self, actor: usize, action: Action) -> Result<CheckedAction<'a>, BattleError> {
+        if action == Action::ElationSkill {
+            return Err(BattleError::IllegalTiming);
+        }
         if self.units[actor].hp == 0 {
             return Err(BattleError::InvalidActor);
         }
@@ -646,7 +664,9 @@ impl<'a> Battle<'a> {
                 match action {
                     Action::Basic => SkillPoints::Generate,
                     Action::Skill => SkillPoints::Spend,
-                    Action::Ultimate | Action::EnhancedUltimate => SkillPoints::Unchanged,
+                    Action::Ultimate | Action::EnhancedUltimate | Action::ElationSkill => {
+                        SkillPoints::Unchanged
+                    }
                 },
             ),
             Kit::Official(kit) => kit
@@ -693,7 +713,7 @@ impl<'a> Battle<'a> {
                 || self.mechanics(actor).is_some_and(|rules| match action {
                     Action::Basic => !rules.can_use_basic(self, actor),
                     Action::Skill => !rules.can_use_skill(self, actor),
-                    Action::Ultimate | Action::EnhancedUltimate => false,
+                    Action::Ultimate | Action::EnhancedUltimate | Action::ElationSkill => false,
                 })
             {
                 return Err(BattleError::IllegalTiming);
@@ -924,6 +944,7 @@ impl<'a> Battle<'a> {
     }
 
     fn begin_attack(&mut self) {
+        self.attack_spent_skill_points = false;
         self.attack_targets.clear();
         self.attack_damage = self.tracks_attack_damage.then_some(0);
         self.super_break_targets.clear();
@@ -1004,7 +1025,12 @@ impl<'a> Battle<'a> {
                 TurnSlot::Summon(owner),
             ))
         });
-        units.chain(summons)
+        let aha = self
+            .aha
+            .as_ref()
+            .zip(self.aha_speed_micros())
+            .map(|(aha, speed)| (aha.gauge_quanta.div_ceil(speed), true, TurnSlot::Aha));
+        units.chain(summons).chain(aha)
     }
 
     fn advance_to_decision(&mut self) {
@@ -1037,6 +1063,11 @@ impl<'a> Battle<'a> {
             };
 
             self.av_micros += delta;
+            if let Some(speed) = self.aha_speed_micros()
+                && let Some(aha) = &mut self.aha
+            {
+                aha.gauge_quanta = aha.gauge_quanta.saturating_sub(delta * speed);
+            }
             for unit in self.allies().chain(self.enemies()) {
                 if self.available_for_ordinary_turn(unit) {
                     let consumed = delta * self.speed_micros(unit);
@@ -1058,6 +1089,11 @@ impl<'a> Battle<'a> {
             }
             let actor = match slot {
                 TurnSlot::Unit(actor) => actor,
+                TurnSlot::Aha => {
+                    self.resolve_natural_aha_turn();
+                    self.resolve_wave_or_end();
+                    continue;
+                }
                 TurnSlot::Summon(owner) => {
                     if let Some(summon) = &mut self.units[owner].summon_turn {
                         summon.gauge_quanta = GAUGE_FULL;
@@ -1249,6 +1285,9 @@ impl<'a> Battle<'a> {
     }
 
     fn spend_skill_points_with_substitute(&mut self, actor: usize, shared: u8, substitute: u8) {
+        if self.aha.is_some() && shared > 0 {
+            self.attack_spent_skill_points = true;
+        }
         self.set_skill_points(actor, self.skill_points - shared);
         let points = shared + substitute;
         for owner in self.allies() {

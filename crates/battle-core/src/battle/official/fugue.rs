@@ -214,6 +214,7 @@ impl Mechanics for Fugue {
         target: Option<usize>,
     ) {
         match action {
+            Action::ElationSkill => {}
             Action::Skill => {
                 let Some(target) = target else {
                     return;
@@ -357,6 +358,7 @@ impl Mechanics for Fugue {
         target: Option<usize>,
     ) -> Option<u8> {
         match action {
+            Action::ElationSkill => None,
             Action::Ultimate => Some(0),
             Action::Skill => {
                 let current = active_prayer(battle, owner);

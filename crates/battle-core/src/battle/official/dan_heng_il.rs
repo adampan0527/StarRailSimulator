@@ -400,6 +400,7 @@ impl Mechanics for DanHengIl {
         _target: Option<usize>,
     ) {
         match action {
+            Action::ElationSkill => {}
             Action::Basic => {
                 Self::set_tier(battle, actor, BasicTier::Lotus);
                 if battle.in_extra_turn(actor) {
@@ -494,6 +495,7 @@ impl Mechanics for DanHengIl {
         let affordable = Self::affordable_tier(battle, actor);
         let selected = battle.units[actor].dan_heng_il_state.tier.cost();
         match action {
+            Action::ElationSkill => None,
             Action::Skill if selected < affordable => Some(1),
             Action::Skill => Some(5),
             Action::Basic => Some(2),

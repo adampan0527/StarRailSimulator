@@ -54,6 +54,7 @@ pub(super) struct UnitPlan {
     pub id: String,
     pub combat_type: Option<CombatType>,
     pub has_control_resistance: bool,
+    pub elation_bp: u32,
     pub kit: Kit,
     pub stats: Stats,
     pub starting_energy_milli: u32,
@@ -99,6 +100,7 @@ impl PreparedBattle {
                 id: character.unit_id.clone(),
                 combat_type: Some(character.combat_type),
                 has_control_resistance: false,
+                elation_bp: character.stats.elation_bp,
                 kit: Kit::Official(Arc::new(kit)),
                 stats,
                 starting_energy_milli,
@@ -179,6 +181,7 @@ impl PreparedBattle {
             units.push(UnitPlan {
                 combat_type: None,
                 has_control_resistance: false,
+                elation_bp: 0,
                 id,
                 kit: Kit::Ally(kit),
                 stats,
@@ -193,6 +196,7 @@ impl PreparedBattle {
                 units.push(UnitPlan {
                     combat_type: None,
                     has_control_resistance: false,
+                    elation_bp: 0,
                     id,
                     kit: Kit::Enemy(kit),
                     stats: kit.stats,
@@ -231,6 +235,7 @@ impl PreparedBattle {
                 .map(|(position, &max_toughness)| UnitPlan {
                     combat_type: None,
                     has_control_resistance: false,
+                    elation_bp: 0,
                     // The colon keeps internal analysis IDs distinct from input unit IDs.
                     id: format!("dpr:{}", position + 1),
                     kit: Kit::Dummy { max_toughness },
@@ -251,6 +256,7 @@ impl PreparedBattle {
                 id: format!("{}:{}", master.id, profile.name),
                 combat_type: master.combat_type,
                 has_control_resistance: false,
+                elation_bp: master.elation_bp,
                 kit: Kit::Memosprite { owner },
                 stats: profile.stats,
                 starting_energy_milli: 0,
