@@ -206,11 +206,17 @@ fn basis_points(id: &str, ratio: f64) -> Result<u16, BattleError> {
 
 impl Sparkle {
     fn cipher_active(battle: &Battle<'_>, owner: usize, target: usize) -> bool {
+        if !battle.allies().contains(&target) {
+            return false;
+        }
         let ally = &battle.units[owner].sparkle_state.allies[target];
         battle.units[target].finished_turns < ally.cipher_expires
     }
 
     fn dreamdiver_active(&self, battle: &Battle<'_>, owner: usize, target: usize) -> bool {
+        if !battle.allies().contains(&target) {
+            return false;
+        }
         let buff = battle.units[owner].sparkle_state.allies[target].dreamdiver;
         let unit = &battle.units[target];
         buff.crit_bp > 0
@@ -220,6 +226,9 @@ impl Sparkle {
 
     fn talent_stacks(&self, battle: &Battle<'_>, owner: usize, target: usize) -> u32 {
         let timer = if self.enhanced { owner } else { target };
+        if !battle.allies().contains(&timer) {
+            return 0;
+        }
         let state = &battle.units[timer];
         let talent = &battle.units[owner].sparkle_state.allies[timer];
         if state.finished_turns < talent.talent_expires {

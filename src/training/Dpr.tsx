@@ -58,7 +58,10 @@ export function DprResults({
                 <li key={sequence}>
                   <span>
                     <span className="muted">{av(hit.av_micros)} AV</span> ·{' '}
-                    {unitName(hit.source_id)} · {actionNames[hit.action]}
+                    {hit.source_id === 'trailblazer.remembrance:mem'
+                      ? '迷迷'
+                      : unitName(hit.source_id)}{' '}
+                    · {actionNames[hit.action]}
                     {hit.kind !== 'direct' && ` · ${damageNames[hit.kind]}`}
                     {hit.critical && ' · 暴击'} ·{' '}
                     <strong>{format.format(hit.amount)}</strong>

@@ -12,6 +12,7 @@ pub(super) enum Kit {
     Ally(&'static AllyKit),
     Official(Arc<OfficialKit>),
     Enemy(&'static EnemyKit),
+    Memosprite { owner: usize },
     Dummy { max_toughness: u16 },
 }
 
@@ -20,20 +21,20 @@ impl Kit {
         match self {
             Self::Ally(kit) => kit.max_energy_milli,
             Self::Official(kit) => kit.max_energy_milli,
-            Self::Enemy(_) | Self::Dummy { .. } => 0,
+            Self::Enemy(_) | Self::Dummy { .. } | Self::Memosprite { .. } => 0,
         }
     }
 
     pub fn skill_point_cap_bonus(&self) -> u8 {
         match self {
             Self::Official(kit) => kit.mechanics.skill_point_cap_bonus(),
-            Self::Ally(_) | Self::Enemy(_) | Self::Dummy { .. } => 0,
+            Self::Ally(_) | Self::Enemy(_) | Self::Dummy { .. } | Self::Memosprite { .. } => 0,
         }
     }
 
     pub fn max_toughness(&self) -> u16 {
         match self {
-            Self::Ally(_) | Self::Official(_) => 0,
+            Self::Ally(_) | Self::Official(_) | Self::Memosprite { .. } => 0,
             Self::Enemy(kit) => kit.max_toughness,
             Self::Dummy { max_toughness } => *max_toughness,
         }
@@ -41,7 +42,7 @@ impl Kit {
 
     pub fn matches_weakness(&self, element: Element) -> bool {
         match self {
-            Self::Ally(_) | Self::Official(_) => false,
+            Self::Ally(_) | Self::Official(_) | Self::Memosprite { .. } => false,
             Self::Enemy(kit) => kit.weakness[element.index()],
             Self::Dummy { .. } => true,
         }
@@ -232,8 +233,25 @@ impl PreparedBattle {
                     starting_energy_milli: 0,
                 }),
         );
+        let enemy_end = units.len();
+        for owner in 0..self.ally_count {
+            let master = &units[owner];
+            let Kit::Official(kit) = &master.kit else {
+                continue;
+            };
+            let Some(profile) = kit.mechanics.memosprite_profile(master.stats) else {
+                continue;
+            };
+            units.push(UnitPlan {
+                id: format!("{}:{}", master.id, profile.name),
+                combat_type: master.combat_type,
+                kit: Kit::Memosprite { owner },
+                stats: profile.stats,
+                starting_energy_milli: 0,
+            });
+        }
         Ok(Self {
-            wave_ends: vec![units.len()],
+            wave_ends: vec![enemy_end],
             units,
             ally_count: self.ally_count,
             seed: self.seed,

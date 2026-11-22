@@ -127,7 +127,11 @@ pub fn calculate_dpr(
         {
             let own_damage =
                 hit.amount - hit.assists.iter().map(|&(_, amount)| amount).sum::<u32>();
-            let actor = &mut characters[hit.actor];
+            let credit_actor = match plan.units[hit.actor].kit {
+                Kit::Memosprite { owner } => owner,
+                _ => hit.actor,
+            };
+            let actor = &mut characters[credit_actor];
             actor.own_damage += u64::from(own_damage);
             let mut credits = vec![DprCredit {
                 unit_id: actor.unit_id.clone(),
@@ -233,7 +237,7 @@ fn supports_fastest_victory(plan: &PreparedBattle) -> bool {
                 Kit::Enemy(kit) => {
                     matches!(kit.target, EnemyTarget::FirstLiving) || plan.ally_count == 1
                 }
-                Kit::Dummy { .. } | Kit::Official(_) => false,
+                Kit::Dummy { .. } | Kit::Official(_) | Kit::Memosprite { .. } => false,
             }
     })
 }

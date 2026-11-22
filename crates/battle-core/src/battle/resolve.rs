@@ -255,14 +255,19 @@ impl Battle<'_> {
             } else {
                 let targets = match ability.target {
                     Target::SelfOnly => actor..actor + 1,
-                    Target::AllAllies => self.allies(),
+                    Target::AllAllies => {
+                        for target in self.party_units() {
+                            if self.is_targetable(target) {
+                                self.apply_effect(actor, target, *effect);
+                            }
+                        }
+                        continue;
+                    }
                     Target::AllEnemies => self.enemies(),
                     Target::Ally | Target::OtherAlly | Target::Enemy => continue,
                 };
                 for target in targets {
-                    if !matches!(ability.target, Target::AllAllies) || self.is_targetable(target) {
-                        self.apply_effect(actor, target, *effect);
-                    }
+                    self.apply_effect(actor, target, *effect);
                 }
             }
         }
@@ -412,6 +417,32 @@ impl Battle<'_> {
             u32::from(multiplier_bp),
             toughness,
             DamageScale::Attack,
+        );
+    }
+
+    pub(super) fn memosprite_hit(
+        &mut self,
+        sprite: usize,
+        target: usize,
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+        origin: Action,
+    ) {
+        if !self.is_targetable(sprite) {
+            return;
+        }
+        self.strike(
+            sprite,
+            target,
+            DamageKind::Direct,
+            Hit {
+                element,
+                multiplier_bp: u32::from(multiplier_bp),
+                toughness,
+                origin: Some(origin),
+                scale: DamageScale::Attack,
+            },
         );
     }
 
@@ -745,9 +776,7 @@ impl Battle<'_> {
     }
 
     pub(super) fn advance_ally(&mut self, source: usize, target: usize, bp: u16) {
-        let remaining = self.units[target]
-            .gauge_quanta
-            .saturating_sub(gauge_for(bp));
+        let remaining = self.gauge_quanta(target).saturating_sub(gauge_for(bp));
         self.shift_gauge(source, target, remaining, remaining == 0);
     }
 
@@ -1173,7 +1202,7 @@ impl Battle<'_> {
                     .is_some_and(|rules| rules.taunts_enemy(self, owner, actor))
         });
         let target = taunt.or_else(|| match kit.target {
-            EnemyTarget::FirstLiving => self.allies().find(|&unit| self.is_targetable(unit)),
+            EnemyTarget::FirstLiving => self.party_units().find(|&unit| self.is_targetable(unit)),
             EnemyTarget::RandomLiving => self.random_enemy_target(),
         });
         if let Some(target) = target {
@@ -1190,11 +1219,14 @@ impl Battle<'_> {
             }
             self.hit(actor, target, Element::Physical, 10_000, 0);
             self.finish_enemy_action();
-            if self.units[target].hp > 0 {
-                self.gain_energy(actor, target, kit.hit_energy_milli);
-                if let Some(mechanics) = self.mechanics(target) {
-                    mechanics.after_enemy_attack(self, target);
-                }
+            let energy_recipient = self.memosprite_owner(target).unwrap_or(target);
+            if self.units[energy_recipient].hp > 0 {
+                self.gain_energy(actor, energy_recipient, kit.hit_energy_milli);
+            }
+            if self.units[target].hp > 0
+                && let Some(mechanics) = self.mechanics(target)
+            {
+                mechanics.after_enemy_attack(self, target);
             }
             for owner in self.allies() {
                 if self.units[owner].hp > 0
@@ -1229,7 +1261,7 @@ impl Battle<'_> {
 
     fn random_enemy_target(&mut self) -> Option<usize> {
         let mut weighted = self
-            .allies()
+            .party_units()
             .filter(|&unit| self.is_targetable(unit))
             .map(|unit| (unit, self.enemy_targeting_weight(unit)))
             .collect::<Vec<_>>();
@@ -1689,7 +1721,10 @@ impl Battle<'_> {
         }
         if matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
             && origin.is_some()
-            && matches!(self.plan.units[actor].kit, Kit::Official(_))
+            && matches!(
+                self.plan.units[actor].kit,
+                Kit::Official(_) | Kit::Memosprite { .. }
+            )
             && self.enemies().contains(&target)
             && !self.attack_targets.contains(&target)
         {
@@ -1780,6 +1815,13 @@ impl Battle<'_> {
                 kind,
                 critical: if kind == DamageKind::DamageOverTime {
                     DamageCritical::Never
+                } else if kind == DamageKind::Direct
+                    && let Some(rules) = self
+                        .memosprite_owner(actor)
+                        .and_then(|owner| self.mechanics(owner))
+                    && rules.memosprite_guarantees_critical(origin)
+                {
+                    DamageCritical::Guaranteed
                 } else {
                     DamageCritical::Chance(crit_rate)
                 },
@@ -1874,7 +1916,7 @@ impl Battle<'_> {
     }
 
     fn toughness_support(&self, actor: usize) -> (u64, u16) {
-        if !self.allies().contains(&actor) {
+        if !self.is_party_unit(actor) {
             return (0, 0);
         }
         self.allies()
@@ -1915,7 +1957,7 @@ impl Battle<'_> {
             && collect_super_break
             && normal_before == 0
             && origin.is_some()
-            && self.allies().contains(&actor)
+            && self.is_party_unit(actor)
             && self.enemies().contains(&target)
             && self.is_targetable(target)
         {
@@ -1950,8 +1992,7 @@ impl Battle<'_> {
         origin: Option<Action>,
         reduced: u16,
     ) {
-        if origin.is_none() || !self.allies().contains(&actor) || !self.enemies().contains(&target)
-        {
+        if origin.is_none() || !self.is_party_unit(actor) || !self.enemies().contains(&target) {
             return;
         }
         for owner in self.allies() {
@@ -2032,7 +2073,11 @@ impl Battle<'_> {
 
     fn record_half_hp_crossing(&mut self, target: usize, hp_before: u32) {
         let (hp, max_hp) = self.hp(target);
-        if self.enemies().contains(&target) && hp_before > max_hp / 2 && hp <= max_hp / 2 {
+        if self.enemies().contains(&target)
+            && hp_before > max_hp / 2
+            && hp <= max_hp / 2
+            && !self.crossed_half.contains(&target)
+        {
             self.crossed_half.push(target);
         }
     }
@@ -2303,9 +2348,10 @@ impl Battle<'_> {
             kind,
             break_damage: from_break || kind.is_break(),
             follow_up: self.is_follow_up_damage(actor, origin, kind),
-            summon: self
-                .mechanics(actor)
-                .is_some_and(|rules| rules.damage_comes_from_summon(self, actor, origin, kind)),
+            summon: self.memosprite_owner(actor).is_some()
+                || self
+                    .mechanics(actor)
+                    .is_some_and(|rules| rules.damage_comes_from_summon(self, actor, origin, kind)),
         };
         let distribution = self.damage_distribution(actor, target);
         let recipient = |unit, share_bp| DamageRecipient {
@@ -2422,7 +2468,10 @@ impl Battle<'_> {
                         || self.target_auras_from(owner, actor, target, element, &event)
                             != DamageTargetAura::default()
                 }))
-                .filter(|&source| source != actor && source < self.plan.ally_count)
+                .filter(|&source| {
+                    source != self.memosprite_owner(actor).unwrap_or(actor)
+                        && source < self.plan.ally_count
+                })
                 .collect();
             let mut credits = Vec::new();
             if !assists.is_empty() {
@@ -2472,7 +2521,7 @@ impl Battle<'_> {
             }
         }
         if offense.enemy.is_some()
-            && self.allies().contains(&actor)
+            && self.is_party_unit(actor)
             && matches!(
                 kind,
                 DamageKind::Direct
@@ -2484,6 +2533,33 @@ impl Battle<'_> {
             && let Some(total) = &mut self.attack_damage
         {
             *total = total.saturating_add(u64::from(amount));
+        }
+        if amount > 0
+            && kind != DamageKind::TrueDamage
+            && offense.enemy.is_some()
+            && self.is_party_unit(actor)
+        {
+            let damage_owner = self.memosprite_owner(actor).unwrap_or(actor);
+            for owner in self.allies() {
+                let bp = self.mechanics(owner).map_or(0, |rules| {
+                    rules.memosprite_true_damage_bp(self, owner, actor)
+                });
+                let extra = percentage_of(amount, bp);
+                if extra > 0 {
+                    let assists = if damage_owner == owner {
+                        Vec::new()
+                    } else {
+                        vec![(owner, extra)]
+                    };
+                    self.true_damage(
+                        actor,
+                        target,
+                        origin.unwrap_or(Action::Basic),
+                        extra,
+                        assists,
+                    );
+                }
+            }
         }
         if amount > 0
             && kind == DamageKind::DamageOverTime
@@ -2543,7 +2619,7 @@ impl Battle<'_> {
         let mut remaining_bp =
             10_000_u32.saturating_sub(personal_bp) * (10_000 - invigoration_bp) / 10_000;
         let enemy_source = self.enemies().contains(&actor);
-        let ally_target = self.allies().contains(&target);
+        let ally_target = self.is_party_unit(target);
         if !enemy_source && !ally_target {
             return 10_000 - remaining_bp;
         }
@@ -2563,7 +2639,7 @@ impl Battle<'_> {
     }
 
     fn damage_distribution(&self, actor: usize, target: usize) -> Option<(usize, u16)> {
-        if !self.enemies().contains(&actor) || !self.allies().contains(&target) {
+        if !self.enemies().contains(&actor) || !self.is_party_unit(target) {
             return None;
         }
         self.allies()
@@ -2625,8 +2701,8 @@ impl Battle<'_> {
             {
                 return;
             }
-            if actor >= self.plan.ally_count
-                && target < self.plan.ally_count
+            if self.enemies().contains(&actor)
+                && self.allies().contains(&target)
                 && (self.try_team_rescue(actor, target)
                     || (matches!(kind, DamageKind::Direct | DamageKind::FollowUp)
                         && self.try_ally_rescue(target)))
@@ -2637,10 +2713,11 @@ impl Battle<'_> {
             if let Some(mechanics) = self.mechanics(target) {
                 mechanics.on_defeated(self, target);
             }
-            if actor < self.plan.ally_count {
-                self.gain_energy(actor, actor, KILL_ENERGY_MILLI);
-                if let Some(mechanics) = self.mechanics(actor) {
-                    mechanics.after_defeat(self, actor, target);
+            let attack_owner = self.memosprite_owner(actor).unwrap_or(actor);
+            if self.allies().contains(&attack_owner) {
+                self.gain_energy(actor, attack_owner, KILL_ENERGY_MILLI);
+                if let Some(mechanics) = self.mechanics(attack_owner) {
+                    mechanics.after_defeat(self, attack_owner, target);
                 }
             }
             if self.enemies().contains(&target) {
@@ -2660,20 +2737,27 @@ impl Battle<'_> {
                     }
                 }
             }
-            self.units[target].statuses.fill(None);
-            self.units[target].summon_turn = None;
-            self.units[target].shields.clear();
-            self.units[target].shocks.clear();
-            self.units[target].frozen = None;
-            self.units[target].debuffs.clear();
-            self.units[target].break_dots.clear();
-            self.units[target].entanglement = None;
-            self.units[target].lynx_response = None;
-            self.units[target].skill_dots.clear();
-            self.units[target].heals_over_time.clear();
-            self.units[target].invigoration = None;
-            self.units[target].ally_buffs.clear();
+            self.clear_defeated_effects(target);
+            self.remove_memosprite_of(target);
+            self.notify_memosprite_departed(target);
         }
+    }
+
+    pub(super) fn clear_defeated_effects(&mut self, target: usize) {
+        let state = &mut self.units[target];
+        state.statuses.fill(None);
+        state.summon_turn = None;
+        state.shields.clear();
+        state.shocks.clear();
+        state.frozen = None;
+        state.debuffs.clear();
+        state.break_dots.clear();
+        state.entanglement = None;
+        state.lynx_response = None;
+        state.skill_dots.clear();
+        state.heals_over_time.clear();
+        state.invigoration = None;
+        state.ally_buffs.clear();
     }
 
     fn try_team_rescue(&mut self, attacker: usize, target: usize) -> bool {
@@ -2706,8 +2790,15 @@ impl Battle<'_> {
         after_quanta: u64,
         advanced_to_front: bool,
     ) {
-        let before_quanta = std::mem::replace(&mut self.units[target].gauge_quanta, after_quanta);
-        self.units[target].advanced_to_front = advanced_to_front;
+        let before_quanta = if let Some(owner) = self.memosprite_owner(target)
+            && let Some(summon) = &mut self.units[owner].summon_turn
+        {
+            summon.advanced_to_front = advanced_to_front;
+            std::mem::replace(&mut summon.gauge_quanta, after_quanta)
+        } else {
+            self.units[target].advanced_to_front = advanced_to_front;
+            std::mem::replace(&mut self.units[target].gauge_quanta, after_quanta)
+        };
         self.emit(
             EventKind::GaugeShifted {
                 before_quanta,
@@ -2719,8 +2810,8 @@ impl Battle<'_> {
     }
 
     pub(super) fn delay_action(&mut self, source: usize, target: usize, delay_bp: u16) {
-        let delayed = self.units[target]
-            .gauge_quanta
+        let delayed = self
+            .gauge_quanta(target)
             .saturating_add(gauge_for(delay_bp));
         self.shift_gauge(source, target, delayed, false);
     }
@@ -2728,7 +2819,7 @@ impl Battle<'_> {
     fn apply_imprisonment(&mut self, actor: usize, target: usize, break_effect_bp: u32) {
         if self.apply_break_slow(actor, target) {
             let extra_delay = gauge_for(3_000) / 10_000 * (10_000 + u64::from(break_effect_bp));
-            let delayed = self.units[target].gauge_quanta + extra_delay;
+            let delayed = self.gauge_quanta(target) + extra_delay;
             self.shift_gauge(actor, target, delayed, false);
         }
     }
@@ -2870,6 +2961,15 @@ impl Battle<'_> {
                 Some(target),
             );
             let cap = self.plan.units[target].kit.max_energy_milli();
+            if target < self.plan.ally_count && after_milli > before_milli {
+                for owner in self.allies() {
+                    if self.is_targetable(owner)
+                        && let Some(mechanics) = self.mechanics(owner)
+                    {
+                        mechanics.on_ally_energy_restored(self, owner, after_milli - before_milli);
+                    }
+                }
+            }
             if target < self.plan.ally_count && before_milli < cap && after_milli == cap {
                 for owner in self.allies() {
                     if self.units[owner].hp > 0

@@ -102,6 +102,8 @@ struct UnitState {
     extra_toughness: Option<ExtraToughness>,
     gauge_quanta: u64,
     summon_turn: Option<SummonTurn>,
+    memosprite_max_hp: Option<u32>,
+    memosprite_generation: u32,
     normal_turns: u32,
     departed: bool,
     advanced_to_front: bool,
@@ -148,6 +150,7 @@ struct UnitState {
     fugue_state: FugueState,
     rappa_state: official::RappaState,
     harmony_trailblazer_state: official::HarmonyTrailblazerState,
+    remembrance_trailblazer_state: official::RemembranceTrailblazerState,
     robin_state: official::RobinState,
     firefly_state: official::FireflyState,
     boothill_state: official::BoothillState,
@@ -238,12 +241,14 @@ impl<'a> Battle<'a> {
                 .units
                 .iter()
                 .map(|unit| UnitState {
-                    hp: unit.stats.hp,
+                    hp: if matches!(unit.kit, Kit::Memosprite { .. }) { 0 } else { unit.stats.hp },
                     energy_milli: unit.starting_energy_milli,
                     toughness: unit.kit.max_toughness(),
                     extra_toughness: None,
                     gauge_quanta: GAUGE_FULL,
                     summon_turn: None,
+                    memosprite_max_hp: None,
+                    memosprite_generation: 0,
                     normal_turns: 0,
                     departed: false,
                     advanced_to_front: false,
@@ -290,6 +295,7 @@ impl<'a> Battle<'a> {
                     fugue_state: FugueState::default(),
                     rappa_state: official::RappaState::default(),
                     harmony_trailblazer_state: official::HarmonyTrailblazerState::default(),
+                    remembrance_trailblazer_state: official::RemembranceTrailblazerState::default(),
                     robin_state: official::RobinState::default(),
                     firefly_state: official::FireflyState::default(),
                     boothill_state: official::BoothillState::default(),
@@ -498,7 +504,10 @@ impl<'a> Battle<'a> {
             mechanics.after_action(self, actor, command.action, target);
         }
         if attacking {
-            self.notify_attack(actor, command.action, target);
+            let source = mechanics.as_ref().map_or(actor, |rules| {
+                rules.attack_source(self, actor, command.action, ability)
+            });
+            self.notify_attack(source, command.action, target);
         }
         self.finish_debuff_action(actor, parent_debuff_targets);
         if attacking {
@@ -537,11 +546,15 @@ impl<'a> Battle<'a> {
             random_draws: self.rng.draws,
             enemy_hp_lost: self.enemy_hp_lost,
             units: (0..self.enemies().end)
+                .chain(
+                    self.memosprites()
+                        .filter(|&sprite| self.is_targetable(sprite)),
+                )
                 .map(|unit| {
                     let state = &self.units[unit];
                     UnitSnapshot {
                         unit_id: self.plan.units[unit].id.clone(),
-                        is_ally: unit < self.plan.ally_count,
+                        is_ally: self.is_party_unit(unit),
                         hp: state.hp,
                         max_hp: self.effective_max_hp(unit),
                         energy_milli: state.energy_milli,
@@ -559,7 +572,7 @@ impl<'a> Battle<'a> {
                                 u32::saturating_add,
                             ),
                         speed_micros: self.speed_micros(unit),
-                        gauge_quanta: state.gauge_quanta,
+                        gauge_quanta: self.gauge_quanta(unit),
                         normal_turns: state.normal_turns,
                     }
                 })
@@ -593,7 +606,11 @@ impl<'a> Battle<'a> {
                     TurnSlot::Unit(unit) => self.plan.units[unit].id.clone(),
                     TurnSlot::Summon(owner) => {
                         let summon = self.units[owner].summon_turn?;
-                        format!("summon:{}:{}", self.plan.units[owner].id, summon.name)
+                        if let Some(sprite) = self.memosprite(owner) {
+                            self.plan.units[sprite].id.clone()
+                        } else {
+                            format!("summon:{}:{}", self.plan.units[owner].id, summon.name)
+                        }
                     }
                 };
                 Some(ActionOrderEntry {
@@ -627,7 +644,9 @@ impl<'a> Battle<'a> {
                 .map(official::OfficialAbility::resolve)
                 .or_else(|| kit.ability(action))
                 .ok_or(BattleError::IllegalTiming)?,
-            Kit::Enemy(_) | Kit::Dummy { .. } => return Err(BattleError::InvalidActor),
+            Kit::Enemy(_) | Kit::Dummy { .. } | Kit::Memosprite { .. } => {
+                return Err(BattleError::InvalidActor);
+            }
         };
         let ultimate_cost_milli = if action.is_ultimate() {
             if self
@@ -726,6 +745,67 @@ impl<'a> Battle<'a> {
 
     fn allies(&self) -> Range<usize> {
         0..self.plan.ally_count
+    }
+
+    fn memosprites(&self) -> Range<usize> {
+        self.plan
+            .wave_ends
+            .last()
+            .copied()
+            .unwrap_or(self.plan.ally_count)..self.units.len()
+    }
+
+    fn party_units(&self) -> impl Iterator<Item = usize> + use<> {
+        self.allies().chain(self.memosprites())
+    }
+
+    fn is_party_unit(&self, unit: usize) -> bool {
+        self.allies().contains(&unit) || self.memosprites().contains(&unit)
+    }
+
+    fn memosprite_owner(&self, unit: usize) -> Option<usize> {
+        match self.plan.units[unit].kit {
+            Kit::Memosprite { owner } => Some(owner),
+            _ => None,
+        }
+    }
+
+    fn memosprite(&self, owner: usize) -> Option<usize> {
+        self.memosprites()
+            .find(|&sprite| self.memosprite_owner(sprite) == Some(owner))
+    }
+
+    fn active_memosprite(&self, owner: usize) -> Option<usize> {
+        self.memosprite(owner)
+            .filter(|&sprite| self.is_targetable(sprite))
+    }
+
+    fn remove_memosprite_of(&mut self, owner: usize) {
+        if let Some(sprite) = self.active_memosprite(owner) {
+            self.units[sprite].hp = 0;
+            self.clear_defeated_effects(sprite);
+            self.emit(EventKind::UnitDefeated, Some(owner), Some(sprite));
+            self.notify_memosprite_departed(sprite);
+        }
+    }
+
+    fn notify_memosprite_departed(&mut self, sprite: usize) {
+        if let Some(owner) = self.memosprite_owner(sprite) {
+            self.units[owner].summon_turn = None;
+            if let Some(rules) = self.mechanics(owner) {
+                rules.on_memosprite_departed(self, owner, sprite);
+            }
+        }
+    }
+
+    fn notify_memosprite_turn_finished(&mut self, sprite: usize) {
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(rules) = self.mechanics(owner)
+            {
+                rules.on_memosprite_turn_finished(self, owner, sprite);
+            }
+        }
     }
 
     fn is_targetable(&self, unit: usize) -> bool {
@@ -882,6 +962,17 @@ impl<'a> Battle<'a> {
             .filter(|&unit| self.available_for_ordinary_turn(unit))
     }
 
+    fn gauge_quanta(&self, actor: usize) -> u64 {
+        self.memosprite_owner(actor)
+            .and_then(|owner| self.units[owner].summon_turn)
+            .map_or(self.units[actor].gauge_quanta, |summon| summon.gauge_quanta)
+    }
+
+    fn summon_speed_micros(&self, owner: usize, summon: SummonTurn) -> u64 {
+        self.memosprite(owner)
+            .map_or(summon.speed_micros, |sprite| self.speed_micros(sprite))
+    }
+
     fn scheduled_turns(&self) -> impl Iterator<Item = (u64, bool, TurnSlot)> {
         let units = self.turn_candidates().map(|unit| {
             let state = &self.units[unit];
@@ -895,7 +986,9 @@ impl<'a> Battle<'a> {
             let state = &self.units[owner];
             let summon = state.summon_turn.filter(|_| state.hp > 0)?;
             Some((
-                summon.gauge_quanta.div_ceil(summon.speed_micros),
+                summon
+                    .gauge_quanta
+                    .div_ceil(self.summon_speed_micros(owner, summon)),
                 !summon.advanced_to_front,
                 TurnSlot::Summon(owner),
             ))
@@ -927,13 +1020,14 @@ impl<'a> Battle<'a> {
             }
             self.normal_turns += 1;
             for owner in self.allies() {
-                let state = &mut self.units[owner];
+                let state = &self.units[owner];
                 if state.hp > 0
-                    && let Some(summon) = &mut state.summon_turn
+                    && let Some(summon) = state.summon_turn
                 {
-                    summon.gauge_quanta = summon
-                        .gauge_quanta
-                        .saturating_sub(delta * summon.speed_micros);
+                    let consumed = delta * self.summon_speed_micros(owner, summon);
+                    if let Some(timer) = &mut self.units[owner].summon_turn {
+                        timer.gauge_quanta = timer.gauge_quanta.saturating_sub(consumed);
+                    }
                 }
             }
             let actor = match slot {
@@ -944,7 +1038,17 @@ impl<'a> Battle<'a> {
                         summon.advanced_to_front = false;
                     }
                     let parent_debuff_targets = self.begin_debuff_action();
-                    if let Some(mechanics) = self.mechanics(owner) {
+                    if let Some(sprite) = self.memosprite(owner) {
+                        self.units[sprite].normal_turns += 1;
+                        self.emit(EventKind::TurnStarted, Some(sprite), None);
+                        if !self.thaw(sprite) {
+                            if let Some(mechanics) = self.mechanics(owner) {
+                                mechanics.on_summon_turn(self, owner);
+                            }
+                            self.notify_memosprite_turn_finished(sprite);
+                        }
+                        self.finish_turn(sprite);
+                    } else if let Some(mechanics) = self.mechanics(owner) {
                         mechanics.on_summon_turn(self, owner);
                     }
                     self.finish_debuff_action(owner, parent_debuff_targets);
@@ -974,6 +1078,7 @@ impl<'a> Battle<'a> {
                     self.ordinary_actor = Some(actor);
                     return;
                 }
+                Kit::Memosprite { .. } => unreachable!("memosprites use their owner's summon slot"),
                 Kit::Enemy(_) | Kit::Dummy { .. } => {
                     self.enemy_turn = Some(actor);
                     self.resolve_enemy_turn(actor);

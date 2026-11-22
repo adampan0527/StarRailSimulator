@@ -377,6 +377,33 @@ impl Battle<'_> {
             + special
     }
 
+    pub(super) fn cleanse_crowd_control(&mut self, actor: usize, target: usize) {
+        let mut cleared = self.clear_freeze(target);
+        if let Some(status) = self.units[target].entanglement.take() {
+            cleared = true;
+            self.emit(
+                EventKind::StatusExpired(StatusKind::Entangled),
+                Some(status.source),
+                Some(target),
+            );
+        }
+        let control = self.units[target]
+            .debuffs
+            .extract_if(.., |debuff| debuff.kind.is_control())
+            .collect::<Vec<_>>();
+        for debuff in control {
+            cleared = true;
+            self.emit(
+                EventKind::StatusExpired(debuff.kind.status()),
+                Some(debuff.source),
+                Some(target),
+            );
+        }
+        if cleared {
+            self.emit(EventKind::StatusCleared, Some(actor), Some(target));
+        }
+    }
+
     pub(super) fn cleanse_one(&mut self, actor: usize, target: usize) -> bool {
         let state = &mut self.units[target];
         let expired = if let Some(index) = state

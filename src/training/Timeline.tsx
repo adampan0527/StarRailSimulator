@@ -104,6 +104,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '优势口袋变化';
     case 'blade_charge':
       return '倏忽恩赐充能';
+    case 'memosprite_charge':
+      return '忆灵充能';
     case 'syzygy':
       return '朔望变化';
     case 'moonlight':
@@ -179,6 +181,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'chroma_ink':
     case 'pawned_asset':
       return `${kind.detail.before} → ${kind.detail.after}`;
+    case 'memosprite_charge':
+      return `${kind.detail.before}% → ${kind.detail.after}%`;
     case 'energy':
       return `${kind.detail.before_milli / 1000} → ${kind.detail.after_milli / 1000}`;
     case 'flying_aureus':

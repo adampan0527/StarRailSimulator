@@ -209,9 +209,9 @@ impl Battle<'_> {
     }
 
     pub(super) fn effective_max_hp_excluding(&self, actor: usize, source: Option<usize>) -> u32 {
-        let max_hp = self.plan.units[actor]
-            .stats
-            .hp
+        let max_hp = self.units[actor]
+            .memosprite_max_hp
+            .unwrap_or(self.plan.units[actor].stats.hp)
             .saturating_add(self.ally_buff_total(actor, AllyBuffKind::MaxHpFlat));
         if !self.allies().contains(&actor) {
             return max_hp;
@@ -331,7 +331,7 @@ impl Battle<'_> {
         if self.units[source].hp > 0
             && let Some(mechanics) = self.mechanics(source)
         {
-            if self.allies().contains(&target) && self.is_targetable(source) {
+            if self.is_party_unit(target) && self.is_targetable(source) {
                 bonuses.break_effect_bp = bonuses
                     .break_effect_bp
                     .saturating_add(mechanics.ally_break_effect_bonus_bp(self, source, target));
@@ -394,7 +394,7 @@ impl Battle<'_> {
         context: OffenseContext,
         allow: impl Fn(usize) -> bool,
     ) -> OffenseBuffs {
-        if context.actor >= self.plan.ally_count {
+        if !self.is_party_unit(context.actor) {
             return OffenseBuffs::default();
         }
         let mut total = OffenseBuffs::default();
@@ -405,6 +405,14 @@ impl Battle<'_> {
     }
 
     pub(super) fn effective_crit_damage_bp(&self, actor: usize) -> u32 {
+        self.effective_crit_damage_bp_without(actor, None)
+    }
+
+    pub(super) fn effective_crit_damage_bp_without(
+        &self,
+        actor: usize,
+        excluded_owner: Option<usize>,
+    ) -> u32 {
         self.plan.units[actor].stats.crit_damage_bp.saturating_add(
             self.offense_buffs(
                 OffenseContext {
@@ -414,9 +422,9 @@ impl Battle<'_> {
                     kind: DamageKind::Direct,
                     break_damage: false,
                     follow_up: false,
-                    summon: false,
+                    summon: self.memosprite_owner(actor).is_some(),
                 },
-                |_| true,
+                |source| Some(source) != excluded_owner,
             )
             .crit_damage_bp,
         )
