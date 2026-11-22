@@ -143,6 +143,18 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    Interpretation {
+        before: u8,
+        after: u8,
+    },
+    Inspiration {
+        before: u8,
+        after: u8,
+    },
+    HertaAnswer {
+        before: u8,
+        after: u8,
+    },
     PocketTrickshot {
         before: u8,
         after: u8,

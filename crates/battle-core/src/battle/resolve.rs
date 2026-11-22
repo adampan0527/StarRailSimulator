@@ -356,7 +356,9 @@ impl Battle<'_> {
                     self.attack_hit(actor, target, element, multiplier_bp, toughness);
                 }
             }
-            Effect::DirectedAttack { .. } | Effect::DirectedAreaAttack => {
+            Effect::DirectedAttack { .. }
+            | Effect::DirectedRadiusAttack { .. }
+            | Effect::DirectedAreaAttack => {
                 if let Some(mechanics) = self.mechanics(actor) {
                     mechanics.resolve_special_attack(self, actor, target);
                 }

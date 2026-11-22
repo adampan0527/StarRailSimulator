@@ -171,6 +171,9 @@ pub(crate) enum Effect {
     DirectedAttack {
         adjacent: bool,
     },
+    DirectedRadiusAttack {
+        radius: u8,
+    },
     DirectedAreaAttack,
     Shield {
         amount: u32,
@@ -201,6 +204,7 @@ impl Effect {
                 | Self::RandomHits { .. }
                 | Self::RepeatingSingleHits { .. }
                 | Self::DirectedAttack { .. }
+                | Self::DirectedRadiusAttack { .. }
                 | Self::DirectedAreaAttack
         )
     }

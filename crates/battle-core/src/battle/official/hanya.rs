@@ -131,6 +131,9 @@ fn targets_burden(
             target == Some(burden)
                 || ability.effects.iter().any(|effect| match effect {
                     Effect::RandomHits { .. } | Effect::DirectedAreaAttack => true,
+                    Effect::DirectedRadiusAttack { radius } => {
+                        target.is_some_and(|unit| unit.abs_diff(burden) <= usize::from(*radius))
+                    }
                     Effect::BlastAdjacent { .. }
                     | Effect::MaxHpBlastAdjacent { .. }
                     | Effect::DirectedAttack { adjacent: true } => target.is_some_and(|unit| {
