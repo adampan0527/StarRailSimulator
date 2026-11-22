@@ -50,6 +50,7 @@ const statusNames = {
   thanatoplum_rebloom: '残梅绽',
   standoff: '绝命对峙',
   befog: '醇醉',
+  withered_leaf: '枯叶',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
@@ -105,6 +106,10 @@ function eventTitle({ kind }: BattleEvent): string {
       return kind.detail.active ? '指定收债人' : '收债人结束';
     case 'jade_charge':
       return '翡翠天赋充能';
+    case 'rappa_charge':
+      return '乱破天赋充能';
+    case 'chroma_ink':
+      return '彩墨变化';
     case 'pawned_asset':
       return '当品变化';
     case 'damage':
@@ -157,6 +162,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'basic_enhancement':
     case 'squama_sacrosancta':
     case 'jade_charge':
+    case 'rappa_charge':
+    case 'chroma_ink':
     case 'pawned_asset':
       return `${kind.detail.before} → ${kind.detail.after}`;
     case 'energy':
