@@ -71,10 +71,11 @@ pub enum StatusKind {
     DeepLearning,
     Fever,
     SpecialGuest,
+    Bait,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::SpecialGuest.index() + 1;
+    pub(crate) const COUNT: usize = Self::Bait.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -130,6 +131,7 @@ impl StatusKind {
             Self::DeepLearning => 48,
             Self::Fever => 49,
             Self::SpecialGuest => 50,
+            Self::Bait => 51,
         }
     }
 }
@@ -275,6 +277,14 @@ pub enum EventKind {
         after: u8,
     },
     ArcherCharge {
+        before: u8,
+        after: u8,
+    },
+    AshveilCharge {
+        before: u8,
+        after: u8,
+    },
+    Gluttony {
         before: u8,
         after: u8,
     },

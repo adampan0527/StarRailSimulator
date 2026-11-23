@@ -51,6 +51,7 @@
 | 第三十四批 | [存护开拓者](characters/trailblazer-preservation.md) |
 | 第三十五批 | [吉尔伽美什](characters/gilgamesh.md) |
 | 第三十六批 | [真珠](characters/pearl.md)、[知更鸟·晴歌](characters/robin-sunny.md) |
+| 第三十七批 | [姬子·启行](characters/himeko-departure.md)、[不死途](characters/ashveil.md) |
 
 - 正式角色的有效技能等级从档案解析，技能倍率来自冻结的 4.7.0 快照。面板计算纳入配装静态属性，生命、攻击与防御四舍五入为整数，速度保留百万分位，倍率以万分比计算。光锥和遗器战斗触发效果、秘技及客户端逐事件对照待补。
 - 固定靶机保持满生命，正常排程、承受击破、冻结和触电。80 级击破基值使用 3767.5533。雷击破触电在目标回合开始结算，冰击破冻结跳过一次行动并将下一次行动提前 50%。这些结算属于当前靶场规则。合成回放仍使用原合成版本。[游戏内冰击破教程](https://hsr.gachabase.net/tutorials/battle/2202/weakness-break-ice/beta?lang=en)
@@ -94,6 +95,7 @@
 - 存护开拓者在受击后积累灼热意志，强化普攻消耗四层，终结技赠送一次免消耗的强化普攻。有限敌人夹具复验战技嘲讽、效果抵抗、受击减伤及护盾吸收，冻结档案核对双倍率终结技、星魂和逐击归因。[档案回归](../src-tauri/src/character_archive_tests/trailblazer_preservation.rs)
 - 吉尔伽美什在兴致达到门槛后，由自动普攻切换至零战技点战技。与 Saber 的连携分别记录两人的伤害，Saber 下一次终结技的倍率增量归吉尔伽美什。冻结档案复验低等级与满星魂配队的兴致、实付能量返还、连携次数和伤害归因。[档案回归](../src-tauri/src/character_archive_tests/gilgamesh.rs)
 - 真珠按好活当赏消耗抵挡值，并在四欢愉配队为底本安排独立额外回合，升格时按对应比例回收临时资源。知更鸟·晴歌按气氛值召集乐手，【Fever】期间独立推进忆灵与倒计时，保留各自的伤害来源及助攻。冻结档案复验低等级和满星魂配队、末段真实伤害与逐击归因。[真珠档案](../src-tauri/src/character_archive_tests/pearl.rs) · [晴歌档案](../src-tauri/src/character_archive_tests/robin_sunny.rs)
+- 姬子·启行的拓星者助战可以由队友发起，战技伤害仍归姬子。终结技按源能结算光束、脉冲和终结打击。不死途的强化追击在同一次攻击内逐段消耗婪酣，饲饵退场后重选目标。冻结档案复验两人的低等级和满星魂配队、触发时序与逐击归因。[启行档案](../src-tauri/src/character_archive_tests/himeko_departure.rs) · [不死途档案](../src-tauri/src/character_archive_tests/ashveil.rs)
 
 ## 后续归因扩展
 
