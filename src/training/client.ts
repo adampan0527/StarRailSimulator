@@ -177,6 +177,7 @@ type EventKind =
         | 'cerydra_charge'
         | 'archer_charge'
         | 'rin_gem_energy'
+        | 'magma_will'
         | 'rin_shadow_gem'
         | 'squama_sacrosancta'
         | 'jade_charge'

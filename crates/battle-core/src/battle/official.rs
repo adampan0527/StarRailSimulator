@@ -73,6 +73,7 @@ mod the_herta;
 mod tingyun;
 mod topaz;
 mod trailblazer_harmony;
+mod trailblazer_preservation;
 mod trailblazer_remembrance;
 mod tribbie;
 mod welt;
@@ -132,6 +133,7 @@ pub(super) use {
     the_herta::TheHertaState,
     topaz::TopazState,
     trailblazer_harmony::HarmonyTrailblazerState,
+    trailblazer_preservation::PreservationTrailblazerState,
     trailblazer_remembrance::RemembranceTrailblazerState,
     tribbie::TribbieState,
     welt::WeltState,
@@ -1819,6 +1821,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),
         trailblazer_harmony::FORM => Some(trailblazer_harmony::build),
+        trailblazer_preservation::FORM => Some(trailblazer_preservation::build),
         trailblazer_remembrance::FORM => Some(trailblazer_remembrance::build),
         "character.1209" => Some(yanqing::build),
         _ => None,
