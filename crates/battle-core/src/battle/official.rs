@@ -1,6 +1,7 @@
 mod acheron;
 mod aglaea;
 mod anaxa;
+mod archer;
 mod argenti;
 mod arlan;
 mod asta;
@@ -82,6 +83,7 @@ pub(super) use {
     acheron::AcheronState,
     aglaea::AglaeaState,
     anaxa::AnaxaState,
+    archer::ArcherState,
     aventurine::AventurineState,
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
@@ -545,6 +547,16 @@ pub(super) trait Mechanics: Send + Sync {
 
     /// An ordinary action can leave the current turn open for another command.
     fn keeps_turn(&self, _action: Action) -> bool {
+        false
+    }
+
+    /// A turn-ending command can skip ability and combat-action reactions.
+    fn ends_turn_without_ability(&self, _action: Action) -> bool {
+        false
+    }
+
+    /// Evaluated after an action, including its follow-ups and skill point changes.
+    fn ends_retained_turn(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         false
     }
 
@@ -1128,6 +1140,10 @@ pub(super) trait Mechanics: Send + Sync {
     ) {
     }
 
+    fn can_execute_follow_up(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
+        true
+    }
+
     fn before_follow_up(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     fn after_follow_up(&self, _battle: &mut Battle<'_>, _actor: usize, _origin: Action) {}
@@ -1350,6 +1366,8 @@ pub(super) trait Mechanics: Send + Sync {
     fn skill_point_cap_bonus(&self) -> u8 {
         0
     }
+
+    fn on_ally_skill_points_restored(&self, _battle: &mut Battle<'_>, _owner: usize) {}
 
     fn on_ally_skill_points_spent(
         &self,
@@ -1628,6 +1646,7 @@ type KitBuilder = fn(&OfficialCharacter) -> Result<OfficialKit, BattleError>;
 
 fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
+        archer::FORM => Some(archer::build),
         aglaea::FORM => Some(aglaea::build),
         "character.1003" => Some(himeko::build),
         sparxie::FORM => Some(sparxie::build),

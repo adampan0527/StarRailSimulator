@@ -198,6 +198,7 @@ struct UnitState {
     huohuo_state: HuohuoState,
     argenti_apotheosis: u8,
     saber_state: official::SaberState,
+    archer_state: official::ArcherState,
     crimson_knots: u8,
     rebloom_spent: bool,
     aventurine_state: AventurineState,
@@ -368,6 +369,7 @@ impl<'a> Battle<'a> {
                     huohuo_state: HuohuoState::default(),
                     argenti_apotheosis: 0,
                     saber_state: official::SaberState::default(),
+                    archer_state: official::ArcherState::default(),
                     crimson_knots: 0,
                     rebloom_spent: false,
                     aventurine_state: AventurineState::default(),
@@ -540,6 +542,17 @@ impl<'a> Battle<'a> {
             .is_some_and(|rules| rules.keeps_turn(command.action));
         let ends_turn = ultimate_cost_milli.is_none() && !keeps_turn;
         self.decision_index += 1;
+        if ends_turn
+            && mechanics
+                .as_ref()
+                .is_some_and(|rules| rules.ends_turn_without_ability(command.action))
+        {
+            self.emit(EventKind::Action(command.action), Some(actor), target);
+            self.end_retained_turn(actor);
+            self.resolve_aha_extra_turn();
+            self.resolve_wave_or_end();
+            return Ok(());
+        }
         if keeps_turn
             && mechanics
                 .as_ref()
@@ -601,6 +614,13 @@ impl<'a> Battle<'a> {
         } else if ends_turn {
             self.finish_turn(actor);
             self.ordinary_actor = None;
+        }
+        if let Some(retained) = self.ordinary_actor
+            && self
+                .mechanics(retained)
+                .is_some_and(|rules| rules.ends_retained_turn(self, retained))
+        {
+            self.end_retained_turn(retained);
         }
         self.notify_unit_action_finished(actor);
         self.resolve_aha_extra_turn();
@@ -1450,6 +1470,15 @@ impl<'a> Battle<'a> {
     fn restore_skill_points(&mut self, actor: usize, points: u8) -> u8 {
         let restored = points.min(self.skill_point_cap().saturating_sub(self.skill_points));
         self.set_skill_points(actor, self.skill_points + restored);
+        if restored > 0 {
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(rules) = self.mechanics(owner)
+                {
+                    rules.on_ally_skill_points_restored(self, owner);
+                }
+            }
+        }
         restored
     }
 

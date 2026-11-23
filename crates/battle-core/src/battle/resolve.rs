@@ -1196,6 +1196,13 @@ impl Battle<'_> {
             if self.units[actor].hp == 0 || !self.in_territory(actor) {
                 continue;
             }
+            let mechanics = self.mechanics(actor);
+            if mechanics
+                .as_ref()
+                .is_some_and(|rules| !rules.can_execute_follow_up(self, actor))
+            {
+                continue;
+            }
             let single = match targets {
                 FollowUpTargets::All | FollowUpTargets::Random { .. } => None,
                 FollowUpTargets::Single(unit)
@@ -1218,7 +1225,6 @@ impl Battle<'_> {
             let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
             let parent_debuff_targets = self.begin_debuff_action();
             self.begin_attack();
-            let mechanics = self.mechanics(actor);
             self.emit(EventKind::FollowUp, Some(actor), single);
             if let Some(mechanics) = &mechanics {
                 mechanics.before_follow_up(self, actor);

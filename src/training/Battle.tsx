@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import type { BattleView, Command, Unit } from './client';
-import { actionNames, av, outcomeNames, Timeline } from './Timeline';
+import { actionName, av, outcomeNames, Timeline } from './Timeline';
 
 type Props = {
   battle: BattleView;
@@ -229,7 +229,7 @@ function ActionForm({
                 setTarget('');
               }}
             >
-              <strong>{actionNames[command.action]}</strong>
+              <strong>{actionName(command.action, command.actor_id)}</strong>
               <span>{unitName(command.actor_id)}</span>
             </button>
           ))}
