@@ -142,23 +142,23 @@ pub(crate) fn weakness_break(
     break_damage_after_reduction(numerator, denominator, target)
 }
 
-/// Toughness uses the same scale as the rest of combat, with 10 for an ordinary Basic ATK.
+/// Toughness is measured in hundredths of the combat scale, with 1,000 for a Basic ATK.
 pub(crate) fn super_break(
     source: Stats,
     target: DamageTarget,
     element: Element,
-    toughness: u32,
+    toughness_hundredths: u32,
     ratio_bp: u16,
 ) -> u32 {
     let defense = defense_points(source.level);
     let numerator = break_base_x_bp(source.level)
-        * u128::from(toughness)
+        * u128::from(toughness_hundredths)
         * u128::from(ratio_bp)
         * (BP + u128::from(source.break_effect_bp))
         * defense
         * resist_factor(target, element)
         * (BP + u128::from(target.vulnerability_bp));
-    let denominator = 10 * BP.pow(4) * defense_factor(defense, target);
+    let denominator = 1_000 * BP.pow(4) * defense_factor(defense, target);
     break_damage_after_reduction(numerator, denominator, target)
 }
 

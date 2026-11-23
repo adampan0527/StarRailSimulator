@@ -77,6 +77,9 @@ const statusNames = {
   peerage: '爵位',
   darkest_riddle: '至暗之谜',
   bondmate: '同袍',
+  dance_partner: '共舞者',
+  dahlia_zone: '大丽花结界',
+  wilt: '败谢',
   ripples: '往昔的涟漪',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });

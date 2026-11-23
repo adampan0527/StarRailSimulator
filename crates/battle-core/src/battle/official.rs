@@ -16,6 +16,7 @@ mod cerydra;
 mod cipher;
 mod clara;
 mod cyrene;
+mod dahlia;
 mod dan_heng;
 mod dan_heng_il;
 mod dan_heng_permansor;
@@ -93,6 +94,7 @@ pub(super) use {
     cerydra::CerydraState,
     cipher::CipherState,
     cyrene::CyreneState,
+    dahlia::DahliaState,
     dan_heng_il::DanHengIlState,
     dan_heng_permansor::PermansorState,
     dr_ratio::DrRatioState,
@@ -1109,6 +1111,25 @@ pub(super) trait Mechanics: Send + Sync {
     ) {
     }
 
+    fn observes_weakness_implants(&self) -> bool {
+        false
+    }
+
+    fn on_weakness_implanted(&self, _battle: &mut Battle<'_>, _owner: usize, _source: usize) {}
+
+    fn provides_fixed_attack_toughness(&self) -> bool {
+        false
+    }
+
+    fn before_super_breaks(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _origin: Action,
+    ) {
+    }
+
     fn on_ally_attack(
         &self,
         _battle: &mut Battle<'_>,
@@ -1225,6 +1246,14 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn provides_super_break(&self) -> bool {
         false
+    }
+
+    fn allows_unbroken_super_break(&self, _battle: &Battle<'_>, _owner: usize) -> bool {
+        false
+    }
+
+    fn follow_up_hit_super_break_bp(&self) -> u16 {
+        0
     }
 
     fn super_break_multiplier_bp(
@@ -1691,6 +1720,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         firefly::FORM => Some(firefly::build),
         "character.1223" => Some(moze::build),
         fugue::FORM => Some(fugue::build),
+        dahlia::FORM => Some(dahlia::build),
         "character.1301" => Some(gallagher::build),
         argenti::FORM => Some(argenti::build),
         saber::FORM => Some(saber::build),

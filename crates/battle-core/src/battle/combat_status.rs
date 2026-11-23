@@ -12,6 +12,9 @@ pub(super) enum DebuffKind {
         resistance_down_bp: u16,
     },
     DefenseDown,
+    Wilt {
+        weaknesses: u8,
+    },
     DefenseBug,
     Vulnerability,
     WoesWhisper,
@@ -70,6 +73,7 @@ impl DebuffKind {
             Self::SkillImprisonment => StatusKind::Imprisoned,
             Self::Weightless { .. } => StatusKind::Weightless,
             Self::DefenseDown | Self::DefenseBug => StatusKind::DefenseDown,
+            Self::Wilt { .. } => StatusKind::Wilt,
             Self::Vulnerability => StatusKind::Vulnerability,
             Self::WoesWhisper => StatusKind::WoesWhisper,
             Self::DotVulnerability => StatusKind::DotVulnerability,
@@ -98,11 +102,19 @@ impl DebuffKind {
     pub(super) fn grants_weakness(self, element: Element) -> bool {
         match self {
             Self::Sublimation { .. } => true,
+            Self::Wilt { weaknesses } => weaknesses & (1 << element.index()) != 0,
             Self::ImplantedWeakness(weakness) | Self::AccumulatedWeakness(weakness) => {
                 weakness == element
             }
             _ => false,
         }
+    }
+
+    pub(super) fn reduces_defense(self) -> bool {
+        matches!(
+            self,
+            Self::DefenseDown | Self::DefenseBug | Self::Wilt { .. }
+        )
     }
 
     pub(super) fn reduces_resistance_to(self, element: Element) -> bool {
@@ -265,7 +277,7 @@ impl Battle<'_> {
                         (
                             DebuffKind::ImplantedWeakness(_),
                             DebuffKind::ImplantedWeakness(_)
-                        )
+                        ) | (DebuffKind::Wilt { .. }, DebuffKind::Wilt { .. })
                     ))
         }) {
             *current = updated;
@@ -278,7 +290,36 @@ impl Battle<'_> {
             Some(source),
             Some(target),
         );
+        if self.observes_weakness_implants
+            && matches!(
+                kind,
+                DebuffKind::ImplantedWeakness(_)
+                    | DebuffKind::AccumulatedWeakness(_)
+                    | DebuffKind::Wilt { .. }
+                    | DebuffKind::Sublimation { .. }
+            )
+            && self.is_party_unit(source)
+            && self.enemies().contains(&target)
+        {
+            self.notify_weakness_implanted(source, target);
+        }
         true
+    }
+
+    fn notify_weakness_implanted(&mut self, source: usize, target: usize) {
+        if (self.action.is_some() || self.in_follow_up())
+            && !self.attack_implants.contains(&(source, target))
+        {
+            self.attack_implants.push((source, target));
+        }
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(rules) = self.mechanics(owner)
+                && rules.observes_weakness_implants()
+            {
+                rules.on_weakness_implanted(self, owner, source);
+            }
+        }
     }
 
     pub(super) fn apply_break_slow(&mut self, actor: usize, target: usize) -> bool {
