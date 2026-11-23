@@ -55,6 +55,7 @@ mod qingque;
 mod rappa;
 mod robin;
 mod ruan_mei;
+mod saber;
 mod sampo;
 mod seele;
 mod serval;
@@ -113,6 +114,7 @@ pub(super) use {
     rappa::RappaState,
     robin::RobinState,
     ruan_mei::RuanMeiState,
+    saber::SaberState,
     seele::SeeleState,
     sparkle::SparkleState,
     sparxie::SparxieState,
@@ -487,6 +489,8 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn on_external_energy(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn on_energy_overflow(&self, _battle: &mut Battle<'_>, _actor: usize, _amount_milli: u32) {}
 
     fn on_ally_sustain(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
@@ -1644,6 +1648,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         fugue::FORM => Some(fugue::build),
         "character.1301" => Some(gallagher::build),
         argenti::FORM => Some(argenti::build),
+        saber::FORM => Some(saber::build),
         ruan_mei::FORM => Some(ruan_mei::build),
         aventurine::FORM => Some(aventurine::build),
         "character.1305" => Some(dr_ratio::build),

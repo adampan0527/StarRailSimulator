@@ -3375,6 +3375,11 @@ impl Battle<'_> {
             }
             return;
         }
+        let gain = self.adjusted_energy_gain(target, amount_milli);
+        self.restore_energy_flat(actor, target, gain);
+    }
+
+    pub(super) fn adjusted_energy_gain(&self, target: usize, amount_milli: u32) -> u32 {
         let bonus_bp = self.mechanics(target).map_or(0, |mechanics| {
             mechanics.energy_regeneration_bonus_bp(self, target)
         });
@@ -3382,13 +3387,7 @@ impl Battle<'_> {
             .stats
             .energy_regeneration_bp
             .saturating_add(bonus_bp);
-        let gain = u64::from(amount_milli) * u64::from(ratio) / 10_000;
-        let after = cap.min(
-            self.units[target]
-                .energy_milli
-                .saturating_add(saturating_stat(gain)),
-        );
-        self.set_energy(actor, target, after);
+        saturating_stat(u64::from(amount_milli) * u64::from(ratio) / 10_000)
     }
 
     pub(super) fn set_energy(&mut self, actor: usize, target: usize, after_milli: u32) {
