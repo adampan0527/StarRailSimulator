@@ -184,6 +184,7 @@ struct UnitState {
     blade_state: official::BladeState,
     mydei_state: official::MydeiState,
     aeon_aha_state: official::AeonAhaState,
+    elation_trailblazer_state: official::ElationTrailblazerState,
     elation_debt: u32,
     sparxie_state: official::SparxieState,
     gallagher_state: GallagherState,
@@ -362,6 +363,7 @@ impl<'a> Battle<'a> {
                     blade_state: official::BladeState::default(),
                     mydei_state: official::MydeiState::default(),
                     aeon_aha_state: official::AeonAhaState::default(),
+                    elation_trailblazer_state: official::ElationTrailblazerState::default(),
                     elation_debt: 0,
                     sparxie_state: official::SparxieState::default(),
                     gallagher_state: GallagherState::default(),
@@ -1440,6 +1442,9 @@ impl<'a> Battle<'a> {
     }
 
     fn resolve_wave_or_end(&mut self) {
+        if self.outcome != Outcome::Ongoing {
+            return;
+        }
         loop {
             if !self.allies().any(|unit| self.units[unit].hp > 0) {
                 self.end(Outcome::Defeat);
