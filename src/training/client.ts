@@ -176,6 +176,8 @@ type EventKind =
         | 'thrill'
         | 'cerydra_charge'
         | 'archer_charge'
+        | 'rin_gem_energy'
+        | 'rin_shadow_gem'
         | 'squama_sacrosancta'
         | 'jade_charge'
         | 'rappa_charge'

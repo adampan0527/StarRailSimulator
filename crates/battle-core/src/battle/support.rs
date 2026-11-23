@@ -15,6 +15,7 @@ pub(super) enum AllyBuffKind {
     CritOverflowRatio,
     Damage,
     ResistancePenetration,
+    ElementResistancePenetration(Element),
     DefenseIgnore {
         summon: bool,
     },
@@ -74,6 +75,7 @@ pub(super) struct OffenseBuffs {
     pub elation_bp: u32,
     pub merrymake_bp: u32,
     pub damage_bp: u32,
+    pub skill_damage_factor_bonus_bp: u32,
     pub crit_rate_bp: u32,
     pub crit_damage_bp: u32,
     pub crit_overflow_ratio_bp: u32,
@@ -119,6 +121,9 @@ impl OffenseBuffs {
         self.elation_bp = self.elation_bp.saturating_add(buff.elation_bp);
         self.merrymake_bp = self.merrymake_bp.saturating_add(buff.merrymake_bp);
         self.damage_bp = self.damage_bp.saturating_add(buff.damage_bp);
+        self.skill_damage_factor_bonus_bp = self
+            .skill_damage_factor_bonus_bp
+            .saturating_add(buff.skill_damage_factor_bonus_bp);
         self.crit_rate_bp = self.crit_rate_bp.saturating_add(buff.crit_rate_bp);
         self.crit_damage_bp = self.crit_damage_bp.saturating_add(buff.crit_damage_bp);
         self.crit_overflow_ratio_bp = self
@@ -193,7 +198,7 @@ impl Battle<'_> {
             source,
             kind,
             value,
-            expires_after_turn: state.normal_turns + turns,
+            expires_after_turn: state.normal_turns.saturating_add(turns),
             effect_id,
         };
         if let Some(slot) = state
@@ -370,6 +375,9 @@ impl Battle<'_> {
                 AllyBuffKind::CritOverflowRatio => &mut bonuses.crit_overflow_ratio_bp,
                 AllyBuffKind::Damage => &mut bonuses.damage_bp,
                 AllyBuffKind::ResistancePenetration => &mut bonuses.resistance_penetration_bp,
+                AllyBuffKind::ElementResistancePenetration(affected) if affected == element => {
+                    &mut bonuses.resistance_penetration_bp
+                }
                 AllyBuffKind::DefenseIgnore {
                     summon: applies_to_summon,
                 } if summon == applies_to_summon => &mut bonuses.defense_ignore_bp,
@@ -378,6 +386,7 @@ impl Battle<'_> {
                 | AllyBuffKind::SpeedPercent
                 | AllyBuffKind::EffectResistance
                 | AllyBuffKind::MaxHpFlat
+                | AllyBuffKind::ElementResistancePenetration(_)
                 | AllyBuffKind::DefenseIgnore { .. } => continue,
             };
             *total = total.saturating_add(buff.value);
@@ -461,6 +470,10 @@ impl Battle<'_> {
                 bonuses.defense_ignore_bp = bonuses
                     .defense_ignore_bp
                     .saturating_add(mechanics.ally_skill_defense_ignore_bp(self, source, target));
+                bonuses.skill_damage_factor_bonus_bp =
+                    bonuses.skill_damage_factor_bonus_bp.saturating_add(
+                        mechanics.ally_skill_damage_factor_bonus_bp(self, source, target),
+                    );
             }
             bonuses.damage_bp = bonuses
                 .damage_bp

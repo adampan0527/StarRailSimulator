@@ -203,6 +203,7 @@ struct UnitState {
     argenti_apotheosis: u8,
     saber_state: official::SaberState,
     archer_state: official::ArcherState,
+    rin_state: official::RinState,
     crimson_knots: u8,
     rebloom_spent: bool,
     aventurine_state: AventurineState,
@@ -381,6 +382,7 @@ impl<'a> Battle<'a> {
                     argenti_apotheosis: 0,
                     saber_state: official::SaberState::default(),
                     archer_state: official::ArcherState::default(),
+                    rin_state: official::RinState::default(),
                     crimson_knots: 0,
                     rebloom_spent: false,
                     aventurine_state: AventurineState::default(),
@@ -814,7 +816,9 @@ impl<'a> Battle<'a> {
             if self.ordinary_actor != Some(actor)
                 || self.mechanics(actor).is_some_and(|rules| match action {
                     Action::Basic => !rules.can_use_basic(self, actor),
-                    Action::Skill | Action::EnhancedSkill => !rules.can_use_skill(self, actor),
+                    Action::Skill | Action::EnhancedSkill => {
+                        !rules.can_use_skill_action(self, actor, action)
+                    }
                     Action::Ultimate | Action::EnhancedUltimate | Action::ElationSkill => false,
                 })
             {
@@ -1498,7 +1502,7 @@ impl<'a> Battle<'a> {
                 if self.is_targetable(owner)
                     && let Some(rules) = self.mechanics(owner)
                 {
-                    rules.on_ally_skill_points_restored(self, owner);
+                    rules.on_ally_skill_points_restored(self, owner, actor, restored);
                 }
             }
         }

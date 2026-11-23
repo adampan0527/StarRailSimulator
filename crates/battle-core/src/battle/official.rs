@@ -57,6 +57,7 @@ mod pela;
 mod phainon;
 mod qingque;
 mod rappa;
+mod rin;
 mod robin;
 mod ruan_mei;
 mod saber;
@@ -120,6 +121,7 @@ pub(super) use {
     phainon::PhainonState,
     qingque::QingqueState,
     rappa::RappaState,
+    rin::RinState,
     robin::RobinState,
     ruan_mei::RuanMeiState,
     saber::SaberState,
@@ -559,6 +561,10 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn can_use_skill(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         true
+    }
+
+    fn can_use_skill_action(&self, battle: &Battle<'_>, actor: usize, _action: Action) -> bool {
+        self.can_use_skill(battle, actor)
     }
 
     fn can_use_basic(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
@@ -1438,7 +1444,14 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
-    fn on_ally_skill_points_restored(&self, _battle: &mut Battle<'_>, _owner: usize) {}
+    fn on_ally_skill_points_restored(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _points: u8,
+    ) {
+    }
 
     fn on_ally_skill_points_spent(
         &self,
@@ -1488,6 +1501,15 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn ally_skill_damage_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+    ) -> u32 {
+        0
+    }
+
+    fn ally_skill_damage_factor_bonus_bp(
         &self,
         _battle: &Battle<'_>,
         _owner: usize,
@@ -1719,6 +1741,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
         aeon_aha::FORM => Some(aeon_aha::build),
         archer::FORM => Some(archer::build),
+        rin::FORM => Some(rin::build),
         aglaea::FORM => Some(aglaea::build),
         "character.1003" => Some(himeko::build),
         sparxie::FORM => Some(sparxie::build),

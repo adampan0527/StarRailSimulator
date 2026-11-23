@@ -179,6 +179,10 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
       return '军功充能';
     case 'archer_charge':
       return 'Archer 充能';
+    case 'rin_gem_energy':
+      return '宝石能量';
+    case 'rin_shadow_gem':
+      return '影子宝石';
     case 'squama_sacrosancta':
       return '逆鳞变化';
     case 'debt_collector':
@@ -262,6 +266,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'cerydra_charge':
     case 'recollection':
     case 'archer_charge':
+    case 'rin_gem_energy':
+    case 'rin_shadow_gem':
     case 'memoria':
     case 'newbud':
     case 'coreflame':
