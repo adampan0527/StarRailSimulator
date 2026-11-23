@@ -38,6 +38,7 @@ pub(in crate::battle) struct MydeiState {
     healing_charge_milli: u32,
     godslayer_queued: bool,
     godslayer_running: bool,
+    cyrene_godslayer_crit_bp: u32,
     kingslayer_target: Option<usize>,
     godslayer_target: Option<usize>,
     marked_target: Option<usize>,
@@ -289,6 +290,33 @@ impl Mydei {
 }
 
 impl Mechanics for Mydei {
+    fn cyrene_ode_applied(
+        &self,
+        battle: &mut Battle<'_>,
+        _: usize,
+        actor: usize,
+        parameters: [u32; 4],
+    ) {
+        if !battle.units[actor].mydei_state.vendetta {
+            battle.advance_ally_immediate(actor, actor);
+            return;
+        }
+        let target = battle.units[actor]
+            .mydei_state
+            .marked_target
+            .filter(|&target| battle.is_targetable(target))
+            .or_else(|| battle.random_living_enemy());
+        if let Some(target) = target {
+            battle.units[actor].mydei_state.cyrene_godslayer_crit_bp = parameters[0];
+            battle.emit(
+                EventKind::MydeiEnhancedSkill { godslayer: true },
+                Some(actor),
+                Some(target),
+            );
+            battle.perform_triggered_skill(actor, target, self.godslayer.resolve().0);
+            battle.units[actor].mydei_state.cyrene_godslayer_crit_bp = 0;
+        }
+    }
     fn on_battle_start(&self, battle: &mut Battle<'_>, actor: usize) {
         if self.bloodied_chiton {
             battle.units[actor].mydei_state.chiton_steps = battle
@@ -542,7 +570,8 @@ impl Mechanics for Mydei {
         _: Option<Action>,
         _: DamageKind,
     ) -> u32 {
-        u32::from(self.eidolon >= 4 && battle.units[actor].mydei_state.vendetta) * 3_000
+        let state = &battle.units[actor].mydei_state;
+        u32::from(self.eidolon >= 4 && state.vendetta) * 3_000 + state.cyrene_godslayer_crit_bp
     }
 
     fn defense_ignore_bp(&self, battle: &Battle<'_>, actor: usize, _: usize) -> u32 {

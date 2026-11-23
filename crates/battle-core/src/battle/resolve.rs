@@ -1819,6 +1819,31 @@ impl Battle<'_> {
         );
     }
 
+    pub(super) fn secondary_hit_from_fixed_base(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        base_bp: u64,
+        origin: Action,
+        provider: usize,
+    ) {
+        self.strike_scaled(
+            actor,
+            target,
+            DamageKind::Additional,
+            Hit {
+                element,
+                multiplier_bp: 10_000,
+                toughness: 0,
+                origin: Some(origin),
+                scale: DamageScale::FixedBase(base_bp),
+            },
+            10_000,
+            Some(provider),
+        );
+    }
+
     pub(super) fn fixed_critical_additional_hit(
         &mut self,
         actor: usize,

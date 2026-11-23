@@ -48,6 +48,7 @@ pub(in crate::battle) struct RemembranceTrailblazerState {
     energy_remainder_milli: u32,
     summoned_once: bool,
     epic: u8,
+    cyrene_joint_basic: bool,
     other_sprite_energy_turn: Option<u32>,
     support: Option<Support>,
 }
@@ -314,6 +315,14 @@ impl RemembranceTrailblazer {
     }
 }
 
+pub(super) fn take_cyrene_joint_basic(battle: &mut Battle<'_>, owner: usize) -> bool {
+    std::mem::take(
+        &mut battle.units[owner]
+            .remembrance_trailblazer_state
+            .cyrene_joint_basic,
+    )
+}
+
 impl Mechanics for RemembranceTrailblazer {
     fn memosprite_profile(&self, master: Stats) -> Option<MemospriteProfile> {
         let hp = percentage_of(master.hp, self.mem_hp_ratio_bp).saturating_add(self.mem_hp_base);
@@ -343,6 +352,11 @@ impl Mechanics for RemembranceTrailblazer {
         action: Action,
         _: Option<usize>,
     ) {
+        if action == Action::Basic {
+            battle.units[owner]
+                .remembrance_trailblazer_state
+                .cyrene_joint_basic = false;
+        }
         if action == Action::Skill {
             if let Some(sprite) = battle.active_memosprite(owner) {
                 let amount = percentage_of(battle.effective_max_hp(sprite), self.skill_heal_bp);
@@ -392,7 +406,9 @@ impl Mechanics for RemembranceTrailblazer {
                 let Some(sprite) = battle.active_memosprite(owner) else {
                     return;
                 };
-                let epic = battle.units[owner].remembrance_trailblazer_state.epic;
+                let state = &mut battle.units[owner].remembrance_trailblazer_state;
+                state.cyrene_joint_basic = true;
+                let epic = state.epic;
                 self.set_epic(battle, owner, epic - 1);
                 battle.cleanse_crowd_control(owner, sprite);
                 for target in battle.enemies() {

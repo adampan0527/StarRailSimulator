@@ -55,6 +55,10 @@ struct Cipher {
     follow_up: FollowUpAttack,
 }
 
+pub(super) fn is_patron(battle: &Battle<'_>, owner: usize, target: usize) -> bool {
+    battle.units[owner].cipher_state.patron == Some(target)
+}
+
 pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleError> {
     if input.energy_capacity != ENERGY_CAPACITY
         || input.eidolon > 6

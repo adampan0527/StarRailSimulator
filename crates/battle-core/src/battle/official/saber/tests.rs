@@ -17,7 +17,11 @@ const FINITE: EnemyKit = EnemyKit {
     hit_energy_milli: 0,
 };
 
-fn saber(eidolon: u8, traces: &[&str], low_level: bool) -> OfficialCharacter {
+pub(in crate::battle::official) fn saber(
+    eidolon: u8,
+    traces: &[&str],
+    low_level: bool,
+) -> OfficialCharacter {
     let [
         basic,
         skill,

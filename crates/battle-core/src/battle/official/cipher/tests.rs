@@ -152,6 +152,7 @@ fn finite_plan(team: &[OfficialCharacter], waves: &[&[u32]]) -> PreparedBattle {
     for (wave, enemies) in waves.iter().enumerate() {
         for (position, &hp) in enemies.iter().enumerate() {
             prepared.units.push(UnitPlan {
+                official_form: None,
                 id: format!("enemy.{wave}.{position}"),
                 combat_type: None,
                 has_control_resistance: false,

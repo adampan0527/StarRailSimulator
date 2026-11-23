@@ -52,6 +52,7 @@ impl Kit {
 #[derive(Clone)]
 pub(super) struct UnitPlan {
     pub id: String,
+    pub official_form: Option<String>,
     pub combat_type: Option<CombatType>,
     pub has_control_resistance: bool,
     pub elation_bp: u32,
@@ -98,6 +99,7 @@ impl PreparedBattle {
             let starting_energy_milli = kit.max_energy_milli / 2;
             units.push(UnitPlan {
                 id: character.unit_id.clone(),
+                official_form: Some(character.form_id.clone()),
                 combat_type: Some(character.combat_type),
                 has_control_resistance: false,
                 elation_bp: character.stats.elation_bp,
@@ -180,6 +182,7 @@ impl PreparedBattle {
             }
             units.push(UnitPlan {
                 combat_type: None,
+                official_form: None,
                 has_control_resistance: false,
                 elation_bp: 0,
                 id,
@@ -195,6 +198,7 @@ impl PreparedBattle {
                 let kit = fixture::enemy(&enemy.enemy_id, enemy.level)?;
                 units.push(UnitPlan {
                     combat_type: None,
+                    official_form: None,
                     has_control_resistance: false,
                     elation_bp: 0,
                     id,
@@ -234,6 +238,7 @@ impl PreparedBattle {
                 .enumerate()
                 .map(|(position, &max_toughness)| UnitPlan {
                     combat_type: None,
+                    official_form: None,
                     has_control_resistance: false,
                     elation_bp: 0,
                     // The colon keeps internal analysis IDs distinct from input unit IDs.
@@ -254,6 +259,7 @@ impl PreparedBattle {
             };
             units.push(UnitPlan {
                 id: format!("{}:{}", master.id, profile.name),
+                official_form: None,
                 combat_type: master.combat_type,
                 has_control_resistance: false,
                 elation_bp: master.elation_bp,

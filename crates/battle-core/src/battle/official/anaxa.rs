@@ -33,7 +33,48 @@ const IMPLANT_TURNS: u32 = 3;
 #[derive(Clone, Copy, Default)]
 pub(in crate::battle) struct AnaxaState {
     first_skill_used: bool,
+    cyrene_reason: Option<CyreneReason>,
     skill_damage_bonus_bp: u32,
+}
+
+#[derive(Clone, Copy)]
+struct CyreneReason {
+    source: usize,
+    extra_hits: u8,
+    skill_damage_bp: u32,
+    attack_bp: u32,
+    expires: u32,
+    knowledge: bool,
+}
+
+pub(super) fn apply_cyrene_reason(
+    battle: &mut Battle<'_>,
+    source: usize,
+    actor: usize,
+    values: [u32; 4],
+) {
+    battle.units[actor].anaxa_state.cyrene_reason = Some(CyreneReason {
+        source,
+        extra_hits: values[0] as u8,
+        skill_damage_bp: values[1],
+        attack_bp: values[2],
+        expires: battle.units[actor].normal_turns + 2,
+        knowledge: false,
+    });
+}
+
+pub(super) fn cyrene_knowledge(battle: &Battle<'_>, source: usize) -> Option<(u32, u32)> {
+    battle.allies().find_map(|actor| {
+        battle.units[actor]
+            .anaxa_state
+            .cyrene_reason
+            .filter(|reason| {
+                reason.source == source
+                    && reason.knowledge
+                    && battle.units[actor].normal_turns < reason.expires
+            })
+            .map(|reason| (reason.attack_bp, reason.skill_damage_bp))
+    })
 }
 
 struct Anaxa {
@@ -210,6 +251,15 @@ impl Mechanics for Anaxa {
         action: Action,
         target: Option<usize>,
     ) {
+        let turn = battle.units[actor].normal_turns;
+        if matches!(action, Action::Basic | Action::Skill)
+            && let Some(reason) = &mut battle.units[actor].anaxa_state.cyrene_reason
+            && turn < reason.expires
+            && !reason.knowledge
+        {
+            reason.knowledge = true;
+            reason.expires = turn + 1;
+        }
         match action {
             Action::Basic | Action::Skill => {
                 if let Some(target) = target.filter(|&target| disclosed(battle, target)) {
@@ -283,12 +333,18 @@ impl Mechanics for Anaxa {
 
         let mut hit_targets = Vec::with_capacity(usize::from(SKILL_BOUNCES) + 1);
         let mut target = target;
-        for segment in 0..=SKILL_BOUNCES {
+        let extra = battle.units[actor]
+            .anaxa_state
+            .cyrene_reason
+            .filter(|reason| battle.units[actor].normal_turns < reason.expires)
+            .map_or(0, |reason| reason.extra_hits);
+        let bounces = SKILL_BOUNCES + extra;
+        for segment in 0..=bounces {
             let toughness = if segment == 0 { 10 } else { 5 };
             battle.attack_hit(actor, target, WIND, self.skill_hit_bp, toughness);
             battle.gain_energy(actor, actor, SKILL_HIT_ENERGY_MILLI);
             hit_targets.push(target);
-            if segment == SKILL_BOUNCES {
+            if segment == bounces {
                 break;
             }
 

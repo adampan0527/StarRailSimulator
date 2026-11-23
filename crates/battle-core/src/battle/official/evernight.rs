@@ -17,6 +17,7 @@ mod tests;
 pub(super) const FORM: &str = "character.1413";
 const BASIC: &str = "skill.141301";
 const SKILL: &str = "skill.141302";
+const TIME_SKILL: &str = "skill.141309";
 const ULTIMATE: &str = "skill.141303";
 const TALENT: &str = "skill.141304";
 const EVEY_SKILL: &str = "skill.1141301";
@@ -73,6 +74,10 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
     }
     let basic = input.parameters(BASIC, 1)?;
     let skill = input.parameters(SKILL, 6)?;
+    let time_skill = input
+        .skill_parameters
+        .get(TIME_SKILL)
+        .map_or(Ok(skill), |_| input.parameters(TIME_SKILL, 6))?;
     let ult = input.parameters(ULTIMATE, 4)?;
     let talent = input.parameters(TALENT, 7)?;
     let evey = input.parameters(EVEY_SKILL, 4)?;
@@ -80,6 +85,7 @@ pub(super) fn build(input: &OfficialCharacter) -> Result<OfficialKit, BattleErro
     let departure = input.parameters(EVEY_DEPARTURE, 3)?;
     let burst = input.parameters(EVEY_BURST, 3)?;
     if skill[1..] != [2.0, 2.0, 0.5, 12.0, 0.1]
+        || time_skill[1..] != skill[1..]
         || ult[1] != 2.0
         || talent[0] != 2.0
         || talent[2..6] != [2.0, 160.0, 0.5, f64::from(MEMORIA_THRESHOLD)]
@@ -212,10 +218,11 @@ impl Evernight {
             battle.heal_unit(owner, sprite, healing);
         }
         let turn = battle.units[owner].normal_turns;
-        let crit = percentage_of(
-            battle.effective_crit_damage_bp(owner),
-            u32::from(self.skill_crit_ratio_bp),
-        );
+        let ode = super::cyrene::time_ode(battle, owner);
+        let ratio = ode.map_or(u32::from(self.skill_crit_ratio_bp), |ode| {
+            u32::from(self.skill_crit_ratio_bp) + ode.crit_ratio_bp
+        });
+        let crit = percentage_of(battle.effective_crit_damage_bp(owner), ratio);
         battle.units[owner].evernight_state.skill_until = turn + 2;
         battle.units[owner].evernight_state.skill_crit_bp = crit;
         self.gain_memoria(battle, owner, 2);
@@ -359,6 +366,20 @@ impl Mechanics for Evernight {
         }
         if action == Action::Skill {
             self.cast_skill(battle, owner);
+        }
+    }
+
+    fn after_action(
+        &self,
+        battle: &mut Battle<'_>,
+        owner: usize,
+        action: Action,
+        _: Option<usize>,
+    ) {
+        if matches!(action, Action::Skill | Action::Ultimate)
+            && let Some(ode) = super::cyrene::time_ode(battle, owner)
+        {
+            self.gain_memoria(battle, owner, ode.memoria);
         }
     }
 

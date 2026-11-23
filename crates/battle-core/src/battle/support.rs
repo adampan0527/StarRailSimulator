@@ -440,6 +440,9 @@ impl Battle<'_> {
                 .crit_damage_bp
                 .saturating_add(mechanics.ally_crit_damage_bonus_bp(self, source, target));
             if direct_skill {
+                bonuses.damage_bp = bonuses
+                    .damage_bp
+                    .saturating_add(mechanics.ally_skill_damage_bonus_bp(self, source, target));
                 bonuses.crit_damage_bp = bonuses
                     .crit_damage_bp
                     .saturating_add(mechanics.ally_skill_crit_damage_bp(self, source, target));

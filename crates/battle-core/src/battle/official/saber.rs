@@ -11,7 +11,7 @@ use super::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
 
 pub(super) const FORM: &str = "character.1014";
 const BASIC: &str = "skill.101401";

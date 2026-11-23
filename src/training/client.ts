@@ -118,7 +118,8 @@ type Status =
   | 'military_merit'
   | 'peerage'
   | 'darkest_riddle'
-  | 'bondmate';
+  | 'bondmate'
+  | 'ripples';
 type EventKind =
   | {
       event:
@@ -155,6 +156,7 @@ type EventKind =
         | 'blade_charge'
         | 'memosprite_charge'
         | 'memoria'
+        | 'recollection'
         | 'newbud'
         | 'coreflame'
         | 'scourge'

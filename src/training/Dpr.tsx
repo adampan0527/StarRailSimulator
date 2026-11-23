@@ -9,6 +9,7 @@ const memospriteNames = new Map([
   ['character.1402:garmentmaker', '衣匠'],
   ['character.1407:netherwing', '死龙'],
   ['character.1413:evey', '长夜'],
+  ['character.1415:demiurge', '德谬歌'],
   ['character.1409:little-ica', '小伊卡'],
 ]);
 

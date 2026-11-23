@@ -172,6 +172,12 @@ impl Feixiao {
 }
 
 impl Mechanics for Feixiao {
+    fn activate_special_ultimate(&self, battle: &mut Battle<'_>, owner: usize) {
+        let missing =
+            ULTIMATE_COST_HALVES.saturating_sub(battle.units[owner].feixiao_state.aureus_halves);
+        Self::change_aureus(battle, owner, owner, missing as i8);
+    }
+
     fn alternate_ultimate_resource_ready(&self, battle: &Battle<'_>, actor: usize) -> Option<bool> {
         Some(battle.units[actor].feixiao_state.aureus_halves >= ULTIMATE_COST_HALVES)
     }

@@ -87,6 +87,7 @@ fn finite_plan(team: &[OfficialCharacter], enemies: &[(&'static EnemyKit, u32)])
     plan.units.truncate(plan.ally_count);
     for (position, &(kit, hp)) in enemies.iter().enumerate() {
         plan.units.push(UnitPlan {
+            official_form: None,
             id: format!("enemy.{position}"),
             combat_type: None,
             has_control_resistance: false,
