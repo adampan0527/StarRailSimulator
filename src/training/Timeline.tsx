@@ -71,6 +71,7 @@ const statusNames = {
   peerage: '爵位',
   darkest_riddle: '至暗之谜',
   bondmate: '同袍',
+  ripples: '往昔的涟漪',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
@@ -130,6 +131,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '倏忽恩赐充能';
     case 'memosprite_charge':
       return '忆灵充能';
+    case 'recollection':
+      return '追忆变化';
     case 'memoria':
       return '忆质变化';
     case 'newbud':
@@ -226,6 +229,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'chroma_ink':
     case 'pawned_asset':
     case 'cerydra_charge':
+    case 'recollection':
     case 'memoria':
     case 'newbud':
     case 'coreflame':

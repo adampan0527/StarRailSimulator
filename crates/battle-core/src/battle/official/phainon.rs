@@ -41,6 +41,7 @@ pub(in crate::battle) struct PhainonState {
     soulscorch: u8,
     sustain_turn: Option<u32>,
     verdict_damage: Option<u64>,
+    cyrene_crit_damage_bp: u32,
 }
 
 struct Phainon {
@@ -290,8 +291,17 @@ impl Phainon {
             battle.close_turn_before_suspension(current);
             battle.reset_gauge(current);
         }
+        let overflow = battle.units[actor]
+            .phainon_state
+            .coreflame
+            .saturating_sub(CORE_CAP);
+        let cyrene_crit_bonus = super::cyrene::active_ode_parameters(battle, actor, FORM)
+            .map_or(0, |(_, values)| {
+                overflow.saturating_mul(values[4]).min(values[5])
+            });
         let state = &mut battle.units[actor].phainon_state;
-        state.saved_coreflame = state.coreflame - CORE_CAP;
+        state.saved_coreflame = overflow;
+        state.cyrene_crit_damage_bp = cyrene_crit_bonus;
         state.remaining_turns = self.countdown_turns;
         Self::set_coreflame(battle, actor, 0);
         Self::set_scourge(battle, actor, self.starting_scourge);
@@ -491,6 +501,94 @@ impl Mechanics for Phainon {
         self.stack_valor(battle, actor);
     }
 
+    fn activate_special_ultimate(&self, battle: &mut Battle<'_>, actor: usize) {
+        if !transformed(battle, actor) {
+            self.gain_coreflame(
+                battle,
+                actor,
+                CORE_CAP.saturating_sub(battle.units[actor].phainon_state.coreflame),
+            );
+        }
+    }
+
+    fn cyrene_ode_applied(
+        &self,
+        battle: &mut Battle<'_>,
+        _: usize,
+        actor: usize,
+        parameters: [u32; 4],
+    ) {
+        self.gain_coreflame(battle, actor, parameters[0]);
+    }
+
+    fn on_extra_turn_start(&self, battle: &mut Battle<'_>, actor: usize) {
+        if transformed(battle, actor)
+            && let Some((_, parameters)) = super::cyrene::active_ode_parameters(battle, actor, FORM)
+        {
+            let cost = percentage_of(battle.units[actor].hp, parameters[1]);
+            battle.spend_hp(actor, cost, 1);
+        }
+    }
+
+    fn on_ally_attack(
+        &self,
+        battle: &mut Battle<'_>,
+        owner: usize,
+        actor: usize,
+        origin: Action,
+        _: Option<usize>,
+    ) {
+        if actor == owner
+            && transformed(battle, owner)
+            && let Some((source, parameters)) =
+                super::cyrene::active_ode_parameters(battle, owner, FORM)
+        {
+            for _ in 0..parameters[2] {
+                let Some(enemy) = battle.random_living_enemy() else {
+                    break;
+                };
+                battle.secondary_hit_with_credit(
+                    owner,
+                    enemy,
+                    Element::Fire,
+                    parameters[3] as u16,
+                    origin,
+                    source,
+                );
+            }
+        }
+    }
+
+    fn crit_rate_bonus_bp(
+        &self,
+        battle: &Battle<'_>,
+        actor: usize,
+        _: usize,
+        _: Option<Action>,
+        _: DamageKind,
+    ) -> u32 {
+        if transformed(battle, actor) {
+            return super::cyrene::active_ode_parameters(battle, actor, FORM)
+                .map_or(0, |(_, parameters)| parameters[0]);
+        }
+        0
+    }
+
+    fn crit_damage_bonus_bp(
+        &self,
+        battle: &Battle<'_>,
+        actor: usize,
+        _: usize,
+        _: Option<Action>,
+        _: DamageKind,
+    ) -> u32 {
+        if transformed(battle, actor) {
+            battle.units[actor].phainon_state.cyrene_crit_damage_bp
+        } else {
+            0
+        }
+    }
+
     fn alternate_ultimate_resource_ready(&self, battle: &Battle<'_>, actor: usize) -> Option<bool> {
         Some(!transformed(battle, actor) && battle.units[actor].phainon_state.coreflame >= CORE_CAP)
     }
@@ -565,11 +663,16 @@ impl Mechanics for Phainon {
         let state = &mut battle.units[actor].phainon_state;
         state.remaining_turns -= 1;
         if state.remaining_turns == 0 {
-            self.last_hit(battle, actor, false);
-        } else {
-            self.schedule(battle, actor, GAUGE_FULL);
-            battle.queue_extra_turn(actor);
+            let Some((_, parameters)) = super::cyrene::active_ode_parameters(battle, actor, FORM)
+            else {
+                self.last_hit(battle, actor, false);
+                return;
+            };
+            battle.units[actor].phainon_state.remaining_turns = self.countdown_turns;
+            Self::gain_scourge(battle, actor, parameters[7] as u8);
         }
+        self.schedule(battle, actor, GAUGE_FULL);
+        battle.queue_extra_turn(actor);
     }
 
     fn on_ally_targeted(&self, battle: &mut Battle<'_>, actor: usize, source: usize, _: Action) {

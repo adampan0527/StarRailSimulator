@@ -372,3 +372,29 @@ fn finite_wave_clear_preserves_dragon_and_its_next_turn_acceleration() {
     assert_eq!(battle.active_memosprite(0), Some(sprite));
     assert_eq!(battle.speed_micros(sprite), 330_000_000);
 }
+
+#[test]
+fn cyrene_death_ode_caps_overflow_and_snapshots_the_two_enemy_detonation_bonus() {
+    let cyrene = super::super::cyrene::tests::cyrene(0);
+    let prepared = PreparedBattle::official_dpr(&[castorice(0, &[]), cyrene], 42, 3)
+        .unwrap()
+        .with_dummies(&[1_000; 2])
+        .unwrap();
+    let mut battle = Battle::start(&prepared, LogMode::Detailed);
+    super::super::cyrene::set_recollection(&mut battle, 1, 24);
+    battle
+        .resolve_command(&Command {
+            decision_index: battle.decision_index,
+            actor_id: "character.1415".into(),
+            action: Action::EnhancedUltimate,
+            target_id: Some(FORM.into()),
+        })
+        .unwrap();
+    assert_eq!(battle.units[0].castorice_state.newbud, NEWBUD_CAP);
+
+    Castorice::gain_newbud(&mut battle, 0, 2 * NEWBUD_CAP);
+    assert_eq!(battle.units[0].castorice_state.newbud, 2 * NEWBUD_CAP);
+    resolve(&mut battle, Action::Ultimate, None);
+    assert_eq!(battle.units[0].castorice_state.newbud, 0);
+    assert_eq!(battle.units[0].castorice_state.cyrene_detonation_bp, 2_448);
+}

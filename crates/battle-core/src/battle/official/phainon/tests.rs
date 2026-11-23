@@ -423,3 +423,43 @@ fn fixed_dpr_replays_the_transformation_with_conserved_attribution() {
             .sum::<u64>()
     );
 }
+
+#[test]
+fn cyrene_worldbearing_ode_keeps_the_territory_and_refreshes_extra_turns() {
+    let role = character(0, &[OBLIVION]);
+    let cyrene = super::super::cyrene::tests::cyrene(0);
+    let prepared = plan(&[role, cyrene], &[1_000; 3]);
+    let mut battle = Battle::start(&prepared, LogMode::Detailed);
+    super::super::cyrene::set_recollection(&mut battle, 1, 24);
+    let command = Command {
+        decision_index: battle.decision_index,
+        actor_id: "character.1415".into(),
+        action: Action::EnhancedUltimate,
+        target_id: Some(FORM.into()),
+    };
+    assert!(battle.legal_actions().contains(&command));
+    battle.resolve_command(&command).unwrap();
+    assert_eq!(battle.units[0].phainon_state.coreflame, 15);
+
+    battle
+        .resolve_command(&Command {
+            decision_index: battle.decision_index,
+            actor_id: FORM.into(),
+            action: Action::Ultimate,
+            target_id: None,
+        })
+        .unwrap();
+    assert_eq!(battle.units[0].phainon_state.cyrene_crit_damage_bp, 3_600);
+    let rules = battle.mechanics(0).unwrap();
+    let before = battle.units[0].hp;
+    rules.on_extra_turn_start(&mut battle, 0);
+    assert_eq!(battle.units[0].hp, before - percentage_of(before, 1_500));
+
+    let turns = battle.units[0].phainon_state.remaining_turns;
+    Phainon::set_scourge(&mut battle, 0, 0);
+    battle.units[0].phainon_state.remaining_turns = 1;
+    rules.on_countdown_turn(&mut battle, 0);
+    assert!(transformed(&battle, 0));
+    assert_eq!(battle.units[0].phainon_state.scourge, 4);
+    assert_eq!(battle.units[0].phainon_state.remaining_turns, turns);
+}

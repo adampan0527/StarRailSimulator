@@ -68,6 +68,7 @@ fn finite_plan(input: OfficialCharacter, hit_points: &[u32]) -> PreparedBattle {
         let mut stats = ICE_WEAK_ENEMY.stats;
         stats.hp = hp;
         plan.units.push(UnitPlan {
+            official_form: None,
             combat_type: None,
             has_control_resistance: false,
             elation_bp: 0,

@@ -14,6 +14,7 @@ mod castorice;
 mod cerydra;
 mod cipher;
 mod clara;
+mod cyrene;
 mod dan_heng;
 mod dan_heng_il;
 mod dan_heng_permansor;
@@ -88,6 +89,7 @@ pub(super) use {
     castorice::CastoriceState,
     cerydra::CerydraState,
     cipher::CipherState,
+    cyrene::CyreneState,
     dan_heng_il::DanHengIlState,
     dan_heng_permansor::PermansorState,
     dr_ratio::DrRatioState,
@@ -235,7 +237,7 @@ impl OfficialCharacter {
             || (self.energy_capacity == 0
                 && !matches!(
                     self.form_id.as_str(),
-                    acheron::FORM | castorice::FORM | feixiao::FORM | phainon::FORM
+                    acheron::FORM | castorice::FORM | cyrene::FORM | feixiao::FORM | phainon::FORM
                 ))
             || self.energy_capacity > 999
             || stats.hp == 0
@@ -515,6 +517,21 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn can_use_ultimate(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         true
+    }
+
+    fn activate_special_ultimate(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn cyrene_ode_applied(
+        &self,
+        _battle: &mut Battle<'_>,
+        _source: usize,
+        _actor: usize,
+        _parameters: [u32; 4],
+    ) {
+    }
+
+    fn cyrene_ode_parameters(&self, _form: &str) -> Option<[u32; 8]> {
+        None
     }
 
     /// Suppresses scheduling and commands without preventing other units targeting the actor.
@@ -1377,6 +1394,15 @@ pub(super) trait Mechanics: Send + Sync {
         false
     }
 
+    fn ally_skill_damage_bonus_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+    ) -> u32 {
+        0
+    }
+
     fn ally_skill_crit_damage_bp(&self, _battle: &Battle<'_>, _owner: usize, _actor: usize) -> u32 {
         0
     }
@@ -1665,6 +1691,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         castorice::FORM => Some(castorice::build),
         hyacine::FORM => Some(hyacine::build),
         evernight::FORM => Some(evernight::build),
+        cyrene::FORM => Some(cyrene::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),
         "dan_heng.hunt" => Some(dan_heng::build),

@@ -32,6 +32,7 @@ const ENERGY_CAPACITY: u32 = 110;
 
 #[derive(Clone, Default)]
 pub(in crate::battle) struct HysilensState {
+    cyrene_ocean_energy_milli: u32,
     zone_until: Option<u32>,
     echoes: Vec<ZoneEcho>,
 }
@@ -236,7 +237,43 @@ impl Hysilens {
     }
 }
 
+pub(super) fn apply_cyrene_ocean(battle: &mut Battle<'_>, owner: usize, energy_milli: u32) {
+    battle.units[owner].hysilens_state.cyrene_ocean_energy_milli = energy_milli;
+}
+
 impl Mechanics for Hysilens {
+    fn on_ally_attack(
+        &self,
+        battle: &mut Battle<'_>,
+        owner: usize,
+        actor: usize,
+        origin: Action,
+        _: Option<usize>,
+    ) {
+        if actor != owner || battle.attack_targets().is_empty() {
+            return;
+        }
+        let energy =
+            std::mem::take(&mut battle.units[owner].hysilens_state.cyrene_ocean_energy_milli);
+        if energy > 0 {
+            battle.gain_energy(owner, owner, energy);
+        }
+        if let Some((_, parameters)) = super::cyrene::active_ode_parameters(battle, owner, FORM) {
+            let ratio = match origin {
+                Action::Basic => parameters[1],
+                Action::Skill | Action::EnhancedSkill => parameters[2],
+                _ => 0,
+            };
+            if ratio == 0 {
+                return;
+            }
+            for target in battle.attack_targets().to_vec() {
+                if battle.is_targetable(target) {
+                    battle.detonate_all_dots(owner, target, ratio as u16, origin);
+                }
+            }
+        }
+    }
     fn on_battle_start(&self, battle: &mut Battle<'_>, owner: usize) {
         if self.gladius {
             self.open_zone(battle, owner);

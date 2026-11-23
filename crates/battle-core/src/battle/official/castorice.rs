@@ -40,6 +40,7 @@ const WEST_WIND: &str = "trace.1407103";
 #[derive(Clone, Default)]
 pub(in crate::battle) struct CastoriceState {
     newbud: u32,
+    cyrene_detonation_bp: u32,
     talent_stacks: u32,
     talent_until: u32,
     dragon_turn_at_summon: u32,
@@ -205,7 +206,8 @@ fn ratio(id: &str, value: f64) -> Result<u16, BattleError> {
 
 impl Castorice {
     fn set_newbud(battle: &mut Battle<'_>, owner: usize, newbud: u32) {
-        let after = newbud.min(NEWBUD_CAP);
+        let overflow = super::cyrene::active_ode_parameters(battle, owner, FORM).is_some();
+        let after = newbud.min(NEWBUD_CAP * (1 + u32::from(overflow)));
         let before = std::mem::replace(&mut battle.units[owner].castorice_state.newbud, after);
         if before != after {
             battle.emit(EventKind::Newbud { before, after }, Some(owner), None);
@@ -306,13 +308,22 @@ impl Castorice {
     }
 
     fn detonate(&self, battle: &mut Battle<'_>, owner: usize, sprite: usize) {
+        let multiplier = u32::from(self.detonation_bp)
+            + battle.units[owner].castorice_state.cyrene_detonation_bp;
         battle.begin_attack();
         battle.emit(EventKind::TriggeredSkill, Some(sprite), None);
         for _ in 0..self.detonation_hits + 3 * u32::from(self.eidolon == 6) {
             let Some(target) = battle.random_living_enemy() else {
                 break;
             };
-            self.dragon_hit(battle, sprite, target, self.detonation_bp, 5);
+            battle.memosprite_hp_hit(
+                sprite,
+                target,
+                QUANTUM,
+                percentage_of(multiplier, self.hp_factor(battle, target)),
+                5,
+                Action::Skill,
+            );
         }
         battle.notify_attack(sprite, Action::Skill, None);
         let healing = percentage_of(battle.effective_max_hp(owner), self.detonation_heal_bp)
@@ -419,9 +430,13 @@ impl Mechanics for Castorice {
 
     fn alternate_ultimate_resource_ready(&self, battle: &Battle<'_>, owner: usize) -> Option<bool> {
         Some(
-            battle.units[owner].castorice_state.newbud == NEWBUD_CAP
+            battle.units[owner].castorice_state.newbud >= NEWBUD_CAP
                 && battle.active_memosprite(owner).is_none(),
         )
+    }
+
+    fn activate_special_ultimate(&self, battle: &mut Battle<'_>, owner: usize) {
+        Self::gain_newbud(battle, owner, NEWBUD_CAP);
     }
 
     fn ability_override(
@@ -457,6 +472,23 @@ impl Mechanics for Castorice {
                 }
             }
             Action::Ultimate => {
+                let overflow = battle.units[owner]
+                    .castorice_state
+                    .newbud
+                    .saturating_sub(NEWBUD_CAP);
+                let bonus = super::cyrene::active_ode_parameters(battle, owner, FORM).map_or(
+                    0,
+                    |(_, values)| {
+                        let enemies = battle
+                            .enemies()
+                            .filter(|&enemy| battle.is_targetable(enemy))
+                            .count();
+                        let overflow_bp = u64::from(overflow) * 100 * u64::from(values[0])
+                            / u64::from(NEWBUD_CAP);
+                        overflow_bp as u32 + values[1] * u32::from(enemies <= values[2] as usize)
+                    },
+                );
+                battle.units[owner].castorice_state.cyrene_detonation_bp = bonus;
                 Self::set_newbud(battle, owner, 0);
                 self.summon(battle, owner);
             }

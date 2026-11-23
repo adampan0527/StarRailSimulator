@@ -2446,3 +2446,80 @@ fn saved_anaxa_team_replays_extra_skills_and_credits_erudition_bonus() {
     );
     assert_eq!(result, run());
 }
+
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_cyrene_runs_with_every_frozen_heir_and_preserves_damage_credit() {
+    use star_rail_battle_core::DamageKind;
+
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let cyrene = "character.1415";
+    profiles.ensure_profile(cyrene).unwrap();
+    let mut loadout = catalog.default_loadout_at(cyrene, "base", 80, 6).unwrap();
+    loadout.config.eidolon = 6;
+    profiles
+        .save_preset(cyrene, "base", &loadout, true)
+        .unwrap();
+    let heirs = [
+        "trailblazer.remembrance",
+        "character.1402",
+        "character.1403",
+        "character.1404",
+        "character.1407",
+        "character.1405",
+        "character.1409",
+        "character.1406",
+        "character.1408",
+        "character.1410",
+        "character.1412",
+        "character.1413",
+        "character.1414",
+    ];
+    for heir in heirs {
+        let slots = [
+            Some(cyrene.into()),
+            Some(heir.into()),
+            Some("character.1013".into()),
+            Some("character.1313".into()),
+        ];
+        let team = archive.save_team(None, heir, &slots).unwrap();
+        let run = || {
+            let checked = archive.dpr_readiness(&team.id).unwrap();
+            assert!(checked.unsupported_characters.is_empty(), "{heir}");
+            checked.result.unwrap()
+        };
+        let result = run();
+        assert_eq!(result, run(), "{heir}");
+        let hits = || result.targets.iter().flat_map(|target| &target.hits);
+        assert!(
+            hits().any(|hit| hit.source_id == "character.1415:demiurge"),
+            "{heir}"
+        );
+        assert!(
+            hits().any(|hit| {
+                hit.kind == DamageKind::TrueDamage
+                    && hit
+                        .credits
+                        .iter()
+                        .any(|credit| credit.unit_id == cyrene && credit.amount > 0)
+            }),
+            "{heir}"
+        );
+        assert_eq!(
+            result.total_damage,
+            result
+                .characters
+                .iter()
+                .map(|role| role.own_damage + role.assist_damage)
+                .sum::<u64>(),
+            "{heir}"
+        );
+    }
+}

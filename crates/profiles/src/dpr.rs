@@ -39,7 +39,13 @@ impl Catalog {
             ("character.1308", "slashed_dream", Some(9)) => 0,
             ("character.1407", "newbud", None) => 0,
             ("character.1408", "coreflame", Some(12)) => 0,
-            ("character.1220" | "character.1308" | "character.1407" | "character.1408", _, _) => {
+            ("character.1415", "recollection", Some(24)) => 0,
+            (
+                "character.1220" | "character.1308" | "character.1407" | "character.1408"
+                | "character.1415",
+                _,
+                _,
+            ) => {
                 return Err(Error::invalid("character.resource", id));
             }
             (_, "energy", Some(capacity)) => capacity,

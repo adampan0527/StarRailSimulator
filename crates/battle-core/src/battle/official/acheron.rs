@@ -282,6 +282,11 @@ impl Acheron {
 }
 
 impl Mechanics for Acheron {
+    fn activate_special_ultimate(&self, battle: &mut Battle<'_>, owner: usize) {
+        let overflow = battle.units[owner].acheron_state.overflow;
+        Self::set_dreams(battle, owner, owner, DREAM_CAP, overflow);
+    }
+
     fn alternate_ultimate_resource_ready(&self, battle: &Battle<'_>, actor: usize) -> Option<bool> {
         Some(battle.units[actor].acheron_state.dreams == DREAM_CAP)
     }

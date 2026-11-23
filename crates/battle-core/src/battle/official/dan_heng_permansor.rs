@@ -31,6 +31,10 @@ pub(in crate::battle) struct PermansorState {
     bond_attack_flat: u32,
     empowered_actions: u8,
     dragon_attacking: bool,
+    cyrene_source: Option<usize>,
+    cyrene_attack_damage_bp: u32,
+    cyrene_attacks: u32,
+    cyrene_next_shield_bp: Option<u32>,
 }
 
 struct ShieldAmount {
@@ -151,6 +155,33 @@ fn bondmate(battle: &Battle<'_>, owner: usize) -> Option<usize> {
         .filter(|&target| battle.units[owner].hp > 0 && battle.units[target].hp > 0)
 }
 
+pub(super) fn activate_cyrene_dragon(
+    battle: &mut Battle<'_>,
+    cyrene: usize,
+    owner: usize,
+    parameters: [u32; 4],
+    focused: bool,
+) {
+    let unit = &mut battle.units[owner];
+    let state = &mut unit.permansor_state;
+    state.cyrene_source = Some(cyrene);
+    state.cyrene_attacks = parameters[1];
+    state.cyrene_attack_damage_bp = parameters[2];
+    if focused {
+        state.cyrene_next_shield_bp = Some(parameters[3]);
+        if let Some(dragon) = &mut unit.summon_turn {
+            dragon.advance(10_000);
+        }
+    }
+}
+
+pub(super) fn cyrene_bondmate(battle: &Battle<'_>, cyrene: usize, target: usize) -> bool {
+    battle.allies().any(|owner| {
+        battle.units[owner].permansor_state.cyrene_source == Some(cyrene)
+            && bondmate(battle, owner) == Some(target)
+    })
+}
+
 fn clear_bond(battle: &mut Battle<'_>, owner: usize) {
     if let Some(old) = battle.units[owner].permansor_state.bondmate.take() {
         battle.emit(
@@ -210,9 +241,9 @@ impl Permansor {
         }
     }
 
-    fn dragon_protection(&self, battle: &mut Battle<'_>, owner: usize, multiplier: u64) {
+    fn dragon_protection(&self, battle: &mut Battle<'_>, owner: usize, multiplier_bp: u64) {
         let attack = battle.effective_attack(owner);
-        let amount = (self.dragon_shield.scaled_bp(attack) * multiplier / BP) as u32;
+        let amount = (self.dragon_shield.scaled_bp(attack) * multiplier_bp / BP / BP) as u32;
         let cap = (self.skill_shield.scaled_bp(attack) * 3 / BP) as u32;
         for target in battle.party_units() {
             if battle.is_targetable(target) {
@@ -226,7 +257,7 @@ impl Permansor {
                 .filter(|&target| battle.is_targetable(target))
                 .min_by_key(|&target| battle.shield_amount(target))
         {
-            let extra = (u64::from(attack) * 500 + 100 * BP) * multiplier / BP;
+            let extra = (u64::from(attack) * 500 + 100 * BP) * multiplier_bp / BP / BP;
             Self::shield(battle, owner, target, extra as u32, cap);
         }
     }
@@ -282,6 +313,24 @@ impl Permansor {
                 Action::Skill,
                 owner,
             );
+        }
+        let state = &mut battle.units[owner].permansor_state;
+        if state.cyrene_attacks > 0
+            && let Some(source) = state.cyrene_source
+        {
+            state.cyrene_attacks -= 1;
+            let shield_ratio = state.cyrene_attack_damage_bp;
+            let base_bp = u64::from(battle.shield_amount(target)) * u64::from(shield_ratio);
+            for enemy in battle.enemies() {
+                battle.secondary_hit_from_fixed_base(
+                    target,
+                    enemy,
+                    combat_type.element,
+                    base_bp,
+                    Action::Skill,
+                    source,
+                );
+            }
         }
         battle.notify_attack(owner, Action::Skill, None);
         battle.units[owner].permansor_state.dragon_attacking = false;
@@ -355,9 +404,14 @@ impl Mechanics for Permansor {
             return;
         };
         let state = &mut battle.units[owner].permansor_state;
-        let empowered = state.empowered_actions > 0;
-        state.empowered_actions = state.empowered_actions.saturating_sub(1);
-        self.dragon_protection(battle, owner, 1 + u64::from(empowered && self.eidolon >= 2));
+        let forced_shield = state.cyrene_next_shield_bp.take();
+        let empowered = forced_shield.is_some() || state.empowered_actions > 0;
+        if forced_shield.is_none() {
+            state.empowered_actions = state.empowered_actions.saturating_sub(1);
+        }
+        let shield_bp = u64::from(forced_shield.unwrap_or(10_000))
+            * (1 + u64::from(empowered && self.eidolon >= 2));
+        self.dragon_protection(battle, owner, shield_bp);
         if empowered && battle.is_targetable(target) {
             self.dragon_attack(battle, owner, target);
         }

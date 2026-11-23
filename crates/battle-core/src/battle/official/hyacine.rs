@@ -39,6 +39,8 @@ const SPEED_BONUS_CAP: u64 = 200;
 #[derive(Clone, Default)]
 pub(in crate::battle) struct HyacineState {
     healing_tally: u64,
+    sky_stacks: u8,
+    sky_bonus_bp: u32,
     after_rain_until: Option<u32>,
     pending_heals: Vec<usize>,
     damage_stack_expiries: Vec<u32>,
@@ -274,7 +276,14 @@ impl Hyacine {
             .active_memosprite(owner)
             .map(|sprite| battle.units[sprite].normal_turns + self.talent_turns);
         let state = &mut battle.units[owner].hyacine_state;
-        state.healing_tally = state.healing_tally.saturating_add(u64::from(amount));
+        let sky_bonus = if source == owner && state.sky_stacks > 0 {
+            percentage_of(amount, state.sky_bonus_bp)
+        } else {
+            0
+        };
+        state.healing_tally = state
+            .healing_tally
+            .saturating_add(u64::from(amount) + u64::from(sky_bonus));
         if let Some(expiry) = expiry {
             if state.damage_stack_expiries.len() == self.talent_stacks {
                 state.damage_stack_expiries.remove(0);
@@ -367,6 +376,12 @@ impl Hyacine {
     }
 }
 
+pub(super) fn apply_cyrene_sky(battle: &mut Battle<'_>, owner: usize, bonus_bp: u32) {
+    let state = &mut battle.units[owner].hyacine_state;
+    state.sky_stacks = 2;
+    state.sky_bonus_bp = bonus_bp;
+}
+
 impl Mechanics for Hyacine {
     fn on_battle_start(&self, battle: &mut Battle<'_>, owner: usize) {
         battle.units[owner].hp = battle.effective_max_hp(owner);
@@ -421,6 +436,8 @@ impl Mechanics for Hyacine {
     ) {
         if matches!(action, Action::Skill | Action::Ultimate) {
             self.heal_party(battle, owner, action);
+            let stacks = &mut battle.units[owner].hyacine_state.sky_stacks;
+            *stacks = stacks.saturating_sub(1);
         }
     }
 

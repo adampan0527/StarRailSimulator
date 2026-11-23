@@ -310,7 +310,13 @@ impl Mechanics for Tribbie {
             battle.units[owner].tribbie_state.zone_target = target;
         }
         if let Some(target) = target {
-            for _ in 0..hits + usize::from(self.eidolon >= 2) {
+            let passage = if actor == owner && battle.resolving_follow_up {
+                super::cyrene::active_ode_parameters(battle, owner, FORM)
+                    .map_or(0, |(_, values)| values[0] as usize)
+            } else {
+                0
+            };
+            for _ in 0..hits + usize::from(self.eidolon >= 2) + passage {
                 battle.secondary_hit_from_hp(
                     owner,
                     target,

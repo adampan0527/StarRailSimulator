@@ -62,10 +62,11 @@ pub enum StatusKind {
     Peerage,
     DarkestRiddle,
     Bondmate,
+    Ripples,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Bondmate.index() + 1;
+    pub(crate) const COUNT: usize = Self::Ripples.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -112,6 +113,7 @@ impl StatusKind {
             Self::Peerage => 39,
             Self::DarkestRiddle => 40,
             Self::Bondmate => 41,
+            Self::Ripples => 42,
         }
     }
 }
@@ -181,6 +183,10 @@ pub enum EventKind {
         after: u8,
     },
     MemospriteCharge {
+        before: u8,
+        after: u8,
+    },
+    Recollection {
         before: u8,
         after: u8,
     },

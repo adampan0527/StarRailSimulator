@@ -337,3 +337,52 @@ fn fixed_dpr_preserves_follow_up_and_bondmate_provenance_and_credit() {
             .sum::<u64>()
     );
 }
+
+#[test]
+fn cyrene_earth_ode_forces_a_dragon_attack_without_spending_the_regular_charges() {
+    let cyrene = super::super::cyrene::tests::cyrene(0);
+    let mut dan_heng = character(0, &[]);
+    dan_heng.stats.speed_micros = 100_000_000;
+    let prepared = plan(&[dan_heng, herta(), cyrene]);
+    let mut battle = Battle::start(&prepared, LogMode::Detailed);
+    let rules = battle.mechanics(0).unwrap();
+    rules.after_action(&mut battle, 0, Action::Skill, Some(1));
+    rules.after_action(&mut battle, 0, Action::Ultimate, None);
+    let old_shield = battle.shield_amount(1);
+    super::super::cyrene::set_recollection(&mut battle, 2, 24);
+    act(
+        &mut battle,
+        "character.1415",
+        Action::EnhancedUltimate,
+        Some(FORM),
+    );
+
+    let state = &battle.units[0].permansor_state;
+    assert_eq!(state.empowered_actions, 2);
+    assert_eq!(state.cyrene_attacks, 3);
+    assert_eq!(state.cyrene_next_shield_bp, Some(15_000));
+    assert_eq!(battle.units[0].summon_turn.unwrap().gauge_quanta, 0);
+
+    rules.on_summon_turn(&mut battle, 0);
+    assert_eq!(battle.shield_amount(1) - old_shield, 480);
+    assert_eq!(battle.units[0].permansor_state.empowered_actions, 2);
+    assert_eq!(battle.units[0].permansor_state.cyrene_attacks, 2);
+    for _ in 0..3 {
+        rules.on_summon_turn(&mut battle, 0);
+    }
+    assert_eq!(battle.units[0].permansor_state.empowered_actions, 0);
+    assert_eq!(battle.units[0].permansor_state.cyrene_attacks, 0);
+    let shield_hits = battle
+        .dummy_damage
+        .iter()
+        .filter(|hit| {
+            hit.actor == 1
+                && hit.kind == DamageKind::Additional
+                && hit
+                    .assists
+                    .iter()
+                    .any(|&(owner, amount)| owner == 2 && amount == hit.amount)
+        })
+        .count();
+    assert_eq!(shield_hits, 9);
+}

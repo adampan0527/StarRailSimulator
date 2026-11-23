@@ -127,7 +127,7 @@ fn hit(multiplier_bp: u16, toughness: u16) -> Effect {
     }
 }
 
-fn holder(battle: &Battle<'_>, owner: usize) -> Option<usize> {
+pub(super) fn holder(battle: &Battle<'_>, owner: usize) -> Option<usize> {
     battle.units[owner]
         .cerydra_state
         .holder
@@ -320,8 +320,10 @@ impl Mechanics for Cerydra {
         if state.coup {
             if battle.nested_skill.is_none() {
                 let charge = state.charge.saturating_sub(PEERAGE_CHARGE);
+                let refund = super::cyrene::active_ode_parameters(battle, owner, FORM)
+                    .map_or(0, |(_, parameters)| parameters[1] as u8);
                 battle.units[owner].cerydra_state.coup = false;
-                set_charge(battle, owner, charge);
+                set_charge(battle, owner, (charge + refund).min(CHARGE_CAP));
                 if self.vici && battle.is_targetable(owner) {
                     battle.gain_energy(actor, owner, 5_000);
                 }

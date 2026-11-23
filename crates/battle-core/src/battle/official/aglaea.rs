@@ -39,6 +39,8 @@ const COUNTDOWN_SPEED_MICROS: u64 = 100 * MICROS_PER_UNIT;
 pub(in crate::battle) struct AglaeaState {
     seam_target: Option<usize>,
     speed_stacks: u8,
+    romance_energy: u32,
+    romance_active: bool,
     defense_stacks: u8,
 }
 
@@ -286,7 +288,38 @@ impl Aglaea {
     }
 }
 
+pub(super) fn apply_cyrene_romance(battle: &mut Battle<'_>, owner: usize, energy_milli: u32) {
+    if let Some(rules) = battle.mechanics(owner) {
+        rules.cyrene_ode_applied(battle, owner, owner, [energy_milli, 0, 0, 0]);
+    }
+}
+
+pub(super) fn cyrene_romance_active(battle: &Battle<'_>, owner: usize) -> bool {
+    battle.units[owner].aglaea_state.romance_active
+}
+
 impl Mechanics for Aglaea {
+    fn cyrene_ode_applied(
+        &self,
+        battle: &mut Battle<'_>,
+        _: usize,
+        owner: usize,
+        parameters: [u32; 4],
+    ) {
+        let state = &mut battle.units[owner].aglaea_state;
+        state.speed_stacks = self.sprite_speed_stack_cap;
+        state.romance_energy = parameters[0];
+        state.romance_active = true;
+    }
+
+    fn on_attack_finished(&self, battle: &mut Battle<'_>, owner: usize, actor: usize, _: Action) {
+        if is_pair_member(battle, owner, actor) && !battle.attack_targets().is_empty() {
+            let energy = std::mem::take(&mut battle.units[owner].aglaea_state.romance_energy);
+            if energy > 0 {
+                battle.gain_energy(actor, owner, energy);
+            }
+        }
+    }
     fn memosprite_profile(&self, master: Stats) -> Option<MemospriteProfile> {
         let hp = self.garmentmaker_hp(master.hp);
         Some(MemospriteProfile {
@@ -472,6 +505,7 @@ impl Mechanics for Aglaea {
     }
 
     fn on_memosprite_departed(&self, battle: &mut Battle<'_>, owner: usize, sprite: usize) {
+        battle.units[owner].aglaea_state.romance_active = false;
         if battle.units[owner].countdown.take().is_some() {
             battle.emit(
                 EventKind::StatusExpired(StatusKind::SupremeStance),
