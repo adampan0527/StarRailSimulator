@@ -8,6 +8,7 @@ const memospriteNames = new Map([
   ['trailblazer.remembrance:mem', '迷迷'],
   ['character.1402:garmentmaker', '衣匠'],
   ['character.1407:netherwing', '死龙'],
+  ['character.1409:little-ica', '小伊卡'],
 ]);
 
 export function DprResults({

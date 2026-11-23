@@ -103,6 +103,7 @@ enum DamageScale {
         punchline: u32,
         factor_bp: u16,
     },
+    FixedBase(u64),
 }
 
 impl DamageScale {
@@ -137,6 +138,7 @@ impl DamageScale {
                 (u64::from(target_hp) * ratio).min(u64::from(attack) * u64::from(cap_bp))
             }
             Self::Elation { .. } => 0,
+            Self::FixedBase(base_bp) => base_bp,
         }
     }
 }
@@ -507,6 +509,28 @@ impl Battle<'_> {
         );
     }
 
+    pub(super) fn memosprite_fixed_base_hit(
+        &mut self,
+        sprite: usize,
+        target: usize,
+        element: Element,
+        base_bp: u64,
+        toughness: u16,
+    ) {
+        self.strike(
+            sprite,
+            target,
+            DamageKind::Direct,
+            Hit {
+                element,
+                multiplier_bp: 0,
+                toughness,
+                origin: Some(Action::Skill),
+                scale: DamageScale::FixedBase(base_bp),
+            },
+        );
+    }
+
     pub(super) fn attack_hit_with_break_effect(
         &mut self,
         actor: usize,
@@ -600,6 +624,15 @@ impl Battle<'_> {
     }
 
     pub(super) fn heal_unit(&mut self, actor: usize, target: usize, amount: u32) {
+        self.heal_unit_with_overflow(actor, target, amount);
+    }
+
+    pub(super) fn heal_unit_with_overflow(
+        &mut self,
+        actor: usize,
+        target: usize,
+        amount: u32,
+    ) -> u32 {
         let amount = self.incoming_healing_amount(target, amount);
         let restored = self.restore_hp_unmodified(actor, target, amount);
         if restored > 0
@@ -617,6 +650,7 @@ impl Battle<'_> {
                 }
             }
         }
+        amount
     }
 
     /// Effective incoming heal before capping to missing HP.
@@ -758,7 +792,8 @@ impl Battle<'_> {
     }
 
     pub(super) fn resists_debuff(&mut self, target: usize) -> bool {
-        self.use_survival_response_guard(target)
+        self.immune_to_debuffs(target)
+            || self.use_survival_response_guard(target)
             || self
                 .mechanics(target)
                 .is_some_and(|mechanics| mechanics.prevent_debuff(self, target))
@@ -767,6 +802,9 @@ impl Battle<'_> {
     pub(super) fn resists_enemy_control(&mut self, actor: usize, target: usize) -> bool {
         if !self.enemies().contains(&actor) || !self.is_party_unit(target) {
             return false;
+        }
+        if self.immune_to_debuffs(target) {
+            return true;
         }
         if let Some(owner) = self.memosprite_owner(target)
             && self
@@ -3036,6 +3074,9 @@ impl Battle<'_> {
         after_quanta: u64,
         advanced_to_front: bool,
     ) {
+        if self.has_fixed_zero_speed(target) {
+            return;
+        }
         let before_quanta = if self.territory_owner == Some(target)
             && let Some(countdown) = &mut self.units[target].countdown
         {

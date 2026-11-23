@@ -112,7 +112,8 @@ type Status =
   | 'supreme_stance'
   | 'weal_lots'
   | 'woes_whisper'
-  | 'khaslana';
+  | 'khaslana'
+  | 'after_rain';
 type EventKind =
   | {
       event:

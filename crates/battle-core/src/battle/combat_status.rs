@@ -244,6 +244,9 @@ impl Battle<'_> {
         bp: u32,
         turns: Option<u32>,
     ) -> bool {
+        if self.immune_to_debuffs(target) {
+            return false;
+        }
         let state = &mut self.units[target];
         if state.hp == 0 {
             return false;

@@ -256,7 +256,7 @@ impl Battle<'_> {
             .memosprite_max_hp
             .unwrap_or(self.plan.units[actor].stats.hp)
             .saturating_add(self.ally_buff_total(actor, AllyBuffKind::MaxHpFlat));
-        if !self.allies().contains(&actor) {
+        if !self.is_party_unit(actor) {
             return max_hp;
         }
         let total = self
@@ -264,7 +264,12 @@ impl Battle<'_> {
             .filter(|&owner| Some(owner) != source)
             .filter_map(|owner| self.mechanics(owner).map(|rules| (owner, rules)))
             .fold(max_hp, |hp, (owner, rules)| {
-                hp.saturating_add(rules.ally_max_hp_bonus(self, owner, actor))
+                let bonus = if self.memosprites().contains(&actor) {
+                    rules.memosprite_max_hp_bonus(self, owner, actor)
+                } else {
+                    rules.ally_max_hp_bonus(self, owner, actor)
+                };
+                hp.saturating_add(bonus)
             });
         percentage_of(total, self.max_hp_multiplier_bp(actor))
     }
@@ -664,6 +669,17 @@ impl Battle<'_> {
     }
 
     pub(super) fn notify_unit_action_finished(&mut self, actor: usize) {
+        if self.tracks_action_end_reactions {
+            // Resolve new reactions before the owners clear any per-action counters.
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(rules) = self.mechanics(owner)
+                    && rules.tracks_action_end_reactions()
+                {
+                    rules.react_to_action_end(self, owner, actor);
+                }
+            }
+        }
         for owner in self.allies() {
             if self.is_targetable(owner)
                 && let Some(rules) = self.mechanics(owner)

@@ -161,6 +161,7 @@ struct UnitState {
     aglaea_state: official::AglaeaState,
     castorice_state: official::CastoriceState,
     phainon_state: official::PhainonState,
+    hyacine_state: official::HyacineState,
     robin_state: official::RobinState,
     firefly_state: official::FireflyState,
     boothill_state: official::BoothillState,
@@ -236,6 +237,7 @@ pub struct Battle<'a> {
     tracks_attack_damage: bool,
     tracks_ally_damage: bool,
     tracks_active_abilities: bool,
+    tracks_action_end_reactions: bool,
     super_break_targets: Vec<resolve::SuperBreakTarget>,
     tracks_super_break: bool,
     attack_index: u32,
@@ -318,6 +320,7 @@ impl<'a> Battle<'a> {
                     aglaea_state: official::AglaeaState::default(),
                     castorice_state: official::CastoriceState::default(),
                     phainon_state: official::PhainonState::default(),
+                    hyacine_state: official::HyacineState::default(),
                     robin_state: official::RobinState::default(),
                     firefly_state: official::FireflyState::default(),
                     boothill_state: official::BoothillState::default(),
@@ -385,6 +388,9 @@ impl<'a> Battle<'a> {
             tracks_active_abilities: plan.units[..plan.ally_count]
                 .iter()
                 .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.tracks_active_abilities())),
+            tracks_action_end_reactions: plan.units[..plan.ally_count]
+                .iter()
+                .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.tracks_action_end_reactions())),
             super_break_targets: Vec::new(),
             tracks_super_break: plan.units[..plan.ally_count]
                 .iter()
@@ -833,6 +839,18 @@ impl<'a> Battle<'a> {
             .filter(|&sprite| self.is_targetable(sprite))
     }
 
+    fn has_fixed_zero_speed(&self, unit: usize) -> bool {
+        self.memosprite_owner(unit)
+            .and_then(|owner| self.mechanics(owner))
+            .is_some_and(|rules| rules.memosprite_has_fixed_zero_speed())
+    }
+
+    fn immune_to_debuffs(&self, unit: usize) -> bool {
+        self.memosprite_owner(unit)
+            .and_then(|owner| self.mechanics(owner))
+            .is_some_and(|rules| rules.memosprite_immune_to_debuffs())
+    }
+
     fn max_hp_damage_source(&self, actor: usize) -> usize {
         self.memosprite_owner(actor)
             .filter(|&owner| {
@@ -844,11 +862,15 @@ impl<'a> Battle<'a> {
 
     fn remove_memosprite_of(&mut self, owner: usize) {
         if let Some(sprite) = self.active_memosprite(owner) {
-            self.units[sprite].hp = 0;
-            self.clear_defeated_effects(sprite);
-            self.emit(EventKind::UnitDefeated, Some(owner), Some(sprite));
-            self.notify_memosprite_departed(sprite);
+            self.despawn_memosprite(owner, sprite);
         }
+    }
+
+    fn despawn_memosprite(&mut self, owner: usize, sprite: usize) {
+        self.units[sprite].hp = 0;
+        self.clear_defeated_effects(sprite);
+        self.emit(EventKind::UnitDefeated, Some(owner), Some(sprite));
+        self.notify_memosprite_departed(sprite);
     }
 
     fn notify_memosprite_departed(&mut self, sprite: usize) {
@@ -1005,6 +1027,9 @@ impl<'a> Battle<'a> {
     }
 
     fn speed_micros(&self, unit: usize) -> u64 {
+        if self.has_fixed_zero_speed(unit) {
+            return 0;
+        }
         let stats = self.plan.units[unit].stats;
         let bonus_bp = u64::from(self.units[unit].magnitude(StatusKind::SpeedUp));
         let bonus_bp = bonus_bp

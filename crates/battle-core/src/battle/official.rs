@@ -29,6 +29,7 @@ mod herta;
 mod himeko;
 mod hook;
 mod huohuo;
+mod hyacine;
 mod jade;
 mod jiaoqiu;
 mod jing_yuan;
@@ -89,6 +90,7 @@ pub(super) use {
     fugue::FugueState,
     hanya::HanyaState,
     huohuo::HuohuoState,
+    hyacine::HyacineState,
     jade::JadeState,
     jiaoqiu::Field as JiaoqiuField,
     jing_yuan::JingYuanState,
@@ -414,6 +416,14 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn memosprite_immune_to_enemy_control(&self, _battle: &Battle<'_>, _owner: usize) -> bool {
+        false
+    }
+
+    fn memosprite_has_fixed_zero_speed(&self) -> bool {
+        false
+    }
+
+    fn memosprite_immune_to_debuffs(&self) -> bool {
         false
     }
 
@@ -758,6 +768,10 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn ally_max_hp_bonus(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
+    fn memosprite_max_hp_bonus(&self, _battle: &Battle<'_>, _owner: usize, _sprite: usize) -> u32 {
         0
     }
 
@@ -1308,6 +1322,12 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_unit_action_finished(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
+    fn tracks_action_end_reactions(&self) -> bool {
+        false
+    }
+
+    fn react_to_action_end(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
+
     fn dpr_priority(
         &self,
         _battle: &Battle<'_>,
@@ -1550,6 +1570,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         phainon::FORM => Some(phainon::build),
         cipher::FORM => Some(cipher::build),
         castorice::FORM => Some(castorice::build),
+        hyacine::FORM => Some(hyacine::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),
         "dan_heng.hunt" => Some(dan_heng::build),
