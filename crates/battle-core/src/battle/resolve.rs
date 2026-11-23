@@ -3,7 +3,7 @@ use crate::{
     damage::{self, DamageTarget},
     fixture::{
         Ability, BREAK_DELAY_BP, Effect, Element, EnemyKit, EnemyTarget, GAUGE_FULL,
-        KILL_ENERGY_MILLI, Target,
+        KILL_ENERGY_MILLI, Stats, Target,
     },
 };
 
@@ -65,19 +65,56 @@ struct SuperBreakSegment {
     base: u16,
     personal_efficiency_bp: u32,
     full_toughness: bool,
+    unbroken: bool,
+    fixed_provider: Option<usize>,
+    precise_conversion: bool,
 }
 
 impl SuperBreakSegment {
     fn scaled(self, team_bp: u64, off_element_bp: u16) -> u16 {
+        (self.scaled_hundredths(team_bp, off_element_bp) / 100) as u16
+    }
+
+    fn scaled_hundredths(self, team_bp: u64, off_element_bp: u16) -> u32 {
+        if self.fixed_provider.is_some() {
+            return u32::from(self.base);
+        }
         let efficiency_bp = 10_000 + u64::from(self.personal_efficiency_bp) + team_bp;
         let weakness_bp = if self.full_toughness {
             10_000
         } else {
             off_element_bp
         };
-        (u64::from(self.base) * efficiency_bp * u64::from(weakness_bp) / 100_000_000)
-            .min(u64::from(u16::MAX)) as u16
+        (u64::from(self.base) * efficiency_bp * u64::from(weakness_bp) / 1_000_000)
+            .min(u64::from(u16::MAX) * 100) as u32
     }
+
+    fn converted_hundredths(self, buffs: OffenseBuffs) -> u32 {
+        if self.unbroken && !buffs.unbroken_super_break {
+            return 0;
+        }
+        if let Some(owner) = self.fixed_provider
+            && buffs.fixed_toughness_providers & (1 << owner) == 0
+        {
+            return 0;
+        }
+        let value = self.scaled_hundredths(
+            u64::from(buffs.toughness_efficiency_bp),
+            buffs.off_element_toughness_bp,
+        );
+        if self.precise_conversion || self.unbroken {
+            value
+        } else {
+            value / 100 * 100
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum SuperBreakConversion {
+    None,
+    Attack,
+    FollowUp(u16),
 }
 
 #[derive(Clone, Copy)]
@@ -218,6 +255,7 @@ enum FollowUpTargets {
         bounces: Option<FollowUpBounces>,
     },
     Random {
+        first_target: Option<usize>,
         hit_count: u8,
         adjacent_multiplier_bp: Option<u16>,
     },
@@ -1048,8 +1086,30 @@ impl Battle<'_> {
             .push_back(PendingAttack::FollowUp(FollowUp {
                 actor,
                 targets: FollowUpTargets::Random {
+                    first_target: None,
                     hit_count,
                     adjacent_multiplier_bp,
+                },
+                origin,
+                attack,
+            }));
+    }
+
+    pub(super) fn follow_up_bouncing_from(
+        &mut self,
+        actor: usize,
+        origin: Action,
+        first_target: Option<usize>,
+        hit_count: u8,
+        attack: FollowUpAttack,
+    ) {
+        self.pending_follow_ups
+            .push_back(PendingAttack::FollowUp(FollowUp {
+                actor,
+                targets: FollowUpTargets::Random {
+                    first_target,
+                    hit_count,
+                    adjacent_multiplier_bp: None,
                 },
                 origin,
                 attack,
@@ -1137,6 +1197,7 @@ impl Battle<'_> {
         });
         let previous_follow_up = std::mem::take(&mut self.resolving_follow_up);
         let previous_attack_targets = std::mem::take(&mut self.attack_targets);
+        let previous_attack_implants = std::mem::take(&mut self.attack_implants);
         let previous_attack_damage = self.attack_damage.take();
         let previous_attack_spent_points = self.attack_spent_skill_points;
         let previous_super_break_targets = std::mem::take(&mut self.super_break_targets);
@@ -1158,6 +1219,7 @@ impl Battle<'_> {
         self.notify_ally_action_finished(actor, action);
         self.finish_debuff_action(actor, parent_debuff_targets);
         self.attack_targets = previous_attack_targets;
+        self.attack_implants = previous_attack_implants;
         self.attack_damage = previous_attack_damage;
         self.attack_spent_skill_points = previous_attack_spent_points;
         self.super_break_targets = previous_super_break_targets;
@@ -1224,12 +1286,17 @@ impl Battle<'_> {
                 mechanics.before_follow_up(self, actor);
             }
             if let FollowUpTargets::Random {
+                mut first_target,
                 hit_count,
                 adjacent_multiplier_bp,
             } = targets
             {
                 for _ in 0..hit_count {
-                    let Some(target) = self.random_living_enemy() else {
+                    let Some(target) = first_target
+                        .take()
+                        .filter(|&target| self.is_targetable(target))
+                        .or_else(|| self.random_living_enemy())
+                    else {
                         break;
                     };
                     self.follow_up_hit(
@@ -1373,6 +1440,16 @@ impl Battle<'_> {
         primary_target: Option<usize>,
     ) {
         let landed = !self.attack_targets.is_empty();
+        if self.tracks_fixed_attack_toughness && landed {
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(mechanics) = self.mechanics(owner)
+                    && mechanics.provides_fixed_attack_toughness()
+                {
+                    mechanics.before_super_breaks(self, owner, actor, origin);
+                }
+            }
+        }
         let super_break_targets = std::mem::take(&mut self.super_break_targets);
         for owner in self.allies() {
             if self.units[owner].hp > 0
@@ -1721,8 +1798,7 @@ impl Battle<'_> {
             damage_share_bp: 10_000,
             outgoing_damage_factor_bp,
             vulnerability_bp: vulnerability,
-            defense_down_bp: sum(DebuffKind::DefenseDown)
-                .saturating_add(sum(DebuffKind::DefenseBug))
+            defense_down_bp: sum_matching(&DebuffKind::reduces_defense)
                 .saturating_add(weightless_defense_down)
                 .saturating_add(field_defense_down)
                 .saturating_add(personal_defense_ignore)
@@ -2276,10 +2352,20 @@ impl Battle<'_> {
         );
 
         if toughness > 0 {
+            let per_hit = if kind == DamageKind::FollowUp {
+                mechanics
+                    .as_ref()
+                    .map_or(0, |rules| rules.follow_up_hit_super_break_bp())
+            } else {
+                0
+            };
             let segment = SuperBreakSegment {
                 base: toughness,
                 personal_efficiency_bp: personal_toughness_bp,
                 full_toughness: hit_weakness,
+                unbroken: false,
+                fixed_provider: None,
+                precise_conversion: per_hit > 0,
             };
             self.apply_attack_toughness(
                 actor,
@@ -2287,7 +2373,11 @@ impl Battle<'_> {
                 (element, segment),
                 origin,
                 source,
-                is_attack,
+                match (is_attack, per_hit) {
+                    (false, _) => SuperBreakConversion::None,
+                    (true, 0) => SuperBreakConversion::Attack,
+                    (true, bp) => SuperBreakConversion::FollowUp(bp),
+                },
             );
         }
         if crit
@@ -2327,8 +2417,8 @@ impl Battle<'_> {
         target: usize,
         impact: (Element, SuperBreakSegment),
         origin: Option<Action>,
-        source: crate::fixture::Stats,
-        collect_super_break: bool,
+        source: Stats,
+        conversion: SuperBreakConversion,
     ) {
         if self.units[target].hp == 0 {
             return;
@@ -2340,20 +2430,45 @@ impl Battle<'_> {
             .filter(|pool| pool.remaining > 0);
         segment.full_toughness |= normal_before == 0 && extra.is_some();
         let (team_toughness_bp, off_element_bp) = self.toughness_support(actor);
-        let reduction = segment.scaled(team_toughness_bp, off_element_bp);
+        let reduction = if segment.precise_conversion {
+            let precision = segment.scaled_hundredths(team_toughness_bp, off_element_bp);
+            let carried = precision + u32::from(self.units[target].toughness_reduction_remainder);
+            let reduction = (carried / 100).min(u32::from(u16::MAX)) as u16;
+            let remaining =
+                u32::from(normal_before) + extra.map_or(0, |pool| u32::from(pool.remaining));
+            // Carry fractional reductions between hits while a toughness pool is still live.
+            self.units[target].toughness_reduction_remainder = if u32::from(reduction) < remaining {
+                (carried % 100) as u8
+            } else {
+                0
+            };
+            reduction
+        } else {
+            segment.scaled(team_toughness_bp, off_element_bp)
+        };
         if reduction == 0 {
             return;
         }
-        if self.tracks_super_break
-            && collect_super_break
-            && normal_before == 0
-            && origin.is_some()
+        let convert = if self.tracks_super_break
+            && !matches!(conversion, SuperBreakConversion::None)
             && self.is_party_unit(actor)
             && self.enemies().contains(&target)
             && self.is_targetable(target)
+            && (normal_before == 0
+                || self.allies().any(|owner| {
+                    self.is_targetable(owner)
+                        && self
+                            .mechanics(owner)
+                            .is_some_and(|rules| rules.allows_unbroken_super_break(self, owner))
+                }))
+            && let Some(origin) = origin
         {
+            segment.unbroken = normal_before > 0;
             self.record_super_break_segment(target, element, segment);
-        }
+            Some(origin)
+        } else {
+            None
+        };
         if normal_before > 0 {
             let after = normal_before.saturating_sub(reduction);
             self.set_toughness(actor, target, after);
@@ -2374,6 +2489,60 @@ impl Battle<'_> {
                 self.resolve_weakness_break(actor, target, element, origin, source);
             }
         }
+        if self.units[target].toughness_reduction_remainder > 0
+            && self.units[target].toughness == 0
+            && self
+                .live_extra_toughness(target)
+                .is_none_or(|pool| pool.remaining == 0)
+        {
+            self.units[target].toughness_reduction_remainder = 0;
+        }
+        if let (Some(origin), SuperBreakConversion::FollowUp(bp)) = (convert, conversion)
+            && self.is_targetable(target)
+        {
+            self.resolve_super_break_segments(
+                (actor, source),
+                origin,
+                (target, element),
+                &[segment],
+                (actor, bp),
+            );
+        }
+    }
+
+    /// Adds fixed, weakness-ignoring toughness measured in hundredths of the combat scale.
+    pub(super) fn fixed_attack_toughness(
+        &mut self,
+        (provider, actor): (usize, usize),
+        target: usize,
+        element: Element,
+        origin: Action,
+        toughness_hundredths: u16,
+    ) {
+        let mut source = self.plan.units[actor].stats;
+        if let Some(rules) = self.mechanics(actor) {
+            source.break_effect_bp = source
+                .break_effect_bp
+                .saturating_add(rules.break_effect_bonus_bp(self, actor));
+        }
+        self.apply_attack_toughness(
+            actor,
+            target,
+            (
+                element,
+                SuperBreakSegment {
+                    base: toughness_hundredths,
+                    personal_efficiency_bp: 0,
+                    full_toughness: true,
+                    unbroken: false,
+                    fixed_provider: Some(provider),
+                    precise_conversion: true,
+                },
+            ),
+            Some(origin),
+            source,
+            SuperBreakConversion::Attack,
+        );
     }
 
     fn notify_toughness_reduced(
@@ -2521,30 +2690,49 @@ impl Battle<'_> {
                 if multiplier == 0 {
                     continue;
                 }
-                let hp_before = self.units[*target].hp;
-                let mut event = Self::break_damage_event(origin, DamageKind::SuperBreak);
-                event.assisted_by = Some(owner);
-                self.resolve_damage(actor, *target, *element, event, |view| {
-                    let mut adjusted = source;
-                    adjusted.break_effect_bp = adjusted
-                        .break_effect_bp
-                        .saturating_add(view.bonus.break_effect_bp);
-                    let toughness = toughness_segments
-                        .iter()
-                        .map(|segment| {
-                            u32::from(segment.scaled(
-                                u64::from(view.bonus.toughness_efficiency_bp),
-                                view.bonus.off_element_toughness_bp,
-                            ))
-                        })
-                        .sum();
-                    let multiplier = rules
-                        .super_break_multiplier_for_effect(multiplier, adjusted.break_effect_bp);
-                    damage::super_break(adjusted, view.target, *element, toughness, multiplier)
-                });
-                self.record_half_hp_crossing(*target, hp_before);
+                self.resolve_super_break_segments(
+                    (actor, source),
+                    origin,
+                    (*target, *element),
+                    toughness_segments,
+                    (owner, multiplier),
+                );
             }
         }
+    }
+
+    fn resolve_super_break_segments(
+        &mut self,
+        (actor, source): (usize, Stats),
+        origin: Action,
+        (target, element): (usize, Element),
+        segments: &[SuperBreakSegment],
+        (owner, multiplier): (usize, u16),
+    ) {
+        let provider = self.mechanics(owner);
+        let hp_before = self.units[target].hp;
+        let mut event = Self::break_damage_event(origin, DamageKind::SuperBreak);
+        event.assisted_by = Some(owner);
+        self.resolve_damage(actor, target, element, event, |view| {
+            let mut adjusted = source;
+            adjusted.break_effect_bp = adjusted
+                .break_effect_bp
+                .saturating_add(view.bonus.break_effect_bp);
+            let toughness = segments
+                .iter()
+                .map(|segment| segment.converted_hundredths(view.bonus))
+                .fold(0, u32::saturating_add);
+            let toughness = if view.target.toughness > 0 {
+                (u64::from(toughness) * 9 / 10) as u32
+            } else {
+                toughness
+            };
+            let multiplier = provider.as_ref().map_or(multiplier, |rules| {
+                rules.super_break_multiplier_for_effect(multiplier, adjusted.break_effect_bp)
+            });
+            damage::super_break(adjusted, view.target, element, toughness, multiplier)
+        });
+        self.record_half_hp_crossing(target, hp_before);
     }
 
     pub(super) fn skip_frozen_turn(&mut self, actor: usize, target: usize, thawed: bool) {
@@ -2655,6 +2843,9 @@ impl Battle<'_> {
             base: toughness,
             personal_efficiency_bp,
             full_toughness: true,
+            unbroken: false,
+            fixed_provider: None,
+            precise_conversion: false,
         };
         self.apply_attack_toughness(
             actor,
@@ -2662,7 +2853,7 @@ impl Battle<'_> {
             (element, segment),
             Some(origin),
             source,
-            true,
+            SuperBreakConversion::Attack,
         );
         self.record_half_hp_crossing(target, hp_before);
     }
@@ -2849,15 +3040,15 @@ impl Battle<'_> {
                 .debuffs
                 .iter()
                 .filter(|status| {
-                    matches!(
-                        status.kind,
-                        DebuffKind::DefenseDown
-                            | DebuffKind::SeamStitch
-                            | DebuffKind::DefenseBug
-                            | DebuffKind::Vulnerability
-                            | DebuffKind::WoesWhisper
-                            | DebuffKind::Weightless { .. }
-                    ) || self.epiphany_applies(status.kind, target)
+                    status.kind.reduces_defense()
+                        || matches!(
+                            status.kind,
+                            DebuffKind::SeamStitch
+                                | DebuffKind::Vulnerability
+                                | DebuffKind::WoesWhisper
+                                | DebuffKind::Weightless { .. }
+                        )
+                        || self.epiphany_applies(status.kind, target)
                         || status.kind.reduces_resistance_to(element)
                         || (status.kind == DebuffKind::UltimateVulnerability
                             && self.is_ultimate_damage(actor, &event))
@@ -3290,6 +3481,9 @@ impl Battle<'_> {
     pub(super) fn set_toughness(&mut self, actor: usize, target: usize, after: u16) {
         let state = &mut self.units[target];
         let before = std::mem::replace(&mut state.toughness, after);
+        if after > before {
+            state.toughness_reduction_remainder = 0;
+        }
         if before == 0 && after > 0 {
             state.rebloom_spent = false;
         }

@@ -63,10 +63,13 @@ pub enum StatusKind {
     DarkestRiddle,
     Bondmate,
     Ripples,
+    DancePartner,
+    DahliaZone,
+    Wilt,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Ripples.index() + 1;
+    pub(crate) const COUNT: usize = Self::Wilt.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -114,6 +117,9 @@ impl StatusKind {
             Self::DarkestRiddle => 40,
             Self::Bondmate => 41,
             Self::Ripples => 42,
+            Self::DancePartner => 43,
+            Self::DahliaZone => 44,
+            Self::Wilt => 45,
         }
     }
 }

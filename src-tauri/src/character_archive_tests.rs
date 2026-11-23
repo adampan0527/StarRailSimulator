@@ -12,6 +12,8 @@ use crate::{
 const EXAMPLE: &str = include_str!("../../contracts/battle-session.v1.example.json");
 
 #[cfg(bundled_catalog)]
+mod dahlia;
+#[cfg(bundled_catalog)]
 mod saber;
 
 #[test]

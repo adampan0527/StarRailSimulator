@@ -64,6 +64,8 @@ pub(super) struct OffenseBuffs {
     pub break_effect_bp: u32,
     pub toughness_efficiency_bp: u32,
     pub off_element_toughness_bp: u16,
+    pub unbroken_super_break: bool,
+    pub fixed_toughness_providers: u8,
     pub break_damage_bonus_bp: u32,
     pub max_hp_flat: u32,
     pub defense_bp: u32,
@@ -101,6 +103,8 @@ impl OffenseBuffs {
         self.off_element_toughness_bp = self
             .off_element_toughness_bp
             .max(buff.off_element_toughness_bp);
+        self.unbroken_super_break |= buff.unbroken_super_break;
+        self.fixed_toughness_providers |= buff.fixed_toughness_providers;
         self.break_damage_bonus_bp = self
             .break_damage_bonus_bp
             .saturating_add(buff.break_damage_bonus_bp);
@@ -414,6 +418,11 @@ impl Battle<'_> {
                         mechanics.ally_toughness_bonus_bp(self, source, target);
                     bonuses.off_element_toughness_bp =
                         mechanics.off_element_toughness_bp(self, source, target);
+                    bonuses.unbroken_super_break =
+                        mechanics.allows_unbroken_super_break(self, source);
+                    if mechanics.provides_fixed_attack_toughness() {
+                        bonuses.fixed_toughness_providers = 1 << source;
+                    }
                 }
                 if break_damage {
                     bonuses.break_damage_bonus_bp =

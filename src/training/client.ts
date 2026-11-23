@@ -119,6 +119,9 @@ type Status =
   | 'peerage'
   | 'darkest_riddle'
   | 'bondmate'
+  | 'dance_partner'
+  | 'dahlia_zone'
+  | 'wilt'
   | 'ripples';
 type EventKind =
   | {

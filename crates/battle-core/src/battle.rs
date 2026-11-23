@@ -109,6 +109,7 @@ struct UnitState {
     hp: u32,
     energy_milli: u32,
     toughness: u16,
+    toughness_reduction_remainder: u8,
     extra_toughness: Option<ExtraToughness>,
     gauge_quanta: u64,
     summon_turn: Option<SummonTurn>,
@@ -164,6 +165,7 @@ struct UnitState {
     permansor_state: official::PermansorState,
     ruan_mei_state: official::RuanMeiState,
     fugue_state: FugueState,
+    dahlia_state: official::DahliaState,
     rappa_state: official::RappaState,
     harmony_trailblazer_state: official::HarmonyTrailblazerState,
     remembrance_trailblazer_state: official::RemembranceTrailblazerState,
@@ -247,6 +249,7 @@ pub struct Battle<'a> {
     aha: Option<AhaState>,
     attack_spent_skill_points: bool,
     attack_targets: Vec<usize>,
+    attack_implants: Vec<(usize, usize)>,
     attack_damage: Option<u64>,
     tracks_attack_damage: bool,
     tracks_ally_damage: bool,
@@ -255,6 +258,8 @@ pub struct Battle<'a> {
     tracks_skill_copies: bool,
     super_break_targets: Vec<resolve::SuperBreakTarget>,
     tracks_super_break: bool,
+    observes_weakness_implants: bool,
+    tracks_fixed_attack_toughness: bool,
     attack_index: u32,
     enemy_turn: Option<usize>,
     enemy_action: Option<usize>,
@@ -280,6 +285,7 @@ impl<'a> Battle<'a> {
                     energy_milli: unit.starting_energy_milli,
                     toughness: unit.kit.max_toughness(),
                     extra_toughness: None,
+                    toughness_reduction_remainder: 0,
                     gauge_quanta: GAUGE_FULL,
                     summon_turn: None,
                     countdown: None,
@@ -334,6 +340,7 @@ impl<'a> Battle<'a> {
                     permansor_state: official::PermansorState::default(),
                     ruan_mei_state: official::RuanMeiState::default(),
                     fugue_state: FugueState::default(),
+                    dahlia_state: official::DahliaState::default(),
                     rappa_state: official::RappaState::default(),
                     harmony_trailblazer_state: official::HarmonyTrailblazerState::default(),
                     remembrance_trailblazer_state: official::RemembranceTrailblazerState::default(),
@@ -403,6 +410,7 @@ impl<'a> Battle<'a> {
             aha: None,
             attack_spent_skill_points: false,
             attack_targets: Vec::new(),
+            attack_implants: Vec::new(),
             attack_damage: None,
             tracks_attack_damage: plan.units[..plan.ally_count]
                 .iter()
@@ -423,6 +431,12 @@ impl<'a> Battle<'a> {
             tracks_super_break: plan.units[..plan.ally_count]
                 .iter()
                 .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.provides_super_break())),
+            observes_weakness_implants: plan.units[..plan.ally_count]
+                .iter()
+                .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.observes_weakness_implants())),
+            tracks_fixed_attack_toughness: plan.units[..plan.ally_count]
+                .iter()
+                .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.provides_fixed_attack_toughness())),
             attack_index: 0,
             enemy_turn: None,
             enemy_action: None,
@@ -1040,6 +1054,7 @@ impl<'a> Battle<'a> {
     fn begin_attack(&mut self) {
         self.attack_spent_skill_points = false;
         self.attack_targets.clear();
+        self.attack_implants.clear();
         self.attack_damage = self.tracks_attack_damage.then_some(0);
         self.super_break_targets.clear();
         self.attack_index += 1;
