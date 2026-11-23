@@ -68,10 +68,11 @@ pub enum StatusKind {
     Wilt,
     FacesOfElation,
     EmanatorOfElation,
+    DeepLearning,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::EmanatorOfElation.index() + 1;
+    pub(crate) const COUNT: usize = Self::DeepLearning.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -124,6 +125,7 @@ impl StatusKind {
             Self::Wilt => 45,
             Self::FacesOfElation => 46,
             Self::EmanatorOfElation => 47,
+            Self::DeepLearning => 48,
         }
     }
 }

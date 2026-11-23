@@ -53,6 +53,7 @@ mod misha;
 mod moze;
 mod mydei;
 mod natasha;
+mod pearl;
 mod pela;
 mod phainon;
 mod qingque;
@@ -120,6 +121,7 @@ pub(super) use {
     march_hunt::MarchHuntState,
     misha::MishaState,
     moze::MozeState,
+    pearl::PearlState,
     phainon::PhainonState,
     qingque::QingqueState,
     rappa::RappaState,
@@ -426,6 +428,28 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn certified_banger_duration(&self) -> u32 {
         2
+    }
+
+    fn permanent_banger_cap(&self, _battle: &Battle<'_>) -> Option<u32> {
+        None
+    }
+
+    fn after_granted_extra_turn_start(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+    ) {
+    }
+
+    fn after_granted_extra_turn_end(&self, _battle: &mut Battle<'_>, _owner: usize) {}
+
+    fn absorb_ally_damage(&self, _battle: &mut Battle<'_>, _owner: usize, _damage: u32) -> u32 {
+        0
+    }
+
+    fn ally_resistance_penetration_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        0
     }
 
     fn on_elation_skill(
@@ -1744,6 +1768,7 @@ type KitBuilder = fn(&OfficialCharacter) -> Result<OfficialKit, BattleError>;
 fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
         aeon_aha::FORM => Some(aeon_aha::build),
+        pearl::FORM => Some(pearl::build),
         archer::FORM => Some(archer::build),
         rin::FORM => Some(rin::build),
         aglaea::FORM => Some(aglaea::build),

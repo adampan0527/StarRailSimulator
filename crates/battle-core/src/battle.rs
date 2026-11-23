@@ -186,6 +186,7 @@ struct UnitState {
     mydei_state: official::MydeiState,
     aeon_aha_state: official::AeonAhaState,
     elation_trailblazer_state: official::ElationTrailblazerState,
+    pearl_state: official::PearlState,
     elation_debt: u32,
     sparxie_state: official::SparxieState,
     gallagher_state: GallagherState,
@@ -367,6 +368,7 @@ impl<'a> Battle<'a> {
                     mydei_state: official::MydeiState::default(),
                     aeon_aha_state: official::AeonAhaState::default(),
                     elation_trailblazer_state: official::ElationTrailblazerState::default(),
+                    pearl_state: official::PearlState::default(),
                     elation_debt: 0,
                     sparxie_state: official::SparxieState::default(),
                     gallagher_state: GallagherState::default(),
@@ -1481,6 +1483,7 @@ impl<'a> Battle<'a> {
     }
 
     fn end(&mut self, outcome: Outcome) {
+        self.finish_granted_extra_turn();
         self.outcome = outcome;
         self.ordinary_actor = None;
         self.emit(EventKind::BattleEnded(outcome), None, None);

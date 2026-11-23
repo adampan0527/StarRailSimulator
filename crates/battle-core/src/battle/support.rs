@@ -420,6 +420,9 @@ impl Battle<'_> {
                 bonuses.defense_ignore_bp = bonuses
                     .defense_ignore_bp
                     .saturating_add(mechanics.ally_defense_ignore_bp(self, source));
+                bonuses.resistance_penetration_bp = bonuses
+                    .resistance_penetration_bp
+                    .saturating_add(mechanics.ally_resistance_penetration_bp(self, source));
                 if kind == DamageKind::Elation {
                     bonuses.merrymake_bp = mechanics.ally_merrymake_bp(self, source, target);
                     bonuses.defense_ignore_bp = bonuses
@@ -671,6 +674,7 @@ impl Battle<'_> {
                 rules.on_ally_turn_opening(self, owner, actor, extra);
             }
         }
+        self.enforce_permanent_banger_caps();
     }
 
     pub(super) fn notify_active_ability(&mut self, actor: usize) {

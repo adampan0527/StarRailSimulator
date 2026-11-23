@@ -140,6 +140,7 @@ enum DamageScale {
     Elation {
         punchline: u32,
         factor_bp: u16,
+        allow_provider_elation: bool,
     },
     FixedBase(u64),
 }
@@ -2134,6 +2135,25 @@ impl Battle<'_> {
     }
 
     pub(super) fn elation_hit(&mut self, actor: usize, target: usize, hit: ElationHit) {
+        self.resolve_elation_hit(actor, target, hit, true);
+    }
+
+    pub(super) fn elation_hit_using_actor_stats(
+        &mut self,
+        actor: usize,
+        target: usize,
+        hit: ElationHit,
+    ) {
+        self.resolve_elation_hit(actor, target, hit, false);
+    }
+
+    fn resolve_elation_hit(
+        &mut self,
+        actor: usize,
+        target: usize,
+        hit: ElationHit,
+        allow_provider_elation: bool,
+    ) {
         let bonus = self
             .mechanics(actor)
             .map_or(0, |rules| rules.elation_punchline_bonus(self, actor));
@@ -2149,6 +2169,7 @@ impl Battle<'_> {
                 scale: DamageScale::Elation {
                     punchline: hit.punchline.saturating_add(bonus),
                     factor_bp: hit.factor_bp,
+                    allow_provider_elation,
                 },
             },
             10_000,
@@ -2328,7 +2349,16 @@ impl Battle<'_> {
             0
         };
         let fallback_elation = assisted_by
-            .filter(|_| uses_elation)
+            .filter(|_| {
+                uses_elation
+                    && !matches!(
+                        scale,
+                        DamageScale::Elation {
+                            allow_provider_elation: false,
+                            ..
+                        }
+                    )
+            })
             .map_or(0, |owner| self.intrinsic_elation_bp(owner));
         let crit = self.resolve_damage(
             actor,
@@ -2388,6 +2418,7 @@ impl Battle<'_> {
                 if let DamageScale::Elation {
                     punchline,
                     factor_bp,
+                    ..
                 } = scale
                 {
                     return damage::elation(
@@ -3391,8 +3422,22 @@ impl Battle<'_> {
         amount: u32,
         critical: bool,
     ) {
-        let absorbed = self.shield_amount(target).min(amount);
-        let incoming = amount - absorbed;
+        let shield_absorbed = self.shield_amount(target).min(amount);
+        let mut absorbed = shield_absorbed;
+        let mut incoming = amount - absorbed;
+        if incoming > 0 && self.is_party_unit(target) {
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(rules) = self.mechanics(owner)
+                {
+                    let blocked = rules
+                        .absorb_ally_damage(self, owner, incoming)
+                        .min(incoming);
+                    incoming -= blocked;
+                    absorbed += blocked;
+                }
+            }
+        }
         let preserved_hp = u32::from(self.protect_from_fatal_hp_overflow(target, incoming));
         let state = &mut self.units[target];
         let hp_loss = state.hp.saturating_sub(preserved_hp).min(incoming);
@@ -3414,7 +3459,7 @@ impl Battle<'_> {
         self.record_aha_damage(actor, target, kind, amount);
         self.notify_ally_damage(actor, target, kind, hp_loss);
         self.accrue_elation_debt(actor, target, hp_loss);
-        if absorbed > 0 {
+        if shield_absorbed > 0 {
             self.deplete_shields(target, amount);
         }
         let attack_index = (self.enemy_action == Some(actor)
