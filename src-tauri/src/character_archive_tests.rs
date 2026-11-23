@@ -17,6 +17,8 @@ mod archer;
 mod dahlia;
 #[cfg(bundled_catalog)]
 mod saber;
+#[cfg(bundled_catalog)]
+mod trailblazer_destruction;
 
 #[test]
 fn dpr_checks_selected_saved_team_against_fixed_scenario() {
