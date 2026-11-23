@@ -141,6 +141,10 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
       return '升格变化';
     case 'saber_core_resonance':
       return '炉心共鸣变化';
+    case 'gilgamesh_interest':
+      return '兴致';
+    case 'gilgamesh_golden_rule':
+      return '黄金律';
     case 'interpretation':
       return '解读变化';
     case 'inspiration':
@@ -251,6 +255,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'crimson_knot':
     case 'apotheosis':
     case 'saber_core_resonance':
+    case 'gilgamesh_interest':
+    case 'gilgamesh_golden_rule':
     case 'interpretation':
     case 'inspiration':
     case 'herta_answer':

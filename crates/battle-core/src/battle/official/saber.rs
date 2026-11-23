@@ -44,6 +44,18 @@ pub(in crate::battle) struct SaberState {
     stored_energy_milli: u32,
     wind_penetration_stacks: u8,
     ultimates_until_refund: u8,
+    gilgamesh_ultimate_pending_bp: u16,
+    gilgamesh_ultimate_active_bp: u16,
+}
+
+impl SaberState {
+    pub(super) fn arm_gilgamesh_ultimate(&mut self, factor_bp: u16) {
+        self.gilgamesh_ultimate_pending_bp = factor_bp;
+    }
+
+    pub(super) fn gilgamesh_ultimate_factor_bp(&self) -> u32 {
+        u32::from(self.gilgamesh_ultimate_active_bp).max(10_000)
+    }
 }
 
 struct Saber {
@@ -318,6 +330,11 @@ impl Mechanics for Saber {
         _: Option<usize>,
     ) {
         match action {
+            Action::Ultimate => {
+                let state = &mut battle.units[owner].saber_state;
+                state.gilgamesh_ultimate_active_bp =
+                    std::mem::take(&mut state.gilgamesh_ultimate_pending_bp);
+            }
             Action::Skill => {
                 if skill_can_fill_energy(battle, owner) {
                     let state = &mut battle.units[owner].saber_state;
@@ -351,7 +368,10 @@ impl Mechanics for Saber {
         _: Option<usize>,
     ) {
         match action {
-            Action::Ultimate => self.finish_ultimate(battle, owner),
+            Action::Ultimate => {
+                battle.units[owner].saber_state.gilgamesh_ultimate_active_bp = 0;
+                self.finish_ultimate(battle, owner);
+            }
             Action::Skill => {
                 let payment = std::mem::take(&mut battle.units[owner].saber_state.skill_payment);
                 if payment > 0 {

@@ -29,6 +29,7 @@ mod fu_xuan;
 mod fugue;
 mod gallagher;
 mod gepard;
+mod gilgamesh;
 mod guinaifen;
 mod hanya;
 mod healing;
@@ -109,6 +110,7 @@ pub(super) use {
     firefly::FireflyState,
     fu_xuan::FuXuanState,
     fugue::FugueState,
+    gilgamesh::GilgameshState,
     hanya::HanyaState,
     huohuo::HuohuoState,
     hyacine::HyacineState,
@@ -625,8 +627,8 @@ pub(super) trait Mechanics: Send + Sync {
         None
     }
 
-    fn prepare_automatic_skill(&self, _battle: &mut Battle<'_>, _actor: usize) -> bool {
-        false
+    fn prepare_automatic_action(&self, _battle: &mut Battle<'_>, _actor: usize) -> Option<Action> {
+        None
     }
 
     fn taunts_enemy(&self, _battle: &Battle<'_>, _owner: usize, _enemy: usize) -> bool {
@@ -1196,6 +1198,15 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_attack_target(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
 
+    fn on_joint_follow_up_finished(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _partner: usize,
+        _resolved: bool,
+    ) {
+    }
+
     fn on_first_attack_hit(
         &self,
         _battle: &mut Battle<'_>,
@@ -1546,6 +1557,16 @@ pub(super) trait Mechanics: Send + Sync {
     ) {
     }
 
+    /// Reports energy actually paid. Alternate ultimate resources use a cost of zero.
+    fn on_ally_ultimate_started(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _cost_milli: u32,
+    ) {
+    }
+
     fn on_unit_action_finished(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
 
     fn tracks_action_end_reactions(&self) -> bool {
@@ -1569,6 +1590,10 @@ pub(super) trait Mechanics: Send + Sync {
     fn on_dot_batch_finished(&self, _battle: &mut Battle<'_>, _owner: usize) {}
 
     fn ally_dot_damage_factor_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        10_000
+    }
+
+    fn ally_ultimate_damage_factor_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         10_000
     }
 
@@ -1796,6 +1821,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1301" => Some(gallagher::build),
         argenti::FORM => Some(argenti::build),
         saber::FORM => Some(saber::build),
+        gilgamesh::FORM => Some(gilgamesh::build),
         ruan_mei::FORM => Some(ruan_mei::build),
         aventurine::FORM => Some(aventurine::build),
         "character.1305" => Some(dr_ratio::build),

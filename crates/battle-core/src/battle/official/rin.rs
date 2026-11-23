@@ -6,7 +6,7 @@ use crate::{
 };
 
 use super::{
-    super::{Battle, resolve::FollowUpAttack, support::AllyBuffKind},
+    super::{Battle, resolve::JointFollowUpAttack, support::AllyBuffKind},
     Mechanics, OfficialAbility, OfficialCharacter, OfficialKit, SkillPoints, archer,
 };
 
@@ -47,8 +47,8 @@ struct Rin {
     ultimate_other_bp: u16,
     vulnerability_bp: u32,
     crit_damage_bp: u32,
-    rin_joint: FollowUpAttack,
-    archer_joint: FollowUpAttack,
+    rin_joint: JointFollowUpAttack,
+    archer_joint: JointFollowUpAttack,
     elegant_conduct: bool,
     ladylike_poise: bool,
     inbound_prosperity: bool,
@@ -178,13 +178,12 @@ fn attack(
     }
 }
 
-fn joint_attack(multiplier_bp: u16, energy_milli: u32) -> FollowUpAttack {
-    FollowUpAttack {
+fn joint_attack(multiplier_bp: u16, energy_milli: u32) -> JointFollowUpAttack {
+    JointFollowUpAttack {
         element: QUANTUM,
-        multiplier_bp,
+        multiplier_bp: u32::from(multiplier_bp),
         toughness: 10,
         energy_milli,
-        first_hit: None,
     }
 }
 
@@ -447,10 +446,7 @@ impl Mechanics for Rin {
         }
         battle.units[owner].rin_state.joint_used = true;
         battle.queue_joint_follow_up(
-            [
-                (owner, self.rin_joint.clone()),
-                (actor, self.archer_joint.clone()),
-            ],
+            [(owner, self.rin_joint), (actor, self.archer_joint)],
             origin,
             4,
         );
