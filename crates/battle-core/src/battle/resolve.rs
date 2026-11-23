@@ -227,6 +227,14 @@ pub(super) struct FollowUpBounces {
     pub toughness_half_units: u16,
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct JointFollowUpAttack {
+    pub element: Element,
+    pub multiplier_bp: u32,
+    pub toughness: u16,
+    pub energy_milli: u32,
+}
+
 #[derive(Clone)]
 pub(super) struct FollowUp {
     actor: usize,
@@ -243,7 +251,7 @@ pub(super) enum PendingAttack {
         target: usize,
     },
     JointFollowUp {
-        participants: [(usize, FollowUpAttack); 2],
+        participants: [(usize, JointFollowUpAttack); 2],
         origin: Action,
         restores_skill_points: u8,
     },
@@ -1147,7 +1155,7 @@ impl Battle<'_> {
 
     pub(super) fn queue_joint_follow_up(
         &mut self,
-        participants: [(usize, FollowUpAttack); 2],
+        participants: [(usize, JointFollowUpAttack); 2],
         origin: Action,
         restores_skill_points: u8,
     ) {
@@ -1448,18 +1456,21 @@ impl Battle<'_> {
 
     fn resolve_joint_follow_up(
         &mut self,
-        participants: [(usize, FollowUpAttack); 2],
+        participants: [(usize, JointFollowUpAttack); 2],
         origin: Action,
         restores_skill_points: u8,
     ) {
+        let [(source, first), (partner, second)] = participants;
         if participants
             .iter()
             .any(|(actor, _)| !self.is_targetable(*actor) || self.is_crowd_controlled(*actor))
             || !self.enemies().any(|target| self.is_targetable(target))
         {
+            if let Some(rules) = self.mechanics(source) {
+                rules.on_joint_follow_up_finished(self, source, partner, false);
+            }
             return;
         }
-        let [(source, first), (partner, second)] = participants;
         let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
         for (actor, other, attack) in [(source, partner, first), (partner, source, second)] {
             if !self.is_targetable(actor)
@@ -1471,7 +1482,7 @@ impl Battle<'_> {
             self.begin_attack();
             self.emit(EventKind::FollowUp, Some(actor), None);
             for target in self.enemies() {
-                self.follow_up_hit(
+                self.follow_up_hit_with_multiplier(
                     actor,
                     target,
                     origin,
@@ -1486,6 +1497,9 @@ impl Battle<'_> {
         }
         self.resolving_follow_up = was_follow_up;
         self.restore_skill_points(source, restores_skill_points);
+        if let Some(rules) = self.mechanics(source) {
+            rules.on_joint_follow_up_finished(self, source, partner, true);
+        }
     }
 
     pub(super) fn follow_up_hit(
@@ -1497,13 +1511,32 @@ impl Battle<'_> {
         multiplier_bp: u16,
         toughness: u16,
     ) {
+        self.follow_up_hit_with_multiplier(
+            actor,
+            target,
+            origin,
+            element,
+            u32::from(multiplier_bp),
+            toughness,
+        );
+    }
+
+    fn follow_up_hit_with_multiplier(
+        &mut self,
+        actor: usize,
+        target: usize,
+        origin: Action,
+        element: Element,
+        multiplier_bp: u32,
+        toughness: u16,
+    ) {
         self.strike(
             actor,
             target,
             DamageKind::FollowUp,
             Hit {
                 element,
-                multiplier_bp: u32::from(multiplier_bp),
+                multiplier_bp,
                 toughness,
                 origin: Some(origin),
                 scale: DamageScale::Attack,
@@ -1724,10 +1757,11 @@ impl Battle<'_> {
             })
     }
 
-    fn ally_damage_factor_from(&self, owner: usize, actor: usize, kind: DamageKind) -> u32 {
-        let is_dot = kind == DamageKind::DamageOverTime && self.is_party_unit(actor);
+    fn ally_damage_factor_from(&self, owner: usize, actor: usize, event: &DamageEvent) -> u32 {
+        let is_dot = event.kind == DamageKind::DamageOverTime && self.is_party_unit(actor);
         let is_memosprite = self.memosprite_owner(actor).is_some();
-        if !is_dot && !is_memosprite {
+        let is_ultimate = event.kind == DamageKind::Direct && self.is_ultimate_damage(actor, event);
+        if !is_dot && !is_memosprite && !is_ultimate {
             return 10_000;
         }
         let Some(rules) = self.mechanics(owner) else {
@@ -1738,14 +1772,20 @@ impl Battle<'_> {
         } else {
             10_000
         };
-        if is_memosprite {
-            combine_damage_factors(
-                dot_factor,
-                rules.ally_memosprite_damage_factor_bp(self, owner),
-            )
+        let sprite_factor = if is_memosprite {
+            rules.ally_memosprite_damage_factor_bp(self, owner)
         } else {
-            dot_factor
-        }
+            10_000
+        };
+        let ultimate_factor = if is_ultimate {
+            rules.ally_ultimate_damage_factor_bp(self, actor)
+        } else {
+            10_000
+        };
+        combine_damage_factors(
+            combine_damage_factors(dot_factor, sprite_factor),
+            ultimate_factor,
+        )
     }
 
     fn damage_target(
@@ -1864,18 +1904,20 @@ impl Battle<'_> {
             })
         });
         let personal_penetration = personal_penetration.saturating_add(sprite_penetration);
-        let outgoing_damage_factor_bp =
-            if event.kind == DamageKind::DamageOverTime || self.memosprite_owner(actor).is_some() {
-                self.allies().filter(|&owner| allow_source(owner)).fold(
-                    outgoing_damage_factor_bp,
-                    |factor, owner| {
-                        let support = self.ally_damage_factor_from(owner, actor, event.kind);
-                        combine_damage_factors(factor, support)
-                    },
-                )
-            } else {
-                outgoing_damage_factor_bp
-            };
+        let outgoing_damage_factor_bp = if event.kind == DamageKind::DamageOverTime
+            || self.memosprite_owner(actor).is_some()
+            || (event.kind == DamageKind::Direct && self.is_ultimate_damage(actor, event))
+        {
+            self.allies().filter(|&owner| allow_source(owner)).fold(
+                outgoing_damage_factor_bp,
+                |factor, owner| {
+                    let support = self.ally_damage_factor_from(owner, actor, event);
+                    combine_damage_factors(factor, support)
+                },
+            )
+        } else {
+            outgoing_damage_factor_bp
+        };
         let mut stats = plan.stats;
         stats.hp = self.effective_max_hp(target);
         stats.defense = self.defense(target);
@@ -3157,7 +3199,7 @@ impl Battle<'_> {
                 )
                 .chain(self.allies().filter(|&owner| {
                     self.offense_buffs_from(owner, offense) != OffenseBuffs::default()
-                        || self.ally_damage_factor_from(owner, actor, kind) != 10_000
+                        || self.ally_damage_factor_from(owner, actor, &event) != 10_000
                         || self.target_auras_from(owner, actor, target, element, &event)
                             != DamageTargetAura::default()
                 }))

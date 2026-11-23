@@ -252,6 +252,14 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    GilgameshInterest {
+        before: u16,
+        after: u16,
+    },
+    GilgameshGoldenRule {
+        before: u8,
+        after: u8,
+    },
     ArcherCharge {
         before: u8,
         after: u8,

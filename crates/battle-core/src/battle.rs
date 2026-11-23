@@ -204,6 +204,7 @@ struct UnitState {
     huohuo_state: HuohuoState,
     argenti_apotheosis: u8,
     saber_state: official::SaberState,
+    gilgamesh_state: official::GilgameshState,
     archer_state: official::ArcherState,
     rin_state: official::RinState,
     crimson_knots: u8,
@@ -385,6 +386,7 @@ impl<'a> Battle<'a> {
                     huohuo_state: HuohuoState::default(),
                     argenti_apotheosis: 0,
                     saber_state: official::SaberState::default(),
+                    gilgamesh_state: official::GilgameshState::default(),
                     archer_state: official::ArcherState::default(),
                     rin_state: official::RinState::default(),
                     crimson_knots: 0,
@@ -599,6 +601,13 @@ impl<'a> Battle<'a> {
         let extra_turn = ends_turn && self.in_extra_turn(actor);
         if let Some(cost) = ultimate_cost_milli {
             self.set_energy(actor, actor, self.units[actor].energy_milli - cost);
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(rules) = self.mechanics(owner)
+                {
+                    rules.on_ally_ultimate_started(self, owner, actor, cost);
+                }
+            }
         } else if ends_turn && !extra_turn {
             self.reset_gauge(actor);
         }
@@ -1220,18 +1229,18 @@ impl<'a> Battle<'a> {
         while self.outcome == Outcome::Ongoing {
             self.start_extra_turn();
             if let Some(actor) = self.ordinary_actor {
-                if !self
+                let Some(automatic_action) = self
                     .mechanics(actor)
-                    .is_some_and(|rules| rules.prepare_automatic_skill(self, actor))
-                {
+                    .and_then(|rules| rules.prepare_automatic_action(self, actor))
+                else {
                     return;
-                }
+                };
                 let actions = self.legal_actions();
                 // Keep an ultimate window open if there is a choice to make.
                 let [command] = actions.as_slice() else {
                     return;
                 };
-                if command.action != Action::Skill || self.resolve_command(command).is_err() {
+                if command.action != automatic_action || self.resolve_command(command).is_err() {
                     return;
                 }
                 continue;

@@ -16,6 +16,8 @@ mod archer;
 #[cfg(bundled_catalog)]
 mod dahlia;
 #[cfg(bundled_catalog)]
+mod gilgamesh;
+#[cfg(bundled_catalog)]
 mod rin;
 #[cfg(bundled_catalog)]
 mod saber;

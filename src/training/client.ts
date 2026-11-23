@@ -159,6 +159,8 @@ type EventKind =
         | 'blind_bet'
         | 'apotheosis'
         | 'saber_core_resonance'
+        | 'gilgamesh_interest'
+        | 'gilgamesh_golden_rule'
         | 'interpretation'
         | 'inspiration'
         | 'herta_answer'

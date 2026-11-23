@@ -345,12 +345,12 @@ impl Mechanics for Mydei {
             .flatten()
     }
 
-    fn prepare_automatic_skill(&self, battle: &mut Battle<'_>, actor: usize) -> bool {
+    fn prepare_automatic_action(&self, battle: &mut Battle<'_>, actor: usize) -> Option<Action> {
         if !battle.units[actor].mydei_state.vendetta {
-            return false;
+            return None;
         }
         if Self::forced_target(battle, actor).is_some() {
-            return true;
+            return Some(Action::Skill);
         }
         let target = battle.random_living_enemy();
         let godslayer = Self::godslayer_ready(battle, actor);
@@ -360,7 +360,7 @@ impl Mechanics for Mydei {
         } else {
             state.kingslayer_target = target;
         }
-        target.is_some()
+        target.map(|_| Action::Skill)
     }
 
     fn ability_override(
