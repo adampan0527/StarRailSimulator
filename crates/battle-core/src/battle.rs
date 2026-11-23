@@ -161,6 +161,7 @@ struct UnitState {
     sunday_state: official::SundayState,
     qingque_state: official::QingqueState,
     dan_heng_il_state: official::DanHengIlState,
+    permansor_state: official::PermansorState,
     ruan_mei_state: official::RuanMeiState,
     fugue_state: FugueState,
     rappa_state: official::RappaState,
@@ -328,6 +329,7 @@ impl<'a> Battle<'a> {
                     sunday_state: official::SundayState::default(),
                     qingque_state: official::QingqueState::default(),
                     dan_heng_il_state: official::DanHengIlState::default(),
+                    permansor_state: official::PermansorState::default(),
                     ruan_mei_state: official::RuanMeiState::default(),
                     fugue_state: FugueState::default(),
                     rappa_state: official::RappaState::default(),
@@ -1098,6 +1100,17 @@ impl<'a> Battle<'a> {
         self.memosprite_owner(actor)
             .and_then(|owner| self.units[owner].summon_turn)
             .map_or(self.units[actor].gauge_quanta, |summon| summon.gauge_quanta)
+    }
+
+    fn has_advanceable_summon(&self, owner: usize, holder: usize) -> bool {
+        self.units[owner]
+            .summon_turn
+            .is_some_and(|summon| summon.can_advance)
+            && self.is_targetable(owner)
+            && self
+                .mechanics(owner)
+                .map_or(owner, |rules| rules.summon_holder(self, owner))
+                == holder
     }
 
     fn summon_speed_micros(&self, owner: usize, summon: SummonTurn) -> u64 {

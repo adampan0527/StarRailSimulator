@@ -398,6 +398,67 @@ fn saved_evernight_and_remembrance_replay_two_real_memosprites() {
 
 #[cfg(bundled_catalog)]
 #[test]
+fn saved_permansor_uses_fractional_shields_and_keeps_bondmate_provenance() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let [permansor, herta] = ["character.1414", "character.1013"];
+    profiles.ensure_profile(permansor).unwrap();
+    let mut loadout = catalog
+        .default_loadout_at(permansor, "base", 80, 6)
+        .unwrap();
+    loadout.config.eidolon = 2;
+    for skill in ["skill.141402", "skill.141403", "skill.141404"] {
+        loadout.config.skill_levels.insert(skill.into(), 7);
+    }
+    profiles
+        .save_preset(permansor, "base", &loadout, true)
+        .unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "同袍与龙灵",
+            &[Some(permansor.into()), Some(herta.into()), None, None],
+        )
+        .unwrap();
+
+    let run = || {
+        let readiness = archive.dpr_readiness(&team.id).unwrap();
+        assert!(readiness.unsupported_characters.is_empty());
+        readiness.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| hit.source_id == permansor && hit.kind == DamageKind::FollowUp));
+    assert!(hits().any(|hit| {
+        hit.source_id == herta
+            && hit.kind == DamageKind::Additional
+            && hit.action == Action::Skill
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == permansor && credit.amount > 0)
+    }));
+    assert_eq!(result, run());
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|role| role.own_damage + role.assist_damage)
+            .sum::<u64>()
+    );
+}
+
+#[cfg(bundled_catalog)]
+#[test]
 fn welt_fixed_dpr_uses_default_and_saved_base_variant() {
     let dir = TestData::new();
     let welt = "character.1004";

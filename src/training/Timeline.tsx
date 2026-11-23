@@ -70,6 +70,7 @@ const statusNames = {
   military_merit: '军功',
   peerage: '爵位',
   darkest_riddle: '至暗之谜',
+  bondmate: '同袍',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

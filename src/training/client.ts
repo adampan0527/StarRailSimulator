@@ -117,7 +117,8 @@ type Status =
   | 'siren_zone'
   | 'military_merit'
   | 'peerage'
-  | 'darkest_riddle';
+  | 'darkest_riddle'
+  | 'bondmate';
 type EventKind =
   | {
       event:

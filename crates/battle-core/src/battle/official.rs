@@ -16,6 +16,7 @@ mod cipher;
 mod clara;
 mod dan_heng;
 mod dan_heng_il;
+mod dan_heng_permansor;
 mod dr_ratio;
 mod evernight;
 mod feixiao;
@@ -88,6 +89,7 @@ pub(super) use {
     cerydra::CerydraState,
     cipher::CipherState,
     dan_heng_il::DanHengIlState,
+    dan_heng_permansor::PermansorState,
     dr_ratio::DrRatioState,
     evernight::EvernightState,
     feixiao::FeixiaoState,
@@ -618,6 +620,14 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_summon_turn(&self, _battle: &mut Battle<'_>, _owner: usize) {}
 
+    fn summon_holder(&self, _battle: &Battle<'_>, owner: usize) -> usize {
+        owner
+    }
+
+    fn assisted_damage_comes_from_summon(&self, _battle: &Battle<'_>, _owner: usize) -> bool {
+        false
+    }
+
     fn before_action(
         &self,
         _battle: &mut Battle<'_>,
@@ -796,6 +806,15 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn ally_damage_reduction_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
         0
+    }
+
+    fn ally_damage_reduction_bp_for_target(
+        &self,
+        battle: &Battle<'_>,
+        owner: usize,
+        _target: usize,
+    ) -> u32 {
+        self.ally_damage_reduction_bp(battle, owner)
     }
 
     fn damage_distribution_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u16 {
@@ -1613,6 +1632,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         jingliu::FORM => Some(jingliu::build),
         xueyi::FORM => Some(xueyi::build),
         dan_heng_il::FORM => Some(dan_heng_il::build),
+        dan_heng_permansor::FORM => Some(dan_heng_permansor::build),
         "character.1215" => Some(hanya::build),
         huohuo::FORM => Some(huohuo::build),
         hysilens::FORM => Some(hysilens::build),
