@@ -124,6 +124,7 @@ type Status =
   | 'wilt'
   | 'faces_of_elation'
   | 'emanator_of_elation'
+  | 'deep_learning'
   | 'ripples';
 type EventKind =
   | {

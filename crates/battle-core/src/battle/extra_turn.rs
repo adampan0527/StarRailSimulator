@@ -6,18 +6,25 @@ use super::Battle;
 
 #[derive(Clone, Default)]
 pub(super) struct ExtraTurns {
-    pending: VecDeque<usize>,
+    pending: VecDeque<(usize, Option<usize>)>,
     active: bool,
+    provider: Option<usize>,
     interrupted: Option<usize>,
 }
 
 impl Battle<'_> {
     pub(super) fn queue_extra_turn(&mut self, actor: usize) {
-        self.extra_turns.pending.push_back(actor);
+        self.extra_turns.pending.push_back((actor, None));
+    }
+
+    pub(super) fn queue_granted_extra_turn(&mut self, provider: usize, actor: usize) {
+        self.extra_turns.pending.push_back((actor, Some(provider)));
     }
 
     pub(super) fn cancel_queued_extra_turn(&mut self, actor: usize) {
-        self.extra_turns.pending.retain(|&pending| pending != actor);
+        self.extra_turns
+            .pending
+            .retain(|&(pending, _)| pending != actor);
     }
 
     pub(super) fn in_extra_turn(&self, actor: usize) -> bool {
@@ -33,19 +40,27 @@ impl Battle<'_> {
                 self.extra_turns
                     .pending
                     .iter()
-                    .position(|&actor| actor == owner)
+                    .position(|&(actor, _)| actor == owner)
                     .and_then(|index| self.extra_turns.pending.remove(index))
             } else {
                 self.extra_turns.pending.pop_front()
             };
-            let Some(actor) = next else { return false };
+            let Some((actor, provider)) = next else {
+                return false;
+            };
             if !self.available_for_ordinary_turn(actor) {
                 continue;
             }
             self.extra_turns.interrupted = self.ordinary_actor.replace(actor);
             self.extra_turns.active = true;
+            self.extra_turns.provider = provider;
             self.emit(EventKind::ExtraTurnStarted, Some(actor), None);
             self.notify_ally_turn_opening(actor, true);
+            if let Some(provider) = provider
+                && let Some(rules) = self.mechanics(provider)
+            {
+                rules.after_granted_extra_turn_start(self, provider, actor);
+            }
             if let Some(rules) = self.mechanics(actor) {
                 rules.on_extra_turn_start(self, actor);
             }
@@ -53,8 +68,17 @@ impl Battle<'_> {
         }
     }
 
+    pub(super) fn finish_granted_extra_turn(&mut self) {
+        if let Some(provider) = self.extra_turns.provider.take()
+            && let Some(rules) = self.mechanics(provider)
+        {
+            rules.after_granted_extra_turn_end(self, provider);
+        }
+    }
+
     pub(super) fn finish_extra_turn(&mut self) {
         let actor = self.ordinary_actor;
+        self.finish_granted_extra_turn();
         self.extra_turns.active = false;
         self.ordinary_actor = self
             .extra_turns

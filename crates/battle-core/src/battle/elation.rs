@@ -44,10 +44,18 @@ struct CertifiedBanger {
     last_turn: u32,
 }
 
+#[derive(Clone, Copy)]
+struct ExtraTurnElation {
+    actor: usize,
+    banger: u32,
+    punchline: u32,
+}
+
 #[derive(Clone)]
 pub(super) struct AhaState {
     pub gauge_quanta: u64,
     punchline: u32,
+    extra_turn: Option<ExtraTurnElation>,
     pending_extra: Option<AhaTurn>,
     bangers: Vec<CertifiedBanger>,
     instant_damage: Option<ElationDamageTotal>,
@@ -66,7 +74,10 @@ impl Battle<'_> {
     }
 
     pub(super) fn current_punchline(&self) -> u32 {
-        self.aha.as_ref().map_or(0, |aha| aha.punchline)
+        self.aha.as_ref().map_or(0, |aha| {
+            aha.punchline
+                .saturating_add(aha.extra_turn.map_or(0, |extra| extra.punchline))
+        })
     }
 
     fn elation_allies(&self) -> impl Iterator<Item = usize> + '_ {
@@ -86,6 +97,7 @@ impl Battle<'_> {
         self.aha = Some(AhaState {
             gauge_quanta: GAUGE_FULL,
             punchline: 0,
+            extra_turn: None,
             pending_extra: None,
             bangers: Vec::new(),
             instant_damage: None,
@@ -220,31 +232,133 @@ impl Battle<'_> {
     }
 
     pub(super) fn certified_banger(&self, actor: usize) -> Option<u32> {
-        self.aha
-            .as_ref()?
-            .bangers
+        let aha = self.aha.as_ref()?;
+        aha.bangers
             .iter()
             .filter(|banger| banger.actor == actor)
             .map(|banger| banger.punchline)
+            .chain(
+                aha.extra_turn
+                    .filter(|extra| extra.actor == actor)
+                    .map(|extra| extra.banger),
+            )
             .reduce(u32::saturating_add)
     }
 
     pub(super) fn grant_certified_banger(&mut self, actor: usize, punchline: u32) {
-        let duration = self
-            .mechanics(actor)
-            .map_or(2, |rules| rules.certified_banger_duration());
-        let before = self.certified_banger(actor).unwrap_or(0);
+        let rules = self.mechanics(actor);
+        let cap = rules
+            .as_ref()
+            .and_then(|rules| rules.permanent_banger_cap(self));
+        let last_turn = if cap.is_some() {
+            u32::MAX
+        } else {
+            let duration = rules.map_or(2, |rules| rules.certified_banger_duration());
+            self.units[actor].normal_turns.saturating_add(duration)
+        };
+        let existing = self.certified_banger(actor);
+        let before = existing.unwrap_or(0);
+        let punchline = cap.map_or(punchline, |limit| {
+            punchline.min(limit.saturating_sub(before))
+        });
+        if punchline == 0 && existing.is_some() && cap.is_some() {
+            return;
+        }
         let Some(aha) = &mut self.aha else { return };
         aha.bangers.push(CertifiedBanger {
             actor,
             punchline,
-            last_turn: self.units[actor].normal_turns + duration,
+            last_turn,
         });
         self.emit(
             self.banger_change(before, before.saturating_add(punchline)),
             Some(actor),
             None,
         );
+    }
+
+    pub(super) fn spend_certified_banger(&mut self, actor: usize, mut points: u32) {
+        let before = self.certified_banger(actor).unwrap_or(0);
+        if points == 0 || before == 0 {
+            return;
+        }
+        let Some(aha) = &mut self.aha else { return };
+        if let Some(extra) = &mut aha.extra_turn
+            && extra.actor == actor
+        {
+            let spent = points.min(extra.banger);
+            extra.banger -= spent;
+            points -= spent;
+        }
+        for banger in &mut aha.bangers {
+            if banger.actor == actor {
+                let spent = points.min(banger.punchline);
+                banger.punchline -= spent;
+                points -= spent;
+            }
+        }
+        aha.bangers
+            .retain(|banger| banger.actor != actor || banger.punchline > 0);
+        let after = self.certified_banger(actor).unwrap_or(0);
+        self.emit(self.banger_change(before, after), Some(actor), None);
+    }
+
+    pub(super) fn enforce_permanent_banger_caps(&mut self) {
+        if self.aha.is_none() {
+            return;
+        }
+        for actor in self.allies() {
+            if let Some(limit) = self
+                .mechanics(actor)
+                .and_then(|rules| rules.permanent_banger_cap(self))
+            {
+                let current = self.certified_banger(actor).unwrap_or(0);
+                self.spend_certified_banger(actor, current.saturating_sub(limit));
+            }
+        }
+    }
+
+    pub(super) fn start_extra_turn_elation(&mut self, actor: usize, banger: u32, punchline: u32) {
+        let before_banger = self.certified_banger(actor).unwrap_or(0);
+        let before = self.current_punchline();
+        let Some(aha) = &mut self.aha else { return };
+        aha.extra_turn = Some(ExtraTurnElation {
+            actor,
+            banger,
+            punchline,
+        });
+        self.emit(
+            self.banger_change(before_banger, before_banger.saturating_add(banger)),
+            Some(actor),
+            None,
+        );
+        self.notify_punchline_changed(Some(actor), before);
+    }
+
+    pub(super) fn finish_extra_turn_elation(&mut self, banger_bp: u32, punchline_bp: u32) {
+        use super::support::percentage_of;
+
+        let before = self.current_punchline();
+        let Some(extra) = self.aha.as_ref().and_then(|aha| aha.extra_turn) else {
+            return;
+        };
+        let before_banger = self.certified_banger(extra.actor).unwrap_or(0);
+        let Some(aha) = &mut self.aha else { return };
+        aha.extra_turn = None;
+        aha.punchline = aha
+            .punchline
+            .saturating_add(percentage_of(extra.punchline, punchline_bp));
+        let after_banger = before_banger.saturating_sub(extra.banger);
+        self.emit(
+            self.banger_change(before_banger, after_banger),
+            Some(extra.actor),
+            None,
+        );
+        let retained_banger = percentage_of(extra.banger, banger_bp);
+        if retained_banger != 0 {
+            self.grant_certified_banger(extra.actor, retained_banger);
+        }
+        self.notify_punchline_changed(Some(extra.actor), before);
     }
 
     pub(super) fn expire_certified_banger(&mut self, actor: usize) {
@@ -268,28 +382,37 @@ impl Battle<'_> {
     }
 
     pub(super) fn add_punchline(&mut self, actor: usize, points: u32) {
-        if let Some(aha) = &self.aha {
-            self.set_punchline(Some(actor), aha.punchline.saturating_add(points));
-        }
+        self.set_punchline(Some(actor), self.current_punchline().saturating_add(points));
     }
 
     fn set_punchline(&mut self, actor: Option<usize>, after: u32) {
+        let before = self.current_punchline();
         if let Some(aha) = &mut self.aha {
-            let before = std::mem::replace(&mut aha.punchline, after);
-            if before != after {
-                let kind = if self.elation_ascension().is_some() {
-                    EventKind::Bliss { before, after }
-                } else {
-                    EventKind::Punchline { before, after }
-                };
-                self.emit(kind, actor, None);
-                for owner in self.allies() {
-                    if self.is_targetable(owner)
-                        && let Some(rules) = self.mechanics(owner)
-                    {
-                        rules.on_punchline_changed(self, owner);
-                    }
-                }
+            if let Some(extra) = &mut aha.extra_turn {
+                // Pool consumption spends the transient share first.
+                extra.punchline = extra.punchline.saturating_sub(before.saturating_sub(after));
+            }
+            aha.punchline = after.saturating_sub(aha.extra_turn.map_or(0, |extra| extra.punchline));
+            self.notify_punchline_changed(actor, before);
+        }
+    }
+
+    fn notify_punchline_changed(&mut self, actor: Option<usize>, before: u32) {
+        let after = self.current_punchline();
+        if before == after {
+            return;
+        }
+        let kind = if self.elation_ascension().is_some() {
+            EventKind::Bliss { before, after }
+        } else {
+            EventKind::Punchline { before, after }
+        };
+        self.emit(kind, actor, None);
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(rules) = self.mechanics(owner)
+            {
+                rules.on_punchline_changed(self, owner);
             }
         }
     }
@@ -364,11 +487,7 @@ impl Battle<'_> {
 
     fn resolve_aha_instant(&mut self, turn: AhaTurn) {
         let (actor, punchline, skill_damage_factor_bp) = match turn {
-            AhaTurn::Natural => (
-                None,
-                self.aha.as_ref().map_or(0, |aha| aha.punchline),
-                10_000,
-            ),
+            AhaTurn::Natural => (None, self.current_punchline(), 10_000),
             AhaTurn::Extra { owner, punchline } => (
                 Some(owner),
                 punchline,
@@ -414,10 +533,7 @@ impl Battle<'_> {
             if rules.elation_participant().is_none() {
                 continue;
             }
-            let punchline = actor.map_or_else(
-                || self.aha.as_ref().map_or(0, |aha| aha.punchline),
-                |_| punchline,
-            );
+            let punchline = actor.map_or_else(|| self.current_punchline(), |_| punchline);
             self.resolve_elation_skill(
                 owner,
                 AhaInstant {
@@ -436,7 +552,7 @@ impl Battle<'_> {
             }
         }
         let retained = if natural {
-            let consumed = self.aha.as_ref().map_or(0, |aha| aha.punchline);
+            let consumed = self.current_punchline();
             self.set_punchline(None, 0);
             consumed
         } else {
@@ -448,7 +564,7 @@ impl Battle<'_> {
             }
         }
         let replenished = self.elation_allies().count() as u32;
-        let current = self.aha.as_ref().map_or(0, |aha| aha.punchline);
+        let current = self.current_punchline();
         let reclaimed = if natural {
             self.elation_ascension().map_or(0, |ascension| {
                 super::support::percentage_of(retained, ascension.reclaimed_bp)

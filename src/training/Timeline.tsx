@@ -82,6 +82,7 @@ const statusNames = {
   wilt: '败谢',
   faces_of_elation: '欢愉万相',
   emanator_of_elation: '「欢愉」令使',
+  deep_learning: '深度学习',
   ripples: '往昔的涟漪',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
@@ -305,7 +306,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'damage': {
       const { amount, hp_loss, absorbed, critical } = kind.detail;
       const values = [`伤害 ${amount}`, `实际扣除生命 ${hp_loss}`];
-      if (absorbed > 0) values.push(`护盾吸收 ${absorbed}`);
+      if (absorbed > 0) values.push(`抵挡 ${absorbed}`);
       if (critical) values.push('暴击');
       return values.join(' · ');
     }
