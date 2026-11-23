@@ -63,6 +63,8 @@ const statusNames = {
   taunt: '嘲讽',
   fever: 'Fever',
   special_guest: '特邀嘉宾',
+  godmode_player: '无敌玩家',
+  restricted_weakness: '禁限弱点',
   withered_leaf: '枯叶',
   sublimation: '升华',
   vendetta: '血仇',
@@ -116,6 +118,8 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
       return '绝活共赏变化';
     case 'wishpower':
       return '愿力变化';
+    case 'hidden_mmr':
+      return '隐藏分变化';
     case 'elation_debt':
       return '欢愉负债变化';
     case 'action':
@@ -255,6 +259,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'bliss':
     case 'party_trick':
     case 'wishpower':
+    case 'hidden_mmr':
     case 'elation_debt':
     case 'blind_bet':
     case 'cloudflame_luster':

@@ -1878,6 +1878,20 @@ impl Battle<'_> {
             field_defense_down = field_defense_down.saturating_add(aura.defense_down_bp);
             field_resistance_down = field_resistance_down.saturating_add(aura.resistance_down_bp);
         }
+        let restricted_resistance_down = state
+            .debuffs
+            .iter()
+            .find(|status| {
+                status.kind == DebuffKind::RestrictedWeakness && allow_source(status.source)
+            })
+            .map_or(0, |status| {
+                let base_resistance = u32::from(plan.stats.resist_bp[element.index()]);
+                if base_resistance == 0 {
+                    status.bp
+                } else {
+                    base_resistance
+                }
+            });
         let mut weightless_defense_down = 0_u32;
         let mut weightless_resistance_down = 0_u32;
         for status in state
@@ -1953,6 +1967,7 @@ impl Battle<'_> {
                 .saturating_add(personal_defense_ignore)
                 .saturating_add(u32::from(event.defense_ignore_bp)),
             resistance_down_bp: sum_matching(&|kind| kind.reduces_resistance_to(element))
+                .saturating_add(restricted_resistance_down)
                 .saturating_add(weightless_resistance_down)
                 .saturating_add(field_resistance_down)
                 .saturating_add(personal_penetration)
@@ -3191,6 +3206,16 @@ impl Battle<'_> {
             let rolled_critical = crit_roll.is_some_and(|roll| roll < u64::from(total_crit_rate));
             let critical = matches!(critical, DamageCritical::Guaranteed) || rolled_critical;
             bonus.crit_damage_bp = bonus.crit_damage_bp.saturating_add(break_crit_damage);
+            if rolled_critical && let Some(rules) = &actor_mechanics {
+                bonus.crit_damage_bp =
+                    bonus
+                        .crit_damage_bp
+                        .saturating_add(rules.crit_rate_overflow_damage_bp(
+                            self,
+                            actor,
+                            total_crit_rate,
+                        ));
+            }
             if rolled_critical && bonus.crit_overflow_ratio_bp > 0 {
                 let overflow = total_crit_rate.saturating_sub(10_000);
                 bonus.crit_damage_bp = bonus
@@ -3233,6 +3258,7 @@ impl Battle<'_> {
                                 | DebuffKind::Vulnerability
                                 | DebuffKind::WoesWhisper
                                 | DebuffKind::Weightless { .. }
+                                | DebuffKind::RestrictedWeakness
                         )
                         || self.epiphany_applies(status.kind, target)
                         || status.kind.reduces_resistance_to(element)

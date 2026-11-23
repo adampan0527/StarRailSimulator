@@ -189,6 +189,7 @@ struct UnitState {
     aeon_aha_state: official::AeonAhaState,
     elation_trailblazer_state: official::ElationTrailblazerState,
     pearl_state: official::PearlState,
+    silver_wolf_999_state: official::SilverWolf999State,
     elation_debt: u32,
     sparxie_state: official::SparxieState,
     gallagher_state: GallagherState,
@@ -375,6 +376,7 @@ impl<'a> Battle<'a> {
                     aeon_aha_state: official::AeonAhaState::default(),
                     elation_trailblazer_state: official::ElationTrailblazerState::default(),
                     pearl_state: official::PearlState::default(),
+                    silver_wolf_999_state: official::SilverWolf999State::default(),
                     elation_debt: 0,
                     sparxie_state: official::SparxieState::default(),
                     gallagher_state: GallagherState::default(),
@@ -1563,6 +1565,9 @@ impl<'a> Battle<'a> {
                 && let Some(mechanics) = self.mechanics(owner)
             {
                 mechanics.on_ally_skill_points_spent(self, owner, actor, points);
+                if shared > 0 {
+                    mechanics.on_ally_shared_skill_points_spent(self, owner, shared);
+                }
             }
         }
     }

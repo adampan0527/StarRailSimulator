@@ -26,6 +26,8 @@ mod robin_sunny;
 #[cfg(bundled_catalog)]
 mod saber;
 #[cfg(bundled_catalog)]
+mod silver_wolf_999;
+#[cfg(bundled_catalog)]
 mod trailblazer_destruction;
 #[cfg(bundled_catalog)]
 mod trailblazer_elation;

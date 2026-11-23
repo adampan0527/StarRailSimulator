@@ -40,6 +40,7 @@ pub(super) enum DebuffKind {
     },
     ImplantedWeakness(Element),
     AccumulatedWeakness(Element),
+    RestrictedWeakness,
     Sublimation {
         blocks_action: bool,
     },
@@ -95,13 +96,14 @@ impl DebuffKind {
             Self::ImplantedWeakness(_) | Self::AccumulatedWeakness(_) => {
                 StatusKind::WeaknessImplanted
             }
+            Self::RestrictedWeakness => StatusKind::RestrictedWeakness,
             Self::Sublimation { .. } => StatusKind::Sublimation,
         }
     }
 
     pub(super) fn grants_weakness(self, element: Element) -> bool {
         match self {
-            Self::Sublimation { .. } => true,
+            Self::Sublimation { .. } | Self::RestrictedWeakness => true,
             Self::Wilt { weaknesses } => weaknesses & (1 << element.index()) != 0,
             Self::ImplantedWeakness(weakness) | Self::AccumulatedWeakness(weakness) => {
                 weakness == element
@@ -295,6 +297,7 @@ impl Battle<'_> {
                 kind,
                 DebuffKind::ImplantedWeakness(_)
                     | DebuffKind::AccumulatedWeakness(_)
+                    | DebuffKind::RestrictedWeakness
                     | DebuffKind::Wilt { .. }
                     | DebuffKind::Sublimation { .. }
             )

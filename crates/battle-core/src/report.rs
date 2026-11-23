@@ -71,10 +71,12 @@ pub enum StatusKind {
     DeepLearning,
     Fever,
     SpecialGuest,
+    GodmodePlayer,
+    RestrictedWeakness,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::SpecialGuest.index() + 1;
+    pub(crate) const COUNT: usize = Self::RestrictedWeakness.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -130,6 +132,8 @@ impl StatusKind {
             Self::DeepLearning => 48,
             Self::Fever => 49,
             Self::SpecialGuest => 50,
+            Self::GodmodePlayer => 51,
+            Self::RestrictedWeakness => 52,
         }
     }
 }
@@ -187,6 +191,10 @@ pub enum EventKind {
     Wishpower {
         before: u8,
         after: u8,
+    },
+    HiddenMmr {
+        before: u32,
+        after: u32,
     },
     ElationDebt {
         before: u32,
