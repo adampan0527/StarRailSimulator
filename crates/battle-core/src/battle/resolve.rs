@@ -292,7 +292,7 @@ impl Battle<'_> {
     ) -> bool {
         match (kind, action, &self.plan.units[actor].kit) {
             (DamageKind::FollowUp, _, _) => true,
-            (DamageKind::Direct, Some(action), Kit::Official(kit)) => {
+            (DamageKind::Direct | DamageKind::Elation, Some(action), Kit::Official(kit)) => {
                 kit.mechanics.primary_attack_counts_as_follow_up(action)
             }
             _ => false,
@@ -2052,6 +2052,9 @@ impl Battle<'_> {
     }
 
     pub(super) fn elation_hit(&mut self, actor: usize, target: usize, hit: ElationHit) {
+        let bonus = self
+            .mechanics(actor)
+            .map_or(0, |rules| rules.elation_punchline_bonus(self, actor));
         self.strike_scaled(
             actor,
             target,
@@ -2062,7 +2065,7 @@ impl Battle<'_> {
                 toughness: hit.toughness,
                 origin: Some(hit.origin),
                 scale: DamageScale::Elation {
-                    punchline: hit.punchline,
+                    punchline: hit.punchline.saturating_add(bonus),
                     factor_bp: hit.factor_bp,
                 },
             },
@@ -3105,6 +3108,7 @@ impl Battle<'_> {
             if let Some(rules) = ultimate {
                 rules.capture_ultimate_damage(self, actor, target, amount, &credits);
             }
+            self.record_aha_damage(actor, target, kind, amount);
             self.notify_ally_damage(actor, target, kind, amount);
             self.dummy_damage.push(DummyDamage {
                 av_micros: self.av_micros,
@@ -3321,7 +3325,9 @@ impl Battle<'_> {
             Some(actor),
             Some(target),
         );
+        self.record_aha_damage(actor, target, kind, amount);
         self.notify_ally_damage(actor, target, kind, hp_loss);
+        self.accrue_elation_debt(actor, target, hp_loss);
         if absorbed > 0 {
             self.deplete_shields(target, amount);
         }

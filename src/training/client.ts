@@ -122,6 +122,8 @@ type Status =
   | 'dance_partner'
   | 'dahlia_zone'
   | 'wilt'
+  | 'faces_of_elation'
+  | 'emanator_of_elation'
   | 'ripples';
 type EventKind =
   | {
@@ -139,6 +141,7 @@ type EventKind =
     }
   | { event: 'action'; detail: Action }
   | { event: 'aha_instant'; detail: { punchline: number; extra: boolean } }
+  | { event: 'ascended_aha_instant'; detail: { bliss: number; extra: boolean } }
   | { event: 'complete_combustion'; detail: { active: boolean } }
   | { event: 'battle_ended'; detail: Outcome }
   | {
@@ -146,6 +149,10 @@ type EventKind =
         | 'skill_points'
         | 'punchline'
         | 'certified_banger'
+        | 'bliss'
+        | 'party_trick'
+        | 'wishpower'
+        | 'elation_debt'
         | 'toughness'
         | 'cloudflame_luster'
         | 'crimson_knot'

@@ -223,6 +223,15 @@ impl Mechanics for YaoGuang {
                     self.extra_punchline
                 };
                 battle.queue_aha_extra_turn(actor, fixed);
+                if let Some(ascension) = battle.elation_ascension() {
+                    let energy = if ascension.innate_level == 2 {
+                        30_000
+                    } else {
+                        12_000
+                    };
+                    battle.restore_energy_flat(actor, actor, energy);
+                    battle.add_punchline(actor, 10);
+                }
             }
             _ => {}
         }
@@ -298,6 +307,15 @@ impl Mechanics for YaoGuang {
         if !battle.is_targetable(owner) || !battle.is_party_unit(actor) {
             return;
         }
+        let increase_bp = battle.elation_ascension().map_or(0, |ascension| {
+            if ascension.innate_level == 2 {
+                4_000
+            } else {
+                2_000
+            }
+        });
+        let multiplier_bp =
+            self.boon_multiplier_bp + percentage_of(self.boon_multiplier_bp, increase_bp);
         let instances = 1 + usize::from(battle.attack_spent_skill_points);
         for _ in 0..instances {
             let Some(target) = choose_hit_target(battle) else {
@@ -308,7 +326,7 @@ impl Mechanics for YaoGuang {
                 target,
                 ElationHit {
                     element: combat_type.element,
-                    multiplier_bp: self.boon_multiplier_bp,
+                    multiplier_bp,
                     punchline,
                     toughness: 0,
                     origin,

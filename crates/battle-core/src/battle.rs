@@ -183,6 +183,8 @@ struct UnitState {
     tribbie_state: official::TribbieState,
     blade_state: official::BladeState,
     mydei_state: official::MydeiState,
+    aeon_aha_state: official::AeonAhaState,
+    elation_debt: u32,
     sparxie_state: official::SparxieState,
     gallagher_state: GallagherState,
     hanya_state: HanyaState,
@@ -359,6 +361,8 @@ impl<'a> Battle<'a> {
                     tribbie_state: official::TribbieState::default(),
                     blade_state: official::BladeState::default(),
                     mydei_state: official::MydeiState::default(),
+                    aeon_aha_state: official::AeonAhaState::default(),
+                    elation_debt: 0,
                     sparxie_state: official::SparxieState::default(),
                     gallagher_state: GallagherState::default(),
                     hanya_state: HanyaState::default(),
@@ -612,7 +616,11 @@ impl<'a> Battle<'a> {
             let source = mechanics.as_ref().map_or(actor, |rules| {
                 rules.attack_source(self, actor, command.action, ability)
             });
-            self.notify_attack(source, command.action, target);
+            self.notify_attack(
+                source,
+                command.action,
+                target.filter(|unit| self.enemies().contains(unit)),
+            );
         }
         self.finish_debuff_action(actor, parent_debuff_targets);
         if attacking {

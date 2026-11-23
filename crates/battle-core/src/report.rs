@@ -66,10 +66,12 @@ pub enum StatusKind {
     DancePartner,
     DahliaZone,
     Wilt,
+    FacesOfElation,
+    EmanatorOfElation,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Wilt.index() + 1;
+    pub(crate) const COUNT: usize = Self::EmanatorOfElation.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -120,6 +122,8 @@ impl StatusKind {
             Self::DancePartner => 43,
             Self::DahliaZone => 44,
             Self::Wilt => 45,
+            Self::FacesOfElation => 46,
+            Self::EmanatorOfElation => 47,
         }
     }
 }
@@ -159,6 +163,26 @@ pub enum EventKind {
         after: u32,
     },
     CertifiedBanger {
+        before: u32,
+        after: u32,
+    },
+    Bliss {
+        before: u32,
+        after: u32,
+    },
+    PartyTrick {
+        before: u32,
+        after: u32,
+    },
+    AscendedAhaInstant {
+        bliss: u32,
+        extra: bool,
+    },
+    Wishpower {
+        before: u8,
+        after: u8,
+    },
+    ElationDebt {
         before: u32,
         after: u32,
     },
