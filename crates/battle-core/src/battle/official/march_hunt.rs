@@ -240,7 +240,7 @@ impl Mechanics for MarchHunt {
         target: Option<usize>,
     ) {
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Skill | Action::EnhancedSkill => {
                 battle.units[actor].march_hunt_state.shifu = target
             }

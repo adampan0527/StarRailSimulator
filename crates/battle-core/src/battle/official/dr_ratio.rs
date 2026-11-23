@@ -152,7 +152,7 @@ impl Mechanics for DrRatio {
         let Some(target) = target else { return };
         let target_survives = battle.hp(target).0 > 0;
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Basic => {}
             Action::Skill | Action::EnhancedSkill => {
                 let count = if target_survives {

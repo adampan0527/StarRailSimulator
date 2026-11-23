@@ -153,7 +153,7 @@ impl Mechanics for HarmonyTrailblazer {
         let unit = &mut battle.units[owner];
         let state = &mut unit.harmony_trailblazer_state;
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Ultimate => {
                 state.backup_dancer_until_turn =
                     unit.normal_turns.saturating_add(self.dancer_turns);

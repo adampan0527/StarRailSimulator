@@ -305,7 +305,7 @@ impl Mechanics for Aventurine {
         _: Option<usize>,
     ) {
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Skill | Action::EnhancedSkill => {
                 self.grant_fortified_wager(battle, actor, false)
             }

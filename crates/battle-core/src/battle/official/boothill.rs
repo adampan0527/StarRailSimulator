@@ -487,7 +487,7 @@ impl Mechanics for Boothill {
         target: Option<usize>,
     ) -> Option<u8> {
         match action {
-            Action::ElationSkill => None,
+            Action::AssistSkill | Action::ElationSkill => None,
             Action::Skill | Action::EnhancedSkill => {
                 Some(if target == self.preferred_duel(battle, owner) {
                     1

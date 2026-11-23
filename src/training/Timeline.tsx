@@ -7,6 +7,7 @@ export const actionNames: Record<Action, string> = {
   enhanced_skill: '强化战技',
   ultimate: '终结技',
   enhanced_ultimate: '强化终结技',
+  assist_skill: '助战技',
   elation_skill: '欢愉技',
 };
 
@@ -145,6 +146,10 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
       return '兴致';
     case 'gilgamesh_golden_rule':
       return '黄金律';
+    case 'himeko_assist_uses':
+      return '助战技使用次数';
+    case 'himeko_source_energy':
+      return '源能';
     case 'interpretation':
       return '解读变化';
     case 'inspiration':
@@ -257,6 +262,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'saber_core_resonance':
     case 'gilgamesh_interest':
     case 'gilgamesh_golden_rule':
+    case 'himeko_assist_uses':
+    case 'himeko_source_energy':
     case 'interpretation':
     case 'inspiration':
     case 'herta_answer':

@@ -220,7 +220,7 @@ impl Mechanics for Luka {
             state.luka_state.dmg_bonus_expires_after_turn = state.normal_turns + E1_BONUS_TURNS;
         }
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Basic => {
                 let state = &mut battle.units[actor].luka_state;
                 state.enhanced_basic = state.fighting_will >= ENHANCED_COST;

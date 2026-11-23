@@ -140,6 +140,7 @@ struct UnitState {
     black_swan: BlackSwanTarget,
     luka_state: LukaState,
     himeko_charge: u8,
+    himeko_departure: official::HimekoDepartureState,
     hysilens_state: official::HysilensState,
     cipher_state: official::CipherState,
     cerydra_state: official::CerydraState,
@@ -323,6 +324,7 @@ impl<'a> Battle<'a> {
                     black_swan: BlackSwanTarget::default(),
                     luka_state: LukaState::default(),
                     himeko_charge: 0,
+                    himeko_departure: official::HimekoDepartureState::default(),
                     hysilens_state: official::HysilensState::default(),
                     cipher_state: official::CipherState::default(),
                     cerydra_state: official::CerydraState::default(),
@@ -513,6 +515,14 @@ impl<'a> Battle<'a> {
         for action in [Action::Basic, Action::Skill, Action::EnhancedSkill] {
             self.list_actions(actor, action, &mut actions);
         }
+        if self.assist_provider(actor).is_some() {
+            actions.push(Command {
+                decision_index: self.decision_index,
+                actor_id: self.plan.units[actor].id.clone(),
+                action: Action::AssistSkill,
+                target_id: None,
+            });
+        }
         for actor in self.allies() {
             self.list_actions(actor, Action::Ultimate, &mut actions);
             self.list_actions(actor, Action::EnhancedUltimate, &mut actions);
@@ -538,6 +548,31 @@ impl<'a> Battle<'a> {
             .allies()
             .find(|&unit| self.plan.units[unit].id == command.actor_id)
             .ok_or(BattleError::InvalidActor)?;
+        if command.action == Action::AssistSkill {
+            if command.target_id.is_some() {
+                return Err(BattleError::InvalidTarget);
+            }
+            let (owner, rules, _) = self
+                .assist_provider(actor)
+                .ok_or(BattleError::IllegalTiming)?;
+            let extra_turn = self.in_extra_turn(actor);
+            self.decision_index += 1;
+            if !extra_turn {
+                self.reset_gauge(actor);
+            }
+            self.emit(EventKind::Action(Action::AssistSkill), Some(actor), None);
+            rules.on_assist_skill(self, owner, actor);
+            if extra_turn {
+                self.finish_extra_turn();
+            } else {
+                self.finish_turn(actor);
+                self.ordinary_actor = None;
+            }
+            self.notify_unit_action_finished(actor);
+            self.resolve_aha_extra_turn();
+            self.resolve_wave_or_end();
+            return Ok(());
+        }
         let CheckedAction {
             ability,
             skill_points,
@@ -564,7 +599,10 @@ impl<'a> Battle<'a> {
         {
             return Err(BattleError::InvalidTarget);
         }
-        let attacking = ability.effects.iter().any(|effect| effect.deals_damage());
+        let attacking = ability.effects.iter().any(|effect| effect.deals_damage())
+            || mechanics
+                .as_ref()
+                .is_some_and(|rules| rules.resolves_attack_without_effects(command.action));
         let keeps_turn = mechanics
             .as_ref()
             .is_some_and(|rules| rules.keeps_turn(command.action));
@@ -783,9 +821,10 @@ impl<'a> Battle<'a> {
                 match action {
                     Action::Basic => SkillPoints::Generate,
                     Action::Skill | Action::EnhancedSkill => SkillPoints::Spend,
-                    Action::Ultimate | Action::EnhancedUltimate | Action::ElationSkill => {
-                        SkillPoints::Unchanged
-                    }
+                    Action::Ultimate
+                    | Action::EnhancedUltimate
+                    | Action::AssistSkill
+                    | Action::ElationSkill => SkillPoints::Unchanged,
                 },
             ),
             Kit::Official(kit) => kit
@@ -834,7 +873,10 @@ impl<'a> Battle<'a> {
                     Action::Skill | Action::EnhancedSkill => {
                         !rules.can_use_skill_action(self, actor, action)
                     }
-                    Action::Ultimate | Action::EnhancedUltimate | Action::ElationSkill => false,
+                    Action::Ultimate
+                    | Action::EnhancedUltimate
+                    | Action::AssistSkill
+                    | Action::ElationSkill => false,
                 })
             {
                 return Err(BattleError::IllegalTiming);
@@ -886,6 +928,22 @@ impl<'a> Battle<'a> {
                 }
             }
         }
+    }
+
+    fn assist_provider(&self, actor: usize) -> Option<(usize, Arc<dyn Mechanics>, u8)> {
+        if self.ordinary_actor != Some(actor)
+            || !self.available_for_ordinary_turn(actor)
+            || self.is_crowd_controlled(actor)
+        {
+            return None;
+        }
+        self.allies()
+            .filter(|&owner| self.is_targetable(owner) && self.in_territory(owner))
+            .find_map(|owner| {
+                let rules = self.mechanics(owner)?;
+                let priority = rules.assist_skill_priority(self, owner, actor)?;
+                Some((owner, rules, priority))
+            })
     }
 
     fn find_target(&self, mut units: Range<usize>, id: &str) -> Result<Option<usize>, BattleError> {

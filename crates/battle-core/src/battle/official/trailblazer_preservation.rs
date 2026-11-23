@@ -347,7 +347,10 @@ impl Mechanics for PreservationTrailblazer {
                     .free_enhanced_basic = true;
                 self.gain_defense_stack(battle, actor);
             }
-            Action::EnhancedSkill | Action::EnhancedUltimate | Action::ElationSkill => return,
+            Action::EnhancedSkill
+            | Action::EnhancedUltimate
+            | Action::AssistSkill
+            | Action::ElationSkill => return,
         }
         self.shield_team(battle, actor);
     }

@@ -166,7 +166,7 @@ impl Mechanics for Bronya {
         target: Option<usize>,
     ) {
         match (action, target) {
-            (Action::ElationSkill, _) => {}
+            (Action::AssistSkill | Action::ElationSkill, _) => {}
             (Action::Basic, _) => battle.advance(actor, self.talent_advance_bp),
             (Action::Skill | Action::EnhancedSkill, Some(target)) => {
                 self.redeploy(battle, actor, target)
@@ -262,7 +262,7 @@ impl Mechanics for Bronya {
         target: Option<usize>,
     ) -> Option<u8> {
         match action {
-            Action::ElationSkill => None,
+            Action::AssistSkill | Action::ElationSkill => None,
             Action::Basic => None,
             Action::Ultimate | Action::EnhancedUltimate => Some(0),
             Action::Skill | Action::EnhancedSkill => {

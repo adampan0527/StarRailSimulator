@@ -211,7 +211,7 @@ impl Mechanics for Robin {
         _target: Option<usize>,
     ) {
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Basic | Action::EnhancedUltimate => {}
             Action::Skill | Action::EnhancedSkill => {
                 battle.units[owner].robin_state.skill_turns = self.skill_turns
@@ -322,7 +322,7 @@ impl Mechanics for Robin {
         _target: Option<usize>,
     ) -> Option<u8> {
         match action {
-            Action::ElationSkill => None,
+            Action::AssistSkill | Action::ElationSkill => None,
             Action::Ultimate if battle.ordinary_actor == Some(owner) => Some(4),
             Action::Ultimate => Some(0),
             Action::Skill | Action::EnhancedSkill

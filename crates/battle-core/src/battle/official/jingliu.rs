@@ -421,7 +421,7 @@ impl Mechanics for Jingliu {
         state.defense_ignore = false;
         state.transformed_attack = false;
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Skill | Action::EnhancedSkill if enhanced_skill => {
                 self.spend_syzygy(battle, actor)
             }
