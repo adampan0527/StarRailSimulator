@@ -66,6 +66,8 @@ const statusNames = {
   woes_whisper: '凶星低语',
   khaslana: '卡厄斯兰那',
   after_rain: '雨过天晴',
+  military_merit: '军功',
+  peerage: '爵位',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
@@ -143,6 +145,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '普攻强化档位';
     case 'thrill':
       return '爆点';
+    case 'cerydra_charge':
+      return '军功充能';
     case 'squama_sacrosancta':
       return '逆鳞变化';
     case 'debt_collector':
@@ -216,6 +220,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'rappa_charge':
     case 'chroma_ink':
     case 'pawned_asset':
+    case 'cerydra_charge':
     case 'newbud':
     case 'coreflame':
     case 'scourge':

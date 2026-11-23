@@ -51,6 +51,7 @@ fn hanya_damage_bonus(battle: &Battle<'_>, actor: usize, element: fixture::Eleme
                 break_damage: false,
                 follow_up: false,
                 summon: false,
+                direct_skill: false,
             },
         )
         .damage_bp

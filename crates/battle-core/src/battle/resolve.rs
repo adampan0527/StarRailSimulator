@@ -1104,8 +1104,36 @@ impl Battle<'_> {
         target: usize,
         ability: Ability<'_>,
     ) {
-        let previous_action = self.action.replace(Action::Skill);
-        let previous_target = self.action_target.replace(target);
+        self.perform_nested_skill(actor, Some(target), ability, Action::Skill, None);
+    }
+
+    pub(super) fn perform_skill_copy(
+        &mut self,
+        owner: usize,
+        actor: usize,
+        target: Option<usize>,
+        ability: Ability<'_>,
+        action: Action,
+    ) {
+        self.perform_nested_skill(actor, target, ability, action, Some(owner));
+        // The main cast continues with its own per-attack identity.
+        self.attack_index += 1;
+    }
+
+    fn perform_nested_skill(
+        &mut self,
+        actor: usize,
+        target: Option<usize>,
+        ability: Ability<'_>,
+        action: Action,
+        copy_source: Option<usize>,
+    ) {
+        let previous_action = self.action.replace(action);
+        let previous_target = std::mem::replace(&mut self.action_target, target);
+        let previous_nested = self.nested_skill.replace(super::NestedSkill {
+            actor,
+            copied_by: copy_source,
+        });
         let previous_follow_up = std::mem::take(&mut self.resolving_follow_up);
         let previous_attack_targets = std::mem::take(&mut self.attack_targets);
         let previous_attack_damage = self.attack_damage.take();
@@ -1113,19 +1141,36 @@ impl Battle<'_> {
         let previous_super_break_targets = std::mem::take(&mut self.super_break_targets);
         let parent_debuff_targets = self.begin_debuff_action();
         self.begin_attack();
-        self.emit(EventKind::TriggeredSkill, Some(actor), Some(target));
-        self.notify_ally_action_started(actor, Some(target), ability);
-        self.resolve_ability(actor, Some(target), ability);
-        self.notify_attack(actor, Action::Skill, Some(target));
-        self.notify_ally_action_finished(actor, Action::Skill);
+        self.emit(EventKind::TriggeredSkill, Some(actor), target);
+        self.notify_ally_action_started(actor, target, ability);
+        let handled = copy_source.is_some()
+            && self
+                .mechanics(actor)
+                .is_some_and(|mechanics| mechanics.resolve_copied_skill(self, actor, target));
+        if !handled {
+            self.resolve_ability(actor, target, ability);
+            self.notify_attack(actor, action, target);
+        }
+        if copy_source.is_some() {
+            self.gain_energy(actor, actor, ability.energy_milli);
+        }
+        self.notify_ally_action_finished(actor, action);
         self.finish_debuff_action(actor, parent_debuff_targets);
         self.attack_targets = previous_attack_targets;
         self.attack_damage = previous_attack_damage;
         self.attack_spent_skill_points = previous_attack_spent_points;
         self.super_break_targets = previous_super_break_targets;
         self.resolving_follow_up = previous_follow_up;
+        self.nested_skill = previous_nested;
         self.action_target = previous_target;
         self.action = previous_action;
+    }
+
+    fn copied_skill_provider(&self, actor: usize) -> Option<usize> {
+        self.nested_skill
+            .filter(|skill| skill.actor == actor)
+            .and_then(|skill| skill.copied_by)
+            .filter(|&owner| owner != actor)
     }
 
     pub(super) fn resolve_follow_ups(&mut self) {
@@ -2614,6 +2659,7 @@ impl Battle<'_> {
             from_break,
             ..
         } = event;
+        let assisted_by = assisted_by.or_else(|| self.copied_skill_provider(actor));
         let crit_rate_bp = match critical {
             DamageCritical::Chance(rate) => Some(rate),
             DamageCritical::Never | DamageCritical::Guaranteed => None,
@@ -2626,6 +2672,8 @@ impl Battle<'_> {
             kind,
             break_damage: from_break || kind.is_break(),
             follow_up: self.is_follow_up_damage(actor, origin, kind),
+            direct_skill: kind == DamageKind::Direct
+                && matches!(origin, Some(Action::Skill | Action::EnhancedSkill)),
             summon: self.memosprite_owner(actor).is_some()
                 || self
                     .mechanics(actor)
@@ -2876,9 +2924,18 @@ impl Battle<'_> {
         target: usize,
         origin: Action,
         amount: u32,
-        assists: Vec<(usize, u32)>,
+        mut assists: Vec<(usize, u32)>,
     ) {
         if matches!(self.plan.units[target].kit, Kit::Dummy { .. }) {
+            if let Some(owner) = self.copied_skill_provider(actor) {
+                let remainder =
+                    amount.saturating_sub(assists.iter().map(|&(_, amount)| amount).sum());
+                if let Some((_, credited)) = assists.iter_mut().find(|entry| entry.0 == owner) {
+                    *credited += remainder;
+                } else if remainder > 0 {
+                    assists.push((owner, remainder));
+                }
+            }
             self.dummy_damage.push(DummyDamage {
                 av_micros: self.av_micros,
                 actor,

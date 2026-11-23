@@ -57,10 +57,12 @@ pub enum StatusKind {
     WoesWhisper,
     Khaslana,
     AfterRain,
+    MilitaryMerit,
+    Peerage,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::AfterRain.index() + 1;
+    pub(crate) const COUNT: usize = Self::Peerage.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -102,6 +104,8 @@ impl StatusKind {
             Self::WoesWhisper => 34,
             Self::Khaslana => 35,
             Self::AfterRain => 36,
+            Self::MilitaryMerit => 37,
+            Self::Peerage => 38,
         }
     }
 }
@@ -240,6 +244,10 @@ pub enum EventKind {
     Thrill {
         before: u32,
         after: u32,
+    },
+    CerydraCharge {
+        before: u8,
+        after: u8,
     },
     SquamaSacrosancta {
         before: u8,

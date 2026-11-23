@@ -212,6 +212,74 @@ fn territory_pauses_the_aha_clock_while_all_elation_allies_are_absent() {
 }
 
 #[test]
+fn cerydra_copies_one_full_verdict_while_temporarily_absent() {
+    let cerydra = super::super::cerydra::tests::character(0, &[]);
+    let prepared = plan(&[character(6, &[]), cerydra], &[1_000]);
+    let mut battle = Battle::start(&prepared, LogMode::Detailed);
+    super::super::cerydra::tests::grant_merit(&mut battle, 1, 0, 8);
+    transform(&mut battle, 12);
+    assert_eq!(battle.territory_owner, Some(0));
+    assert!(!battle.is_targetable(1));
+    let av = battle.av_micros;
+    act(&mut battle, FORM, Action::EnhancedSkill, None);
+    assert_eq!(battle.av_micros, av);
+    assert_eq!(battle.units[0].phainon_state.scourge, 0);
+    assert_eq!(battle.skill_points, 3);
+    assert_eq!(super::super::cerydra::tests::charge(&battle, 1), 2);
+    let hits = &battle.dummy_damage;
+    assert_eq!(hits.len(), 36);
+    assert_eq!(
+        hits.iter()
+            .filter(|hit| hit.kind == DamageKind::TrueDamage)
+            .count(),
+        2
+    );
+    assert!(
+        hits[..18]
+            .iter()
+            .all(|hit| hit.assists == [(1, hit.amount)])
+    );
+    assert_eq!(
+        battle
+            .log
+            .iter()
+            .flatten()
+            .filter(|event| event.kind == EventKind::ExtraTurnStarted)
+            .count(),
+        2
+    );
+    assert_eq!(
+        battle
+            .log
+            .iter()
+            .flatten()
+            .filter(|event| event.kind == EventKind::TriggeredSkill)
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn cerydra_does_not_copy_calamitys_forced_enemy_actions() {
+    let cerydra = super::super::cerydra::tests::character(0, &[]);
+    let prepared = plan(&[character(0, &[]), cerydra], &[1_000]);
+    let mut battle = Battle::start(&prepared, LogMode::Detailed);
+    super::super::cerydra::tests::grant_merit(&mut battle, 1, 0, 6);
+    transform(&mut battle, 12);
+    assert!(!battle.is_targetable(1));
+    act(&mut battle, FORM, Action::Skill, None);
+    assert_eq!(super::super::cerydra::tests::charge(&battle, 1), 7);
+    assert_eq!(battle.dummy_damage.len(), 5);
+    assert!(
+        battle
+            .log
+            .iter()
+            .flatten()
+            .all(|event| event.kind != EventKind::TriggeredSkill)
+    );
+}
+
+#[test]
 fn enhanced_skill_spends_scourge_ignores_skill_points_and_uses_the_e2_extra_turn() {
     let prepared = plan(&[character(6, &[])], &[1_000]);
     let mut battle = Battle::start(&prepared, LogMode::Detailed);
