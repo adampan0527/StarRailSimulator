@@ -3642,7 +3642,10 @@ impl Battle<'_> {
         after_quanta: u64,
         advanced_to_front: bool,
     ) {
-        if self.has_fixed_zero_speed(target) {
+        if self.has_fixed_zero_speed(target)
+            || (advanced_to_front || after_quanta < self.gauge_quanta(target))
+                && self.ally_advance_blocked(actor, target)
+        {
             return;
         }
         let before_quanta = if self.territory_owner == Some(target)
@@ -3836,7 +3839,7 @@ impl Battle<'_> {
                     }
                 }
             }
-            if target < self.plan.ally_count && before_milli < cap && after_milli == cap {
+            if target < self.plan.ally_count && before_milli < cap && after_milli >= cap {
                 for owner in self.allies() {
                     if self.units[owner].hp > 0
                         && let Some(mechanics) = self.mechanics(owner)

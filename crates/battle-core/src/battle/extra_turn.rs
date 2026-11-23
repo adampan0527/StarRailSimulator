@@ -54,6 +54,7 @@ impl Battle<'_> {
             self.extra_turns.interrupted = self.ordinary_actor.replace(actor);
             self.extra_turns.active = true;
             self.extra_turns.provider = provider;
+            self.turn_sequence += 1;
             self.emit(EventKind::ExtraTurnStarted, Some(actor), None);
             self.notify_ally_turn_opening(actor, true);
             if let Some(provider) = provider

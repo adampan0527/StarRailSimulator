@@ -136,6 +136,16 @@ impl OffenseBuffs {
 
 impl Battle<'_> {
     pub(super) fn notify_ally_sustain(&mut self, source: usize, target: usize) {
+        if self.is_party_unit(source) && self.is_party_unit(target) {
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(rules) = self.mechanics(owner)
+                    && rules.observes_sustain_sources()
+                {
+                    rules.on_ally_sustain_applied(self, owner, source, target);
+                }
+            }
+        }
         if source != target
             && self.is_party_unit(source)
             && let Some(rules) = self.mechanics(target)
@@ -212,6 +222,21 @@ impl Battle<'_> {
         } else {
             state.ally_buffs.push(buff);
         }
+    }
+
+    pub(super) fn replace_ally_buff(
+        &mut self,
+        source: usize,
+        target: usize,
+        kind: AllyBuffKind,
+        value: u32,
+        turns: u32,
+        effect_id: &'static str,
+    ) {
+        self.units[target].ally_buffs.retain(|buff| {
+            buff.source != source || buff.effect_id != Some(effect_id) || buff.kind == kind
+        });
+        self.apply_ally_buff_with_id(source, target, kind, value, turns, Some(effect_id));
     }
 
     pub(super) fn has_ally_buff(
@@ -647,8 +672,30 @@ impl Battle<'_> {
         )
     }
 
+    pub(super) fn energy_capacity_milli(&self, actor: usize) -> u32 {
+        let multiplier = self
+            .mechanics(actor)
+            .map_or(1, |rules| rules.energy_storage_multiplier(self, actor));
+        self.plan.units[actor]
+            .kit
+            .max_energy_milli()
+            .saturating_mul(multiplier)
+    }
+
+    pub(super) fn ally_advance_blocked(&self, source: usize, target: usize) -> bool {
+        source != target
+            && self.is_party_unit(source)
+            && self.is_party_unit(target)
+            && self.allies().any(|owner| {
+                self.is_targetable(owner)
+                    && self
+                        .mechanics(owner)
+                        .is_some_and(|rules| rules.blocks_ally_advance(self, owner, source))
+            })
+    }
+
     pub(super) fn restore_energy_flat(&mut self, source: usize, target: usize, amount_milli: u32) {
-        let cap = self.plan.units[target].kit.max_energy_milli();
+        let cap = self.energy_capacity_milli(target);
         if cap == 0 {
             self.notify_external_energy(source, target);
             return;

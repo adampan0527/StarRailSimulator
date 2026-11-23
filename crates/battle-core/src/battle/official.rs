@@ -61,6 +61,7 @@ mod qingque;
 mod rappa;
 mod rin;
 mod robin;
+mod robin_sunny;
 mod ruan_mei;
 mod saber;
 mod sampo;
@@ -130,6 +131,7 @@ pub(super) use {
     rappa::RappaState,
     rin::RinState,
     robin::RobinState,
+    robin_sunny::RobinSunnyState,
     ruan_mei::RuanMeiState,
     saber::SaberState,
     seele::SeeleState,
@@ -574,6 +576,23 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_energy_overflow(&self, _battle: &mut Battle<'_>, _actor: usize, _amount_milli: u32) {}
 
+    fn observes_sustain_sources(&self) -> bool {
+        false
+    }
+
+    fn on_ally_sustain_applied(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _source: usize,
+        _target: usize,
+    ) {
+    }
+
+    fn blocks_ally_advance(&self, _battle: &Battle<'_>, _owner: usize, _source: usize) -> bool {
+        false
+    }
+
     fn on_ally_sustain(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     fn on_enemy_targeted(&self, _battle: &mut Battle<'_>, _actor: usize) {}
@@ -601,6 +620,14 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn can_use_basic(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
         true
+    }
+
+    fn can_ult_while_suspended(&self) -> bool {
+        false
+    }
+
+    fn energy_storage_multiplier(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        1
     }
 
     fn can_use_ultimate(&self, _battle: &Battle<'_>, _actor: usize) -> bool {
@@ -1854,6 +1881,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         black_swan::FORM => Some(black_swan::build),
         acheron::FORM => Some(acheron::build),
         robin::FORM => Some(robin::build),
+        robin_sunny::FORM => Some(robin_sunny::build),
         "character.1312" => Some(misha::build),
         rappa::FORM => Some(rappa::build),
         sunday::FORM => Some(sunday::build),

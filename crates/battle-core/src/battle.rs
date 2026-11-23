@@ -178,6 +178,7 @@ struct UnitState {
     evernight_state: official::EvernightState,
     cyrene_state: official::CyreneState,
     robin_state: official::RobinState,
+    robin_sunny_state: official::RobinSunnyState,
     firefly_state: official::FireflyState,
     boothill_state: official::BoothillState,
     yunli_state: official::YunliState,
@@ -245,6 +246,7 @@ pub struct Battle<'a> {
     ordinary_actor: Option<usize>,
     extra_turns: ExtraTurns,
     normal_turns: u32,
+    turn_sequence: u64,
     decision_index: u32,
     skill_points: u8,
     enemy_hp_lost: u32,
@@ -362,6 +364,7 @@ impl<'a> Battle<'a> {
                     evernight_state: official::EvernightState::default(),
                     cyrene_state: official::CyreneState::default(),
                     robin_state: official::RobinState::default(),
+                    robin_sunny_state: official::RobinSunnyState::default(),
                     firefly_state: official::FireflyState::default(),
                     boothill_state: official::BoothillState::default(),
                     yunli_state: official::YunliState::default(),
@@ -412,6 +415,7 @@ impl<'a> Battle<'a> {
             ordinary_actor: None,
             extra_turns: ExtraTurns::default(),
             normal_turns: 0,
+            turn_sequence: 0,
             decision_index: 0,
             skill_points: plan.starting_skill_points,
             enemy_hp_lost: 0,
@@ -693,7 +697,7 @@ impl<'a> Battle<'a> {
                         hp: state.hp,
                         max_hp: self.effective_max_hp(unit),
                         energy_milli: state.energy_milli,
-                        max_energy_milli: self.plan.units[unit].kit.max_energy_milli(),
+                        max_energy_milli: self.energy_capacity_milli(unit),
                         toughness: state.toughness,
                         max_toughness: self.plan.units[unit].kit.max_toughness(),
                         shield: self.shield_amount(unit),
@@ -775,7 +779,12 @@ impl<'a> Battle<'a> {
         if self.units[actor].hp == 0 {
             return Err(BattleError::InvalidActor);
         }
-        if self.turn_is_suspended(actor) || !self.in_territory(actor) {
+        let suspended = self.turn_is_suspended(actor)
+            && !(action.is_ultimate()
+                && self
+                    .mechanics(actor)
+                    .is_some_and(|rules| rules.can_ult_while_suspended()));
+        if suspended || !self.in_territory(actor) {
             return Err(BattleError::IllegalTiming);
         }
         let kit = &self.plan.units[actor].kit;
@@ -1272,6 +1281,7 @@ impl<'a> Battle<'a> {
                 }
             }
             self.normal_turns += 1;
+            self.turn_sequence += 1;
             for owner in self.allies() {
                 if !self.in_territory(owner) {
                     continue;
@@ -1449,6 +1459,7 @@ impl<'a> Battle<'a> {
             if !self.is_targetable(enemy) {
                 continue;
             }
+            self.turn_sequence += 1;
             self.units[enemy].normal_turns += 1;
             self.units[enemy].advanced_to_front = false;
             self.emit(EventKind::TurnStarted, Some(enemy), None);

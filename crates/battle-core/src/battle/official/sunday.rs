@@ -247,7 +247,7 @@ impl Sunday {
         if Self::beatified(battle, actor, target).is_some() {
             battle.restore_skill_points(actor, 1);
         }
-        if eligible_for_advance(battle, target) {
+        if eligible_for_advance(battle, target) && !battle.ally_advance_blocked(actor, target) {
             battle.advance_ally_immediate(actor, target);
             for owner in battle.allies() {
                 if battle.has_advanceable_summon(owner, target)
