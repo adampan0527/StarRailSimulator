@@ -342,6 +342,62 @@ fn saved_sparxie_and_yao_guang_share_aha_from_low_skill_levels() {
 
 #[cfg(bundled_catalog)]
 #[test]
+fn saved_evernight_and_remembrance_replay_two_real_memosprites() {
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let [evernight, remembrance] = ["character.1413", "trailblazer.remembrance"];
+    profiles.ensure_profile(evernight).unwrap();
+    let mut loadout = catalog
+        .default_loadout_at(evernight, "base", 80, 6)
+        .unwrap();
+    loadout.config.eidolon = 2;
+    for level in loadout.config.skill_levels.values_mut() {
+        *level = 1;
+    }
+    profiles
+        .save_preset(evernight, "低等级技能", &loadout, true)
+        .unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "长夜与迷迷",
+            &[Some(evernight.into()), Some(remembrance.into()), None, None],
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    assert_eq!(result, run());
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| hit.source_id == "character.1413:evey" && hit.amount > 0));
+    assert!(hits().any(|hit| {
+        hit.source_id == "trailblazer.remembrance:mem"
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == evernight && credit.amount > 0)
+    }));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|unit| unit.own_damage + unit.assist_damage)
+            .sum::<u64>()
+    );
+}
+
+#[cfg(bundled_catalog)]
+#[test]
 fn welt_fixed_dpr_uses_default_and_saved_base_variant() {
     let dir = TestData::new();
     let welt = "character.1004";

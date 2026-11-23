@@ -239,7 +239,7 @@ fn hit_uses_owner_max_hp_and_credits_both_hp_and_sprite_crit_from_an_ally() {
     battle.apply_ally_buff(1, sprite, AllyBuffKind::CritRate, 10_000, 3);
     let target = battle.enemies().next().unwrap();
     battle.begin_attack();
-    battle.memosprite_hp_hit(sprite, target, QUANTUM, 10_000, 0);
+    battle.memosprite_hp_hit(sprite, target, QUANTUM, 10_000, 0, Action::Skill);
     let hit = battle.dummy_damage.last().unwrap();
     // 12,000 owner HP, 50% CRIT DMG, 10% roar, 20% resistance reduction, 500 defense.
     assert_eq!(
@@ -338,7 +338,7 @@ fn sixth_eidolon_detonates_when_lifetime_ends_and_depletes_non_quantum_toughness
     let mut battle = Battle::start(&prepared, LogMode::Detailed);
     let sprite = summon(&mut battle);
     battle.begin_attack();
-    battle.memosprite_hp_hit(sprite, enemy, QUANTUM, 1_000, 10);
+    battle.memosprite_hp_hit(sprite, enemy, QUANTUM, 1_000, 10, Action::Skill);
     assert_eq!(battle.units[enemy].toughness, 990);
     let rules = battle.mechanics(0).unwrap();
     battle.units[sprite].normal_turns = 2;

@@ -67,6 +67,7 @@ const statusNames = {
   khaslana: '卡厄斯兰那',
   after_rain: '雨过天晴',
   siren_zone: '海瑟音结界',
+  darkest_riddle: '至暗之谜',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 
@@ -126,6 +127,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '倏忽恩赐充能';
     case 'memosprite_charge':
       return '忆灵充能';
+    case 'memoria':
+      return '忆质变化';
     case 'newbud':
       return '新蕊变化';
     case 'coreflame':
@@ -217,6 +220,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'rappa_charge':
     case 'chroma_ink':
     case 'pawned_asset':
+    case 'memoria':
     case 'newbud':
     case 'coreflame':
     case 'scourge':

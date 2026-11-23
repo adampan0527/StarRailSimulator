@@ -58,10 +58,11 @@ pub enum StatusKind {
     Khaslana,
     AfterRain,
     SirenZone,
+    DarkestRiddle,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::SirenZone.index() + 1;
+    pub(crate) const COUNT: usize = Self::DarkestRiddle.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -104,6 +105,7 @@ impl StatusKind {
             Self::Khaslana => 35,
             Self::AfterRain => 36,
             Self::SirenZone => 37,
+            Self::DarkestRiddle => 38,
         }
     }
 }
@@ -175,6 +177,10 @@ pub enum EventKind {
     MemospriteCharge {
         before: u8,
         after: u8,
+    },
+    Memoria {
+        before: u32,
+        after: u32,
     },
     Newbud {
         before: u32,

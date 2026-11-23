@@ -287,7 +287,14 @@ impl Castorice {
         toughness: u16,
     ) {
         let multiplier_bp = percentage_of(u32::from(multiplier_bp), self.hp_factor(battle, target));
-        battle.memosprite_hp_hit(sprite, target, QUANTUM, multiplier_bp, toughness);
+        battle.memosprite_hp_hit(
+            sprite,
+            target,
+            QUANTUM,
+            multiplier_bp,
+            toughness,
+            Action::Skill,
+        );
     }
 
     fn sweep(&self, battle: &mut Battle<'_>, sprite: usize, multiplier_bp: u16) {
@@ -526,7 +533,14 @@ impl Mechanics for Castorice {
         }
     }
 
-    fn on_party_hp_lost(&self, battle: &mut Battle<'_>, owner: usize, target: usize, amount: u32) {
+    fn on_party_hp_lost(
+        &self,
+        battle: &mut Battle<'_>,
+        owner: usize,
+        target: usize,
+        amount: u32,
+        _: Option<u32>,
+    ) {
         let expires_after_turn = battle.units[owner].normal_turns + self.talent_turns;
         let state = &mut battle.units[owner].castorice_state;
         state.talent_stacks = (state.talent_stacks + 1).min(self.talent_max_stacks);

@@ -114,7 +114,8 @@ type Status =
   | 'woes_whisper'
   | 'khaslana'
   | 'after_rain'
-  | 'siren_zone';
+  | 'siren_zone'
+  | 'darkest_riddle';
 type EventKind =
   | {
       event:
@@ -149,6 +150,7 @@ type EventKind =
         | 'pocket_trickshot'
         | 'blade_charge'
         | 'memosprite_charge'
+        | 'memoria'
         | 'newbud'
         | 'coreflame'
         | 'scourge'
