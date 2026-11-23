@@ -8,6 +8,7 @@ pub enum Action {
     Basic,
     Skill,
     EnhancedSkill,
+    AssistSkill,
     Ultimate,
     EnhancedUltimate,
     #[serde(skip_deserializing)]

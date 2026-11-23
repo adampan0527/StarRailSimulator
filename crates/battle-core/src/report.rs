@@ -266,6 +266,14 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    HimekoAssistUses {
+        before: u8,
+        after: u8,
+    },
+    HimekoSourceEnergy {
+        before: u8,
+        after: u8,
+    },
     ArcherCharge {
         before: u8,
         after: u8,

@@ -189,6 +189,11 @@ fn offensive_priority(battle: &Battle<'_>, command: &Command) -> u8 {
     let actor = battle
         .allies()
         .find(|&unit| battle.plan.units[unit].id == command.actor_id);
+    if command.action == Action::AssistSkill {
+        return actor
+            .and_then(|actor| battle.assist_provider(actor))
+            .map_or(5, |(_, _, priority)| priority);
+    }
     if let Some(unit) = actor
         && let Some(mechanics) = battle.mechanics(unit)
     {

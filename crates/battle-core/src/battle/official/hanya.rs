@@ -183,7 +183,7 @@ impl Mechanics for Hanya {
     ) {
         let Some(target) = target else { return };
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Basic => {}
             Action::Skill | Action::EnhancedSkill => {
                 if battle.hp(target).0 > 0 {
@@ -293,7 +293,7 @@ impl Mechanics for Hanya {
         target: Option<usize>,
     ) -> Option<u8> {
         match action {
-            Action::ElationSkill => None,
+            Action::AssistSkill | Action::ElationSkill => None,
             Action::Basic => None,
             Action::Skill | Action::EnhancedSkill => {
                 Some(if battle.units[actor].hanya_state.burden.is_none() {

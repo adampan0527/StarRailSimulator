@@ -363,7 +363,7 @@ impl Mechanics for Sunday {
             return None;
         }
         match action {
-            Action::ElationSkill => None,
+            Action::AssistSkill | Action::ElationSkill => None,
             Action::Ultimate => Some(0),
             Action::Skill | Action::EnhancedSkill => Some(2),
             Action::Basic | Action::EnhancedUltimate => None,

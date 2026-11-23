@@ -305,7 +305,7 @@ impl Mechanics for Seele {
             }
         }
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Basic => {}
             Action::Skill | Action::EnhancedSkill => self.buff_speed(battle, actor),
             Action::Ultimate | Action::EnhancedUltimate => self.amplify(battle, actor),

@@ -299,7 +299,7 @@ impl Mechanics for Lingsha {
         _target: Option<usize>,
     ) {
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Skill | Action::EnhancedSkill => {
                 self.heal_team(battle, owner, self.skill_heal, false);
                 self.summon_fuyuan(battle, owner);

@@ -55,6 +55,7 @@ export type Action =
   | 'enhanced_skill'
   | 'ultimate'
   | 'enhanced_ultimate'
+  | 'assist_skill'
   | 'elation_skill';
 export type Outcome = 'ongoing' | 'victory' | 'defeat' | 'turn_limit';
 export type Command = {
@@ -164,6 +165,8 @@ type EventKind =
         | 'saber_core_resonance'
         | 'gilgamesh_interest'
         | 'gilgamesh_golden_rule'
+        | 'himeko_assist_uses'
+        | 'himeko_source_energy'
         | 'interpretation'
         | 'inspiration'
         | 'herta_answer'

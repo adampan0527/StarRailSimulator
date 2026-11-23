@@ -18,6 +18,8 @@ mod dahlia;
 #[cfg(bundled_catalog)]
 mod gilgamesh;
 #[cfg(bundled_catalog)]
+mod himeko_departure;
+#[cfg(bundled_catalog)]
 mod pearl;
 #[cfg(bundled_catalog)]
 mod rin;

@@ -347,7 +347,7 @@ impl Mechanics for Acheron {
         target: Option<usize>,
     ) {
         match action {
-            Action::ElationSkill => {}
+            Action::AssistSkill | Action::ElationSkill => {}
             Action::Skill | Action::EnhancedSkill => {
                 self.gain_dreams(battle, actor, actor, target, 1)
             }

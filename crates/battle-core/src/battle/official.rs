@@ -35,6 +35,7 @@ mod hanya;
 mod healing;
 mod herta;
 mod himeko;
+mod himeko_departure;
 mod hook;
 mod huohuo;
 mod hyacine;
@@ -114,6 +115,7 @@ pub(super) use {
     fugue::FugueState,
     gilgamesh::GilgameshState,
     hanya::HanyaState,
+    himeko_departure::HimekoDepartureState,
     huohuo::HuohuoState,
     hyacine::HyacineState,
     hysilens::HysilensState,
@@ -364,7 +366,10 @@ impl OfficialKit {
             Action::Basic => &self.basic,
             Action::Skill => &self.skill,
             Action::Ultimate => &self.ultimate,
-            Action::EnhancedSkill | Action::EnhancedUltimate | Action::ElationSkill => return None,
+            Action::EnhancedSkill
+            | Action::EnhancedUltimate
+            | Action::AssistSkill
+            | Action::ElationSkill => return None,
         };
         Some(ability.resolve())
     }
@@ -451,10 +456,6 @@ pub(super) trait Mechanics: Send + Sync {
     fn after_granted_extra_turn_end(&self, _battle: &mut Battle<'_>, _owner: usize) {}
 
     fn absorb_ally_damage(&self, _battle: &mut Battle<'_>, _owner: usize, _damage: u32) -> u32 {
-        0
-    }
-
-    fn ally_resistance_penetration_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
         0
     }
 
@@ -731,6 +732,21 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn on_battle_start(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn assist_skill_priority(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+    ) -> Option<u8> {
+        None
+    }
+
+    fn on_assist_skill(&self, _battle: &mut Battle<'_>, _owner: usize, _actor: usize) {}
+
+    fn resolves_attack_without_effects(&self, _action: Action) -> bool {
+        false
+    }
 
     fn tracks_attack_damage(&self) -> bool {
         false
@@ -1423,6 +1439,10 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn ally_resistance_penetration_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        0
+    }
+
     fn energy_regeneration_bonus_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
         0
     }
@@ -1827,6 +1847,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         rin::FORM => Some(rin::build),
         aglaea::FORM => Some(aglaea::build),
         "character.1003" => Some(himeko::build),
+        himeko_departure::FORM => Some(himeko_departure::build),
         sparxie::FORM => Some(sparxie::build),
         yao_guang::FORM => Some(yao_guang::build),
         welt::FORM => Some(welt::build),
