@@ -56,6 +56,7 @@ mod seele;
 mod serval;
 mod silver_wolf;
 mod sparkle;
+mod sparxie;
 mod sunday;
 mod sushang;
 mod the_herta;
@@ -106,6 +107,7 @@ pub(super) use {
     ruan_mei::RuanMeiState,
     seele::SeeleState,
     sparkle::SparkleState,
+    sparxie::SparxieState,
     sunday::SundayState,
     the_herta::TheHertaState,
     topaz::TopazState,
@@ -370,7 +372,13 @@ pub(super) trait Mechanics: Send + Sync {
     ) {
     }
 
+    fn on_aha_instant_finished(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
     fn personal_elation_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn elation_from_attack_bp(&self, _attack: u32) -> u32 {
         0
     }
 
@@ -1511,6 +1519,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
         aglaea::FORM => Some(aglaea::build),
         "character.1003" => Some(himeko::build),
+        sparxie::FORM => Some(sparxie::build),
         yao_guang::FORM => Some(yao_guang::build),
         welt::FORM => Some(welt::build),
         "character.1005" => Some(kafka::build),

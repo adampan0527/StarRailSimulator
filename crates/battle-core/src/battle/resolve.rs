@@ -83,6 +83,7 @@ impl SuperBreakSegment {
 #[derive(Clone, Copy)]
 enum DamageScale {
     Attack,
+    AttackWithElation(u16),
     BreakScaledAttack {
         break_ratio_bp: u16,
         break_cap_bp: u16,
@@ -117,7 +118,9 @@ impl DamageScale {
     ) -> u64 {
         let ratio = u64::from(multiplier_bp);
         match self {
-            Self::Attack | Self::BreakScaledAttack { .. } => u64::from(attack) * ratio,
+            Self::Attack | Self::AttackWithElation(_) | Self::BreakScaledAttack { .. } => {
+                u64::from(attack) * ratio
+            }
             Self::Defense => u64::from(defense) * ratio,
             Self::StackedAttack { multiplier_bp, .. } => {
                 u64::from(attack) * u64::from(multiplier_bp)
@@ -528,6 +531,24 @@ impl Battle<'_> {
                 origin: Some(Action::Skill),
                 scale: DamageScale::FixedBase(base_bp),
             },
+        );
+    }
+
+    pub(super) fn attack_hit_with_elation(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        multiplier_bp: (u16, u16),
+        toughness: u16,
+    ) {
+        self.attack_hit_scaled(
+            actor,
+            target,
+            element,
+            u32::from(multiplier_bp.0),
+            toughness,
+            DamageScale::AttackWithElation(multiplier_bp.1),
         );
     }
 
@@ -2016,14 +2037,18 @@ impl Battle<'_> {
         let hp_source = self.max_hp_damage_source(actor);
         let base_hp = self.plan.units[hp_source].stats.hp;
         let max_hp_multiplier_bp = self.max_hp_multiplier_bp(hp_source);
-        let intrinsic_elation = if kind == DamageKind::Elation {
-            let actor_elation = self.intrinsic_elation_bp(actor);
-            assisted_by.map_or(actor_elation, |owner| {
-                actor_elation.max(self.intrinsic_elation_bp(owner))
-            })
+        let uses_elation = matches!(
+            scale,
+            DamageScale::Elation { .. } | DamageScale::AttackWithElation(_)
+        );
+        let intrinsic_elation = if uses_elation {
+            self.intrinsic_elation_bp(actor)
         } else {
             0
         };
+        let fallback_elation = assisted_by
+            .filter(|_| uses_elation)
+            .map_or(0, |owner| self.intrinsic_elation_bp(owner));
         let crit = self.resolve_damage(
             actor,
             target,
@@ -2068,12 +2093,22 @@ impl Battle<'_> {
                 adjusted.crit_damage_bp = adjusted
                     .crit_damage_bp
                     .saturating_add(view.bonus.crit_damage_bp);
+                let elation_bp = if uses_elation {
+                    let converted = mechanics
+                        .as_ref()
+                        .map_or(0, |rules| rules.elation_from_attack_bp(view.attack));
+                    intrinsic_elation
+                        .saturating_add(converted)
+                        .max(fallback_elation)
+                        .saturating_add(view.bonus.elation_bp)
+                } else {
+                    0
+                };
                 if let DamageScale::Elation {
                     punchline,
                     factor_bp,
                 } = scale
                 {
-                    let elation_bp = intrinsic_elation.saturating_add(view.bonus.elation_bp);
                     return damage::elation(
                         adjusted,
                         view.target,
@@ -2089,6 +2124,8 @@ impl Battle<'_> {
                     );
                 }
                 let multiplier_bp = match scale {
+                    DamageScale::AttackWithElation(factor_bp) => multiplier_bp
+                        .saturating_add(percentage_of(elation_bp, u32::from(factor_bp))),
                     DamageScale::BreakScaledAttack {
                         break_ratio_bp,
                         break_cap_bp,

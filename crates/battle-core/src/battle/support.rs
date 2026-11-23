@@ -395,8 +395,10 @@ impl Battle<'_> {
             && let Some(mechanics) = self.mechanics(source)
         {
             if self.is_party_unit(target) && self.is_targetable(source) {
-                if kind == DamageKind::Elation {
+                if self.aha.is_some() {
                     bonuses.elation_bp = mechanics.ally_elation_bp(self, source, target);
+                }
+                if kind == DamageKind::Elation {
                     bonuses.merrymake_bp = mechanics.ally_merrymake_bp(self, source, target);
                     bonuses.defense_ignore_bp = bonuses
                         .defense_ignore_bp
