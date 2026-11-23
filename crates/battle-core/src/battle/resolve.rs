@@ -262,6 +262,7 @@ pub(super) enum PendingAttack {
 enum FollowUpTargets {
     All,
     Single(usize),
+    Special,
     SingleBlast {
         target: usize,
         adjacent: (u16, u16),
@@ -1079,6 +1080,21 @@ impl Battle<'_> {
             }));
     }
 
+    pub(super) fn queue_special_follow_up(
+        &mut self,
+        actor: usize,
+        origin: Action,
+        attack: FollowUpAttack,
+    ) {
+        self.pending_follow_ups
+            .push_back(PendingAttack::FollowUp(FollowUp {
+                actor,
+                targets: FollowUpTargets::Special,
+                origin,
+                attack,
+            }));
+    }
+
     /// Hit the original target and its neighbors while the primary target is still living.
     pub(super) fn follow_up_blast(
         &mut self,
@@ -1316,14 +1332,25 @@ impl Battle<'_> {
                 continue;
             }
             let mechanics = self.mechanics(actor);
-            if mechanics
-                .as_ref()
-                .is_some_and(|rules| !rules.can_execute_follow_up(self, actor))
+            let special = matches!(targets, FollowUpTargets::Special);
+            if !special
+                && mechanics
+                    .as_ref()
+                    .is_some_and(|rules| !rules.can_execute_follow_up(self, actor))
             {
                 continue;
             }
             let single = match targets {
                 FollowUpTargets::All | FollowUpTargets::Random { .. } => None,
+                FollowUpTargets::Special => {
+                    let Some(unit) = mechanics
+                        .as_ref()
+                        .and_then(|rules| rules.special_follow_up_target(self, actor))
+                    else {
+                        continue;
+                    };
+                    Some(unit)
+                }
                 FollowUpTargets::Single(unit)
                 | FollowUpTargets::SingleBlast { target: unit, .. } => Some(unit),
                 FollowUpTargets::SingleOrRandom(target)
@@ -1345,10 +1372,15 @@ impl Battle<'_> {
             let parent_debuff_targets = self.begin_debuff_action();
             self.begin_attack();
             self.emit(EventKind::FollowUp, Some(actor), single);
-            if let Some(mechanics) = &mechanics {
+            if !special && let Some(mechanics) = &mechanics {
                 mechanics.before_follow_up(self, actor);
             }
-            if let FollowUpTargets::Random {
+            if special {
+                if let (Some(mechanics), Some(target)) = (&mechanics, single) {
+                    mechanics.resolve_special_follow_up(self, actor, target, origin);
+                    self.gain_energy(actor, actor, attack.energy_milli);
+                }
+            } else if let FollowUpTargets::Random {
                 mut first_target,
                 hit_count,
                 adjacent_multiplier_bp,
@@ -1464,7 +1496,7 @@ impl Battle<'_> {
                 }
                 self.gain_energy(actor, actor, attack.energy_milli);
             }
-            if let Some(mechanics) = mechanics {
+            if !special && let Some(mechanics) = mechanics {
                 mechanics.after_follow_up(self, actor, origin);
             }
             self.notify_attack(actor, origin, single);
@@ -1753,6 +1785,9 @@ impl Battle<'_> {
         self.mechanics(owner)
             .map_or(DamageTargetAura::default(), |mechanics| {
                 let mut aura = mechanics.damage_target_aura(self, owner, actor);
+                aura.vulnerability_bp = aura
+                    .vulnerability_bp
+                    .saturating_add(mechanics.target_vulnerability_bp(self, owner, target));
                 if self.is_ultimate_damage(actor, event) {
                     aura.vulnerability_bp = aura
                         .vulnerability_bp

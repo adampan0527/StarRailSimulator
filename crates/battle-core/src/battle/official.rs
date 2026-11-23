@@ -5,6 +5,7 @@ mod anaxa;
 mod archer;
 mod argenti;
 mod arlan;
+mod ashveil;
 mod asta;
 mod aventurine;
 mod bailu;
@@ -94,6 +95,7 @@ pub(super) use {
     aglaea::AglaeaState,
     anaxa::AnaxaState,
     archer::ArcherState,
+    ashveil::AshveilState,
     aventurine::AventurineState,
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
@@ -1281,6 +1283,19 @@ pub(super) trait Mechanics: Send + Sync {
         true
     }
 
+    fn special_follow_up_target(&self, _battle: &Battle<'_>, _actor: usize) -> Option<usize> {
+        None
+    }
+
+    fn resolve_special_follow_up(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _target: usize,
+        _origin: Action,
+    ) {
+    }
+
     fn before_follow_up(&self, _battle: &mut Battle<'_>, _actor: usize) {}
 
     fn after_follow_up(&self, _battle: &mut Battle<'_>, _actor: usize, _origin: Action) {}
@@ -1765,6 +1780,10 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    fn target_vulnerability_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
+        0
+    }
+
     fn target_defense_down_bp(&self, _battle: &Battle<'_>, _owner: usize, _target: usize) -> u32 {
         0
     }
@@ -1874,6 +1893,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         argenti::FORM => Some(argenti::build),
         saber::FORM => Some(saber::build),
         gilgamesh::FORM => Some(gilgamesh::build),
+        ashveil::FORM => Some(ashveil::build),
         ruan_mei::FORM => Some(ruan_mei::build),
         aventurine::FORM => Some(aventurine::build),
         "character.1305" => Some(dr_ratio::build),
