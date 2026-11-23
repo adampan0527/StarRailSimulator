@@ -10,6 +10,12 @@ export const actionNames: Record<Action, string> = {
   elation_skill: '欢愉技',
 };
 
+export function actionName(action: Action, actorId: string | null): string {
+  return action === 'enhanced_skill' && actorId === 'character.1015'
+    ? '结束回路连接'
+    : actionNames[action];
+}
+
 export const damageNames: Record<DamageKind, string> = {
   direct: '伤害',
   weakness_break: '击破伤害',
@@ -78,7 +84,7 @@ export function av(micros: number) {
   return number.format(micros / 1_000_000);
 }
 
-function eventTitle({ kind }: BattleEvent): string {
+function eventTitle({ kind, source_id }: BattleEvent): string {
   switch (kind.event) {
     case 'wave_started':
       return '战斗开始';
@@ -95,7 +101,7 @@ function eventTitle({ kind }: BattleEvent): string {
     case 'certified_banger':
       return '好活当赏变化';
     case 'action':
-      return actionNames[kind.detail];
+      return actionName(kind.detail, source_id);
     case 'complete_combustion':
       return kind.detail.active ? '进入完全燃烧' : '结束完全燃烧';
     case 'enemy_attack':
@@ -154,6 +160,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '爆点';
     case 'cerydra_charge':
       return '军功充能';
+    case 'archer_charge':
+      return 'Archer 充能';
     case 'squama_sacrosancta':
       return '逆鳞变化';
     case 'debt_collector':
@@ -229,6 +237,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'chroma_ink':
     case 'pawned_asset':
     case 'cerydra_charge':
+    case 'archer_charge':
     case 'memoria':
     case 'newbud':
     case 'coreflame':

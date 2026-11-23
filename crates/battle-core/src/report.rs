@@ -216,6 +216,10 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    ArcherCharge {
+        before: u8,
+        after: u8,
+    },
     Interpretation {
         before: u8,
         after: u8,

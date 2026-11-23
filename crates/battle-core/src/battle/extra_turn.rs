@@ -78,6 +78,13 @@ impl Battle<'_> {
         }
     }
 
+    pub(super) fn end_retained_turn(&mut self, actor: usize) {
+        if !self.in_extra_turn(actor) {
+            self.reset_gauge(actor);
+        }
+        self.close_turn_before_suspension(actor);
+    }
+
     pub(super) fn interrupted_turn_actor(&self) -> Option<usize> {
         self.extra_turns.interrupted
     }

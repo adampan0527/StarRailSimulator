@@ -163,6 +163,7 @@ type EventKind =
         | 'basic_enhancement'
         | 'thrill'
         | 'cerydra_charge'
+        | 'archer_charge'
         | 'squama_sacrosancta'
         | 'jade_charge'
         | 'rappa_charge'
