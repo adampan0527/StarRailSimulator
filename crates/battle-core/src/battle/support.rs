@@ -420,9 +420,13 @@ impl Battle<'_> {
                         mechanics.ally_break_damage_bonus_bp(self, source, target);
                 }
             }
-            bonuses.max_hp_flat = bonuses
-                .max_hp_flat
-                .saturating_add(mechanics.ally_max_hp_bonus(self, source, max_hp_source));
+            bonuses.max_hp_flat = bonuses.max_hp_flat.saturating_add(
+                if self.memosprite_owner(max_hp_source).is_some() {
+                    mechanics.memosprite_max_hp_bonus(self, source, max_hp_source)
+                } else {
+                    mechanics.ally_max_hp_bonus(self, source, max_hp_source)
+                },
+            );
             bonuses.attack_bp = bonuses
                 .attack_bp
                 .saturating_add(mechanics.ally_attack_bonus_bp(self, source, target));

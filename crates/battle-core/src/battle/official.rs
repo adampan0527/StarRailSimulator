@@ -17,6 +17,7 @@ mod clara;
 mod dan_heng;
 mod dan_heng_il;
 mod dr_ratio;
+mod evernight;
 mod feixiao;
 mod firefly;
 mod fu_xuan;
@@ -88,6 +89,7 @@ pub(super) use {
     cipher::CipherState,
     dan_heng_il::DanHengIlState,
     dr_ratio::DrRatioState,
+    evernight::EvernightState,
     feixiao::FeixiaoState,
     firefly::FireflyState,
     fu_xuan::FuXuanState,
@@ -431,6 +433,10 @@ pub(super) trait Mechanics: Send + Sync {
         false
     }
 
+    fn memosprite_aggro_multiplier_bp(&self) -> u32 {
+        10_000
+    }
+
     fn memosprite_has_fixed_zero_speed(&self) -> bool {
         false
     }
@@ -729,6 +735,7 @@ pub(super) trait Mechanics: Send + Sync {
         _owner: usize,
         _target: usize,
         _amount: u32,
+        _received_attack: Option<u32>,
     ) {
     }
 
@@ -1399,6 +1406,10 @@ pub(super) trait Mechanics: Send + Sync {
         10_000
     }
 
+    fn ally_memosprite_damage_factor_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        10_000
+    }
+
     fn on_enemy_turn_opening(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
 
     fn trigger_special_dot(
@@ -1633,6 +1644,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         cerydra::FORM => Some(cerydra::build),
         castorice::FORM => Some(castorice::build),
         hyacine::FORM => Some(hyacine::build),
+        evernight::FORM => Some(evernight::build),
         boothill::FORM => Some(boothill::build),
         yunli::FORM => Some(yunli::build),
         "dan_heng.hunt" => Some(dan_heng::build),

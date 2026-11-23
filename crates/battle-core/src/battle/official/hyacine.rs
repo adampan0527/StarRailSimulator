@@ -464,7 +464,14 @@ impl Mechanics for Hyacine {
         }
     }
 
-    fn on_party_hp_lost(&self, battle: &mut Battle<'_>, owner: usize, target: usize, _: u32) {
+    fn on_party_hp_lost(
+        &self,
+        battle: &mut Battle<'_>,
+        owner: usize,
+        target: usize,
+        _: u32,
+        _: Option<u32>,
+    ) {
         if !battle.is_targetable(owner) || !battle.is_targetable(target) {
             return;
         }

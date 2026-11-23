@@ -473,6 +473,7 @@ impl Battle<'_> {
         element: Element,
         multiplier_bp: u32,
         toughness: u16,
+        origin: Action,
     ) {
         if self.is_targetable(sprite) {
             self.strike(
@@ -483,7 +484,7 @@ impl Battle<'_> {
                     element,
                     multiplier_bp,
                     toughness,
-                    origin: Some(Action::Skill),
+                    origin: Some(origin),
                     scale: DamageScale::MaxHp,
                 },
             );
@@ -737,7 +738,7 @@ impl Battle<'_> {
             if let Some(rules) = self.mechanics(target) {
                 rules.after_hp_spent(self, target, amount);
             }
-            self.record_team_hp_loss(target, amount);
+            self.record_team_hp_loss(target, amount, None);
             self.notify_ally_health_event(target, None);
             self.notify_ally_hp_loss(target);
         }
@@ -757,7 +758,7 @@ impl Battle<'_> {
         }
     }
 
-    fn record_team_hp_loss(&mut self, target: usize, amount: u32) {
+    fn record_team_hp_loss(&mut self, target: usize, amount: u32, received_attack: Option<u32>) {
         if !self.is_party_unit(target) || amount == 0 {
             return;
         }
@@ -769,7 +770,7 @@ impl Battle<'_> {
                 if self.allies().contains(&target) {
                     mechanics.record_team_hp_loss(self, owner, amount);
                 }
-                mechanics.on_party_hp_lost(self, owner, target, amount);
+                mechanics.on_party_hp_lost(self, owner, target, amount, received_attack);
             }
         }
     }
@@ -1464,9 +1465,13 @@ impl Battle<'_> {
     pub(super) fn enemy_targeting_weight(&self, unit: usize) -> u64 {
         let weight =
             u32::from(self.plan.units[unit].stats.base_aggro) + self.lynx_aggro_bonus(unit);
-        let ratio = self
-            .mechanics(unit)
-            .map_or(10_000, |rules| rules.aggro_multiplier_bp(self, unit));
+        let ratio = if let Some(owner) = self.memosprite_owner(unit) {
+            self.mechanics(owner)
+                .map_or(10_000, |rules| rules.memosprite_aggro_multiplier_bp())
+        } else {
+            self.mechanics(unit)
+                .map_or(10_000, |rules| rules.aggro_multiplier_bp(self, unit))
+        };
         (u64::from(weight) * u64::from(ratio)).max(1)
     }
 
@@ -1554,12 +1559,28 @@ impl Battle<'_> {
             })
     }
 
-    fn ally_dot_factor_from(&self, owner: usize, actor: usize, kind: DamageKind) -> u32 {
-        if kind != DamageKind::DamageOverTime || !self.is_party_unit(actor) {
+    fn ally_damage_factor_from(&self, owner: usize, actor: usize, kind: DamageKind) -> u32 {
+        let is_dot = kind == DamageKind::DamageOverTime && self.is_party_unit(actor);
+        let is_memosprite = self.memosprite_owner(actor).is_some();
+        if !is_dot && !is_memosprite {
             return 10_000;
         }
-        self.mechanics(owner)
-            .map_or(10_000, |rules| rules.ally_dot_damage_factor_bp(self, owner))
+        let Some(rules) = self.mechanics(owner) else {
+            return 10_000;
+        };
+        let dot_factor = if is_dot {
+            rules.ally_dot_damage_factor_bp(self, owner)
+        } else {
+            10_000
+        };
+        if is_memosprite {
+            combine_damage_factors(
+                dot_factor,
+                rules.ally_memosprite_damage_factor_bp(self, owner),
+            )
+        } else {
+            dot_factor
+        }
     }
 
     fn damage_target(
@@ -1678,18 +1699,18 @@ impl Battle<'_> {
             })
         });
         let personal_penetration = personal_penetration.saturating_add(sprite_penetration);
-        let outgoing_damage_factor_bp = if event.kind == DamageKind::DamageOverTime {
-            self.allies().filter(|&owner| allow_source(owner)).fold(
-                outgoing_damage_factor_bp,
-                |factor, owner| {
-                    let support = self.ally_dot_factor_from(owner, actor, event.kind);
-                    (u64::from(factor) * u64::from(support) / 10_000).min(u64::from(u32::MAX))
-                        as u32
-                },
-            )
-        } else {
-            outgoing_damage_factor_bp
-        };
+        let outgoing_damage_factor_bp =
+            if event.kind == DamageKind::DamageOverTime || self.memosprite_owner(actor).is_some() {
+                self.allies().filter(|&owner| allow_source(owner)).fold(
+                    outgoing_damage_factor_bp,
+                    |factor, owner| {
+                        let support = self.ally_damage_factor_from(owner, actor, event.kind);
+                        combine_damage_factors(factor, support)
+                    },
+                )
+            } else {
+                outgoing_damage_factor_bp
+            };
         let mut stats = plan.stats;
         stats.hp = self.effective_max_hp(target);
         stats.defense = self.defense(target);
@@ -2101,7 +2122,9 @@ impl Battle<'_> {
             .crit_rate_bp
             .saturating_add(self.units[actor].crit_rate_bonus_bp);
         let hp_source = self.max_hp_damage_source(actor);
-        let base_hp = self.plan.units[hp_source].stats.hp;
+        let base_hp = self.units[hp_source]
+            .memosprite_max_hp
+            .unwrap_or(self.plan.units[hp_source].stats.hp);
         let max_hp_multiplier_bp = self.max_hp_multiplier_bp(hp_source);
         let uses_elation = matches!(
             scale,
@@ -2817,7 +2840,7 @@ impl Battle<'_> {
                 )
                 .chain(self.allies().filter(|&owner| {
                     self.offense_buffs_from(owner, offense) != OffenseBuffs::default()
-                        || self.ally_dot_factor_from(owner, actor, kind) != 10_000
+                        || self.ally_damage_factor_from(owner, actor, kind) != 10_000
                         || self.target_auras_from(owner, actor, target, element, &event)
                             != DamageTargetAura::default()
                 }))
@@ -3074,11 +3097,11 @@ impl Battle<'_> {
         if absorbed > 0 {
             self.deplete_shields(target, amount);
         }
-        self.record_team_hp_loss(target, hp_loss);
+        let attack_index = (self.enemy_action == Some(actor)
+            && matches!(kind, DamageKind::Direct | DamageKind::FollowUp))
+        .then_some(self.attack_index);
+        self.record_team_hp_loss(target, hp_loss, attack_index);
         if amount > 0 {
-            let attack_index = (self.enemy_action == Some(actor)
-                && matches!(kind, DamageKind::Direct | DamageKind::FollowUp))
-            .then_some(self.attack_index);
             self.notify_ally_health_event(target, attack_index);
         }
         if hp_loss > 0
@@ -3398,6 +3421,10 @@ impl Battle<'_> {
     pub(super) fn fill_energy(&mut self, actor: usize) {
         self.set_energy(actor, actor, self.plan.units[actor].kit.max_energy_milli());
     }
+}
+
+fn combine_damage_factors(first_bp: u32, second_bp: u32) -> u32 {
+    (u64::from(first_bp) * u64::from(second_bp) / 10_000).min(u64::from(u32::MAX)) as u32
 }
 
 fn saturating_stat(value: u64) -> u32 {
