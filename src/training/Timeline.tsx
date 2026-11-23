@@ -59,6 +59,7 @@ const statusNames = {
   weaken: '虚弱',
   seam_stitch: '间隙织线',
   supreme_stance: '至高之姿',
+  after_rain: '雨过天晴',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

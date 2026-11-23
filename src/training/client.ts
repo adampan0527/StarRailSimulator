@@ -103,7 +103,8 @@ type Status =
   | 'patron'
   | 'weaken'
   | 'seam_stitch'
-  | 'supreme_stance';
+  | 'supreme_stance'
+  | 'after_rain';
 type EventKind =
   | {
       event:

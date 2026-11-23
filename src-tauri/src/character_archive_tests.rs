@@ -184,6 +184,51 @@ fn saved_aglaea_accepts_fractional_flat_hp_at_lower_talent_levels() {
 
 #[cfg(bundled_catalog)]
 #[test]
+fn saved_hyacine_runs_fractional_skill_and_sprite_healing_coefficients() {
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let hyacine = "character.1409";
+    profiles.ensure_profile(hyacine).unwrap();
+    let mut loadout = catalog.default_loadout_at(hyacine, "base", 80, 6).unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "风堇低等级配装",
+            &[Some(hyacine.into()), None, None, None],
+        )
+        .unwrap();
+    for level in [3, 7] {
+        for id in ["skill.140902", "skill.140903"] {
+            loadout.config.skill_levels.insert(id.into(), level);
+        }
+        loadout
+            .config
+            .skill_levels
+            .insert("skill.1140903".into(), level.min(6));
+        profiles
+            .save_preset(hyacine, "base", &loadout, true)
+            .unwrap();
+        let readiness = archive.dpr_readiness(&team.id).unwrap();
+        assert!(readiness.unsupported_characters.is_empty());
+        let result = readiness.result.unwrap();
+        assert!(
+            result
+                .targets
+                .iter()
+                .flat_map(|target| &target.hits)
+                .any(|hit| { hit.source_id == "character.1409:little-ica" && hit.amount > 0 })
+        );
+    }
+}
+
+#[cfg(bundled_catalog)]
+#[test]
 fn welt_fixed_dpr_uses_default_and_saved_base_variant() {
     let dir = TestData::new();
     let welt = "character.1004";
