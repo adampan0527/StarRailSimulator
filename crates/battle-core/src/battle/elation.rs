@@ -34,6 +34,20 @@ pub(super) struct AhaState {
 }
 
 impl Battle<'_> {
+    pub(super) fn elation_team_size(&self) -> usize {
+        self.allies()
+            .filter(|&actor| {
+                self.plan.units[actor]
+                    .combat_type
+                    .is_some_and(|kind| kind.path == CombatPath::Elation)
+            })
+            .count()
+    }
+
+    pub(super) fn current_punchline(&self) -> u32 {
+        self.aha.as_ref().map_or(0, |aha| aha.punchline)
+    }
+
     fn elation_allies(&self) -> impl Iterator<Item = usize> + '_ {
         self.allies().filter(|&actor| {
             self.plan.units[actor]
@@ -248,6 +262,13 @@ impl Battle<'_> {
         let replenished = self.elation_allies().count() as u32;
         let current = self.aha.as_ref().map_or(0, |aha| aha.punchline);
         self.set_punchline(actor, current.saturating_add(replenished));
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(rules) = self.mechanics(owner)
+            {
+                rules.on_aha_instant_finished(self, owner);
+            }
+        }
     }
 
     pub(super) fn intrinsic_elation_bp(&self, actor: usize) -> u32 {

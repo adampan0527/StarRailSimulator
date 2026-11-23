@@ -235,6 +235,68 @@ fn saved_yao_guang_runs_elation_from_low_skill_levels() {
 
 #[cfg(bundled_catalog)]
 #[test]
+fn saved_sparxie_and_yao_guang_share_aha_from_low_skill_levels() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let [sparxie, yao] = ["character.1501", "character.1502"];
+    for (id, eidolon) in [(sparxie, 2), (yao, 0)] {
+        profiles.ensure_profile(id).unwrap();
+        let mut loadout = catalog.default_loadout_at(id, "base", 80, 6).unwrap();
+        loadout.config.eidolon = eidolon;
+        for level in loadout.config.skill_levels.values_mut() {
+            *level = 1;
+        }
+        profiles
+            .save_preset(id, "低级技能", &loadout, true)
+            .unwrap();
+    }
+    let team = archive
+        .save_team(
+            None,
+            "火花与爻光",
+            &[Some(sparxie.into()), Some(yao.into()), None, None],
+        )
+        .unwrap();
+    let capture = || {
+        let readiness = archive.dpr_readiness(&team.id).unwrap();
+        assert!(readiness.unsupported_characters.is_empty());
+        readiness.result.unwrap()
+    };
+    let result = capture();
+    assert_eq!(result, capture());
+    for unit in [sparxie, yao] {
+        assert!(
+            result
+                .targets
+                .iter()
+                .flat_map(|target| &target.hits)
+                .any(|hit| {
+                    hit.source_id == unit
+                        && hit.kind == DamageKind::Elation
+                        && hit.action == Action::ElationSkill
+                })
+        );
+    }
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|unit| unit.own_damage + unit.assist_damage)
+            .sum::<u64>()
+    );
+}
+
+#[cfg(bundled_catalog)]
+#[test]
 fn welt_fixed_dpr_uses_default_and_saved_base_variant() {
     let dir = TestData::new();
     let welt = "character.1004";

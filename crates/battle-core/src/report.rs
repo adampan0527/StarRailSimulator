@@ -225,6 +225,10 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    Thrill {
+        before: u32,
+        after: u32,
+    },
     SquamaSacrosancta {
         before: u8,
         after: u8,

@@ -134,6 +134,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '月色变化';
     case 'basic_enhancement':
       return '普攻强化档位';
+    case 'thrill':
+      return '爆点';
     case 'squama_sacrosancta':
       return '逆鳞变化';
     case 'debt_collector':
@@ -201,6 +203,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'syzygy':
     case 'moonlight':
     case 'basic_enhancement':
+    case 'thrill':
     case 'squama_sacrosancta':
     case 'jade_charge':
     case 'rappa_charge':

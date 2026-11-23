@@ -149,6 +149,7 @@ type EventKind =
         | 'syzygy'
         | 'moonlight'
         | 'basic_enhancement'
+        | 'thrill'
         | 'squama_sacrosancta'
         | 'jade_charge'
         | 'rappa_charge'
