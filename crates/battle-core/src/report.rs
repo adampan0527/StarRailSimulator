@@ -56,10 +56,11 @@ pub enum StatusKind {
     WealLots,
     WoesWhisper,
     Khaslana,
+    SirenZone,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Khaslana.index() + 1;
+    pub(crate) const COUNT: usize = Self::SirenZone.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -100,6 +101,7 @@ impl StatusKind {
             Self::WealLots => 33,
             Self::WoesWhisper => 34,
             Self::Khaslana => 35,
+            Self::SirenZone => 36,
         }
     }
 }

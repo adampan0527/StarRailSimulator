@@ -10,6 +10,7 @@ pub(super) struct DotEvent {
     pub from_break: bool,
     pub origin: Action,
     pub timing: DotTiming,
+    pub is_echo: bool,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -57,6 +58,7 @@ pub(super) struct ActiveSkillDot {
     rule: SkillDot,
     stacks: u8,
     shares_vulnerability: bool,
+    separate: bool,
 }
 
 #[derive(Clone, Default)]
@@ -77,6 +79,17 @@ impl Battle<'_> {
         chance_bp: u32,
         dot: SkillDot,
     ) -> bool {
+        self.roll_skill_dot(source, target, chance_bp, dot, false)
+    }
+
+    fn roll_skill_dot(
+        &mut self,
+        source: usize,
+        target: usize,
+        chance_bp: u32,
+        dot: SkillDot,
+        separate: bool,
+    ) -> bool {
         if self.hp(target).0 == 0
             || dot.turns == 0
             || dot.max_stacks == 0
@@ -84,7 +97,7 @@ impl Battle<'_> {
         {
             return false;
         }
-        self.inflict_skill_dot(source, target, dot, false)
+        self.inflict_skill_dot(source, target, dot, false, separate)
     }
 
     pub(super) fn inflict_skill_dot_with_vulnerability(
@@ -93,7 +106,18 @@ impl Battle<'_> {
         target: usize,
         dot: SkillDot,
     ) -> bool {
-        self.inflict_skill_dot(source, target, dot, true)
+        self.inflict_skill_dot(source, target, dot, true, false)
+    }
+
+    /// Applies a separate status that can coexist with this source's usual DoT.
+    pub(super) fn apply_separate_skill_dot(
+        &mut self,
+        source: usize,
+        target: usize,
+        chance_bp: u32,
+        dot: SkillDot,
+    ) -> bool {
+        self.roll_skill_dot(source, target, chance_bp, dot, true)
     }
 
     fn inflict_skill_dot(
@@ -102,6 +126,7 @@ impl Battle<'_> {
         target: usize,
         dot: SkillDot,
         shares_vulnerability: bool,
+        separate: bool,
     ) -> bool {
         if self.hp(target).0 == 0
             || dot.turns == 0
@@ -110,10 +135,11 @@ impl Battle<'_> {
         {
             return false;
         }
-        let existing = self.units[target]
-            .skill_dots
-            .iter_mut()
-            .find(|current| current.source == source && current.rule.element == dot.element);
+        let existing = self.units[target].skill_dots.iter_mut().find(|current| {
+            current.source == source
+                && current.rule.element == dot.element
+                && current.separate == separate
+        });
         if let Some(current) = existing {
             current.stacks = current.stacks.saturating_add(1).min(dot.max_stacks);
             current.rule = dot;
@@ -124,10 +150,38 @@ impl Battle<'_> {
                 rule: dot,
                 stacks: 1,
                 shares_vulnerability,
+                separate,
             });
         }
         self.record_enemy_debuff(target);
         true
+    }
+
+    pub(super) fn has_owned_skill_dot(
+        &self,
+        source: usize,
+        target: usize,
+        element: Element,
+        separate: bool,
+    ) -> bool {
+        self.units[target].skill_dots.iter().any(|dot| {
+            dot.source == source && dot.rule.element == element && dot.separate == separate
+        })
+    }
+
+    pub(super) fn finish_dot_batch(&mut self, timing: DotTiming) {
+        if !std::mem::take(&mut self.pending_dot_batch) {
+            return;
+        }
+        let previous_timing = std::mem::replace(&mut self.dot_timing, timing);
+        self.resolving_dot_echoes = true;
+        for owner in self.allies() {
+            if let Some(rules) = self.mechanics(owner) {
+                rules.on_dot_batch_finished(self, owner);
+            }
+        }
+        self.resolving_dot_echoes = false;
+        self.dot_timing = previous_timing;
     }
 
     pub(super) fn standalone_skill_dot_count(&self, target: usize) -> usize {

@@ -133,6 +133,7 @@ struct UnitState {
     black_swan: BlackSwanTarget,
     luka_state: LukaState,
     himeko_charge: u8,
+    hysilens_state: official::HysilensState,
     cipher_state: official::CipherState,
     the_herta_state: official::TheHertaState,
     anaxa_state: official::AnaxaState,
@@ -242,6 +243,8 @@ pub struct Battle<'a> {
     enemy_turn: Option<usize>,
     enemy_action: Option<usize>,
     dot_timing: DotTiming,
+    pending_dot_batch: bool,
+    resolving_dot_echoes: bool,
     pending_follow_ups: std::collections::VecDeque<resolve::PendingAttack>,
     resolving_follow_up: bool,
     observes_enemy_debuffs: bool,
@@ -290,6 +293,7 @@ impl<'a> Battle<'a> {
                     black_swan: BlackSwanTarget::default(),
                     luka_state: LukaState::default(),
                     himeko_charge: 0,
+                    hysilens_state: official::HysilensState::default(),
                     cipher_state: official::CipherState::default(),
                     the_herta_state: official::TheHertaState::default(),
                     anaxa_state: official::AnaxaState::default(),
@@ -393,6 +397,8 @@ impl<'a> Battle<'a> {
             enemy_turn: None,
             enemy_action: None,
             dot_timing: DotTiming::Other,
+            pending_dot_batch: false,
+            resolving_dot_echoes: false,
             pending_follow_ups: std::collections::VecDeque::new(),
             resolving_follow_up: false,
             observes_enemy_debuffs: plan.units.iter().any(|unit| {
@@ -1251,6 +1257,7 @@ impl<'a> Battle<'a> {
         self.tick_skill_dots(actor);
         self.tick_break_dots(actor);
         self.trigger_special_dots(actor, SpecialDotTrigger::TurnStart);
+        self.finish_dot_batch(DotTiming::TurnStart(actor));
         self.dot_timing = DotTiming::Other;
         self.tick_entanglement(actor);
         if self.units[actor].hp == 0 {

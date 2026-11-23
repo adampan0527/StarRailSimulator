@@ -65,6 +65,7 @@ const statusNames = {
   weal_lots: '爻光结界',
   woes_whisper: '凶星低语',
   khaslana: '卡厄斯兰那',
+  siren_zone: '海瑟音结界',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

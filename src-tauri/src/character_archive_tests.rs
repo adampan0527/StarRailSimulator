@@ -1534,6 +1534,61 @@ fn saved_team_replays_netherwing_with_hp_consumption_and_healing() {
     assert_eq!(result, run());
 }
 
+#[cfg(bundled_catalog)]
+#[test]
+fn saved_hysilens_team_replays_zone_detonations_and_keeps_dot_sources() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let mut archive = CharacterArchive::installed(dir.path()).unwrap();
+    let [hysilens, kafka, black_swan, jiaoqiu] = [
+        "character.1410",
+        "character.1005",
+        "character.1307",
+        "character.1218",
+    ];
+    let mut edit = archive.profile(hysilens).unwrap().edit;
+    edit.eidolon = 1;
+    archive.save(hysilens, edit).unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "海妖结界与持续伤害",
+            &[hysilens, kafka, black_swan, jiaoqiu].map(|id| Some(id.into())),
+        )
+        .unwrap();
+    let run = || {
+        let checked = archive.dpr_readiness(&team.id).unwrap();
+        assert!(checked.unsupported_characters.is_empty());
+        checked.result.unwrap()
+    };
+    let result = run();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    for source in [hysilens, kafka, black_swan, jiaoqiu] {
+        assert!(
+            hits().any(|hit| hit.source_id == source && hit.kind == DamageKind::DamageOverTime)
+        );
+    }
+    assert!(hits().any(|hit| {
+        hit.source_id == kafka
+            && hit.kind == DamageKind::DamageOverTime
+            && hit.action == Action::Ultimate
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == hysilens && credit.amount > 0)
+    }));
+    assert_eq!(result, run());
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|character| character.own_damage + character.assist_damage)
+            .sum::<u64>()
+    );
+}
+
 fn remove_archiver_schema(db: &rusqlite::Connection) {
     db.execute_batch(
         "DROP TABLE archiver_relics;
