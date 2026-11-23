@@ -225,7 +225,7 @@ impl Evernight {
         let crit = percentage_of(battle.effective_crit_damage_bp(owner), ratio);
         battle.units[owner].evernight_state.skill_until = turn + 2;
         battle.units[owner].evernight_state.skill_crit_bp = crit;
-        self.gain_memoria(battle, owner, 2 + ode.map_or(0, |ode| ode.memoria));
+        self.gain_memoria(battle, owner, 2);
         if battle.units[owner].evernight_state.darkest_riddle.is_some() {
             self.gain_memoria(battle, owner, 12);
         }
@@ -376,7 +376,7 @@ impl Mechanics for Evernight {
         action: Action,
         _: Option<usize>,
     ) {
-        if action == Action::Ultimate
+        if matches!(action, Action::Skill | Action::Ultimate)
             && let Some(ode) = super::cyrene::time_ode(battle, owner)
         {
             self.gain_memoria(battle, owner, ode.memoria);

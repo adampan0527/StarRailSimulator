@@ -221,7 +221,8 @@ fn true_damage_is_separate_and_its_stacks_follow_future_and_distinct_ode_targets
 
 #[test]
 fn time_ode_uses_frozen_evernight_conditions_and_leaves_ultimate_damage_outside_sprite_bonus() {
-    let companion = evernight();
+    let mut companion = evernight();
+    companion.eidolon = 2;
     let mut invalid = evernight();
     invalid.skill_parameters.get_mut("skill.141309").unwrap()[2] = 3.0;
     assert!(super::super::evernight::build(&invalid).is_err());
@@ -257,11 +258,20 @@ fn time_ode_uses_frozen_evernight_conditions_and_leaves_ultimate_damage_outside_
             + battle.effective_crit_damage_bp(1)
             - owner_crit_before
     );
-    assert!(battle.events().iter().any(
-        |event| matches!(event.kind, EventKind::Memoria { before, after } if after == before + 3)
+    assert!(matches!(
+        battle.events().last().unwrap().kind,
+        EventKind::Memoria { before, after } if after == before + 4
     ));
-    companion.after_action(&mut battle, 1, Action::Ultimate, None);
-    assert!(
-        matches!(battle.events().last().unwrap().kind, EventKind::Memoria { before, after } if after == before + 1)
-    );
+    for action in [Action::Skill, Action::Ultimate] {
+        let previous_events = battle.events().len();
+        companion.after_action(&mut battle, 1, action, None);
+        let gains = battle.events()[previous_events..]
+            .iter()
+            .filter_map(|event| match event.kind {
+                EventKind::Memoria { before, after } => Some(after - before),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(gains, [3], "{action:?}");
+    }
 }
