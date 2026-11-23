@@ -1523,19 +1523,19 @@ fn saved_team_replays_two_memosprites_vendetta_and_recorded_damage() {
 
 #[cfg(bundled_catalog)]
 #[test]
-fn saved_team_replays_netherwing_with_hp_consumption_and_healing() {
+fn saved_team_replays_netherwing_and_little_ica_with_hp_consumption() {
     let dir = TestData::new();
     let mut archive = CharacterArchive::installed(dir.path()).unwrap();
-    let [castorice, mydei, huohuo, lingsha] = [
+    let [castorice, mydei, hyacine, lingsha] = [
         "character.1407",
         "character.1404",
-        "character.1217",
+        "character.1409",
         "character.1222",
     ];
     for (id, eidolon, cone) in [
         (castorice, 2, "cone.23040"),
         (mydei, 6, "cone.23039"),
-        (huohuo, 1, "cone.23017"),
+        (hyacine, 1, "cone.23042"),
         (lingsha, 0, "cone.23013"),
     ] {
         let mut edit = archive.profile(id).unwrap().edit;
@@ -1553,8 +1553,8 @@ fn saved_team_replays_netherwing_with_hp_consumption_and_healing() {
     let team = archive
         .save_team(
             None,
-            "死龙、失血与治疗",
-            &[castorice, mydei, huohuo, lingsha].map(|id| Some(id.into())),
+            "死龙、小伊卡与失血",
+            &[castorice, mydei, hyacine, lingsha].map(|id| Some(id.into())),
         )
         .unwrap();
     let run = || {
@@ -1567,7 +1567,15 @@ fn saved_team_replays_netherwing_with_hp_consumption_and_healing() {
     assert_eq!(result.targets.len(), 3);
     assert_eq!(result.characters.len(), 4);
     assert!(hits().any(|hit| hit.source_id == "character.1407:netherwing" && hit.amount > 0));
+    assert!(hits().any(|hit| hit.source_id == "character.1409:little-ica" && hit.amount > 0));
     assert!(hits().any(|hit| hit.source_id == mydei && hit.amount > 0));
+    assert!(hits().any(|hit| {
+        hit.source_id == "character.1407:netherwing"
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == hyacine && credit.amount > 0)
+    }));
     assert_eq!(
         result.total_damage,
         result
