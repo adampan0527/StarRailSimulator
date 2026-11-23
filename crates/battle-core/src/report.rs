@@ -63,10 +63,12 @@ pub enum StatusKind {
     DarkestRiddle,
     Bondmate,
     Ripples,
+    FacesOfElation,
+    EmanatorOfElation,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Ripples.index() + 1;
+    pub(crate) const COUNT: usize = Self::EmanatorOfElation.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -114,6 +116,8 @@ impl StatusKind {
             Self::DarkestRiddle => 40,
             Self::Bondmate => 41,
             Self::Ripples => 42,
+            Self::FacesOfElation => 43,
+            Self::EmanatorOfElation => 44,
         }
     }
 }
@@ -153,6 +157,26 @@ pub enum EventKind {
         after: u32,
     },
     CertifiedBanger {
+        before: u32,
+        after: u32,
+    },
+    Bliss {
+        before: u32,
+        after: u32,
+    },
+    PartyTrick {
+        before: u32,
+        after: u32,
+    },
+    AscendedAhaInstant {
+        bliss: u32,
+        extra: bool,
+    },
+    Wishpower {
+        before: u8,
+        after: u8,
+    },
+    ElationDebt {
         before: u32,
         after: u32,
     },

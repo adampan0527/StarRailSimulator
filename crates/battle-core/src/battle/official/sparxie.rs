@@ -15,7 +15,7 @@ use super::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
 
 pub(super) const FORM: &str = "character.1501";
 const BASIC: &str = "skill.150101";
@@ -274,7 +274,11 @@ impl Sparxie {
         let punchline = if straight_fire {
             state.live_straight_fire[slot] += 1;
             battle.restore_skill_points(actor, self.straight_fire_points);
-            self.straight_fire_punchline
+            let bonus = battle.elation_ascension().map_or(0, |ascension| {
+                let cap = if ascension.innate_level == 2 { 12 } else { 8 };
+                (battle.certified_banger(actor).unwrap_or(0) / 10).min(cap)
+            });
+            self.straight_fire_punchline + bonus
         } else {
             self.unreal_banger_punchline
         };
@@ -448,6 +452,13 @@ impl Mechanics for Sparxie {
     }
 
     fn on_elation_skill(&self, battle: &mut Battle<'_>, actor: usize, instant: AhaInstant) {
+        let increase_bp = battle.elation_ascension().map_or(0, |ascension| {
+            if ascension.innate_level == 2 {
+                12_000
+            } else {
+                5_000
+            }
+        });
         let mut toughness_remainders: Vec<_> = battle.enemies().map(|enemy| (enemy, 0)).collect();
         let mut hit = |battle: &mut Battle<'_>, target, multiplier_bp, toughness_thirds| {
             battle.elation_hit(
@@ -455,7 +466,11 @@ impl Mechanics for Sparxie {
                 target,
                 ElationHit {
                     element: FIRE,
-                    multiplier_bp: u32::from(multiplier_bp),
+                    multiplier_bp: u32::from(multiplier_bp)
+                        + super::super::support::percentage_of(
+                            u32::from(multiplier_bp),
+                            increase_bp,
+                        ),
                     punchline: instant.punchline,
                     toughness: encore_toughness(
                         &mut toughness_remainders,
@@ -488,6 +503,16 @@ impl Mechanics for Sparxie {
         }
         add_thrill(battle, actor, self.encore_thrill);
         battle.gain_energy(actor, actor, 5_000);
+    }
+
+    fn ally_defense_ignore_bp(&self, battle: &Battle<'_>, _: usize) -> u32 {
+        battle.elation_ascension().map_or(0, |ascension| {
+            if ascension.innate_level == 2 {
+                2_000
+            } else {
+                1_500
+            }
+        })
     }
 
     fn on_aha_instant_finished(&self, battle: &mut Battle<'_>, actor: usize) {

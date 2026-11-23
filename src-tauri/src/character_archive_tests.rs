@@ -348,6 +348,72 @@ fn saved_sparxie_and_yao_guang_share_aha_from_low_skill_levels() {
 
 #[cfg(bundled_catalog)]
 #[test]
+fn saved_aeon_aha_ascends_elation_and_replays_true_damage_at_low_skill_levels() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let archive = &mut CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let [aha, sparxie, yao] = ["character.1511", "character.1501", "character.1502"];
+    for (id, eidolon) in [(aha, 2), (sparxie, 2), (yao, 0)] {
+        profiles.ensure_profile(id).unwrap();
+        let mut loadout = catalog.default_loadout_at(id, "base", 80, 6).unwrap();
+        loadout.config.eidolon = eidolon;
+        for level in loadout.config.skill_levels.values_mut() {
+            *level = 1;
+        }
+        profiles
+            .save_preset(id, "低级欢愉技能", &loadout, true)
+            .unwrap();
+    }
+    let team = archive
+        .save_team(
+            None,
+            "阿哈与两位欢愉队友",
+            &[
+                Some(aha.into()),
+                Some(sparxie.into()),
+                Some(yao.into()),
+                None,
+            ],
+        )
+        .unwrap();
+    let replay = || {
+        let readiness = archive.dpr_readiness(&team.id).unwrap();
+        assert!(readiness.unsupported_characters.is_empty());
+        readiness.result.unwrap()
+    };
+    let result = replay();
+    assert_eq!(result, replay());
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    for unit in [aha, sparxie, yao] {
+        assert!(hits().any(|hit| hit.source_id == unit
+            && hit.kind == DamageKind::Elation
+            && hit.action == Action::ElationSkill));
+    }
+    assert!(hits().any(|hit| hit.source_id == aha
+        && hit.kind == DamageKind::Elation
+        && hit.action == Action::Ultimate));
+    assert!(hits().any(|hit| hit.source_id == aha
+        && hit.kind == DamageKind::TrueDamage
+        && hit.action == Action::ElationSkill));
+    assert_eq!(
+        result.total_damage,
+        result
+            .characters
+            .iter()
+            .map(|unit| unit.own_damage + unit.assist_damage)
+            .sum::<u64>()
+    );
+}
+
+#[cfg(bundled_catalog)]
+#[test]
 fn saved_evernight_and_remembrance_replay_two_real_memosprites() {
     let dir = TestData::new();
     let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(

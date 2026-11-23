@@ -1,4 +1,5 @@
 mod acheron;
+mod aeon_aha;
 mod aglaea;
 mod anaxa;
 mod archer;
@@ -81,6 +82,7 @@ mod yunli;
 
 pub(super) use {
     acheron::AcheronState,
+    aeon_aha::AeonAhaState,
     aglaea::AglaeaState,
     anaxa::AnaxaState,
     archer::ArcherState,
@@ -241,7 +243,12 @@ impl OfficialCharacter {
             || (self.energy_capacity == 0
                 && !matches!(
                     self.form_id.as_str(),
-                    acheron::FORM | castorice::FORM | cyrene::FORM | feixiao::FORM | phainon::FORM
+                    acheron::FORM
+                        | castorice::FORM
+                        | cyrene::FORM
+                        | aeon_aha::FORM
+                        | feixiao::FORM
+                        | phainon::FORM
                 ))
             || self.energy_capacity > 999
             || stats.hp == 0
@@ -372,6 +379,41 @@ pub(super) struct MemospriteProfile {
 pub(super) trait Mechanics: Send + Sync {
     fn elation_participant(&self) -> Option<u16> {
         None
+    }
+
+    fn aha_base_speed_micros(&self, _battle: &Battle<'_>, _actor: usize) -> Option<u64> {
+        None
+    }
+
+    fn elation_ascension(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+    ) -> Option<super::elation::ElationAscension> {
+        None
+    }
+
+    fn on_punchline_changed(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn on_aha_instant_ending(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _natural: bool,
+        _skill_damage_factor_bp: u16,
+    ) {
+    }
+
+    fn elation_debt(&self) -> Option<super::elation::ElationDebt> {
+        None
+    }
+
+    fn elation_punchline_bonus(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
+    }
+
+    fn ally_defense_ignore_bp(&self, _battle: &Battle<'_>, _actor: usize) -> u32 {
+        0
     }
 
     fn certified_banger_duration(&self) -> u32 {
@@ -1646,6 +1688,7 @@ type KitBuilder = fn(&OfficialCharacter) -> Result<OfficialKit, BattleError>;
 
 fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
+        aeon_aha::FORM => Some(aeon_aha::build),
         archer::FORM => Some(archer::build),
         aglaea::FORM => Some(aglaea::build),
         "character.1003" => Some(himeko::build),

@@ -77,6 +77,8 @@ const statusNames = {
   peerage: '爵位',
   darkest_riddle: '至暗之谜',
   bondmate: '同袍',
+  faces_of_elation: '欢愉万相',
+  emanator_of_elation: '「欢愉」令使',
   ripples: '往昔的涟漪',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
@@ -95,12 +97,21 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
       return '额外回合开始';
     case 'triggered_skill':
       return '自动施放战技';
+    case 'ascended_aha_instant':
     case 'aha_instant':
       return kind.detail.extra ? '额外阿哈时刻' : '阿哈时刻';
     case 'punchline':
       return '笑点变化';
     case 'certified_banger':
       return '好活当赏变化';
+    case 'bliss':
+      return '爽点变化';
+    case 'party_trick':
+      return '绝活共赏变化';
+    case 'wishpower':
+      return '愿力变化';
+    case 'elation_debt':
+      return '欢愉负债变化';
     case 'action':
       return actionName(kind.detail, source_id);
     case 'complete_combustion':
@@ -216,9 +227,15 @@ function eventDetail({ kind }: BattleEvent) {
   switch (kind.event) {
     case 'aha_instant':
       return `${kind.detail.punchline} 笑点`;
+    case 'ascended_aha_instant':
+      return `${kind.detail.bliss} 爽点`;
     case 'skill_points':
     case 'punchline':
     case 'certified_banger':
+    case 'bliss':
+    case 'party_trick':
+    case 'wishpower':
+    case 'elation_debt':
     case 'blind_bet':
     case 'cloudflame_luster':
     case 'toughness':

@@ -40,9 +40,10 @@ impl Catalog {
             ("character.1407", "newbud", None) => 0,
             ("character.1408", "coreflame", Some(12)) => 0,
             ("character.1415", "recollection", Some(24)) => 0,
+            ("character.1511", "wish_power", Some(8)) => 0,
             (
                 "character.1220" | "character.1308" | "character.1407" | "character.1408"
-                | "character.1415",
+                | "character.1415" | "character.1511",
                 _,
                 _,
             ) => {
@@ -54,10 +55,13 @@ impl Catalog {
         let variant = &character.variants[&loadout.variant_id];
         let mut skill_parameters = std::collections::BTreeMap::new();
         for (skill_id, skill) in &variant.skills {
-            if !skill.conditional_levels.is_empty() {
+            let level = if id == "character.1511" && skill_id == "skill.151129" {
+                if config.eidolon >= 2 { 2 } else { 1 }
+            } else if skill.conditional_levels.is_empty() {
+                self.effective_skill_level(id, loadout, skill_id)?
+            } else {
                 continue;
-            }
-            let level = self.effective_skill_level(id, loadout, skill_id)?;
+            };
             skill_parameters.insert(
                 skill_id.clone(),
                 skill.parameters[usize::from(level - 1)].clone(),

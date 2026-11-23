@@ -258,7 +258,7 @@ impl Battle<'_> {
             .unwrap_or(self.plan.units[actor].stats.hp)
             .saturating_add(self.ally_buff_total(actor, AllyBuffKind::MaxHpFlat));
         if !self.is_party_unit(actor) {
-            return max_hp;
+            return max_hp.saturating_sub(self.units[actor].elation_debt);
         }
         let total = self
             .allies()
@@ -400,6 +400,9 @@ impl Battle<'_> {
                 if self.aha.is_some() {
                     bonuses.elation_bp = mechanics.ally_elation_bp(self, source, target);
                 }
+                bonuses.defense_ignore_bp = bonuses
+                    .defense_ignore_bp
+                    .saturating_add(mechanics.ally_defense_ignore_bp(self, source));
                 if kind == DamageKind::Elation {
                     bonuses.merrymake_bp = mechanics.ally_merrymake_bp(self, source, target);
                     bonuses.defense_ignore_bp = bonuses
