@@ -508,7 +508,7 @@ impl Mechanics for Dahlia {
         if self.eidolon >= 6 {
             battle.advance(owner, 2_000);
             if let Some(ally) = partner(battle, owner) {
-                battle.advance(ally, 2_000);
+                battle.advance_ally(owner, ally, 2_000);
             }
         }
     }

@@ -61,6 +61,8 @@ const statusNames = {
   befog: '醇醉',
   parry: '格挡',
   taunt: '嘲讽',
+  fever: 'Fever',
+  special_guest: '特邀嘉宾',
   withered_leaf: '枯叶',
   sublimation: '升华',
   vendetta: '血仇',
@@ -179,6 +181,10 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
       return '军功充能';
     case 'archer_charge':
       return 'Archer 充能';
+    case 'robin_vibes':
+      return '气氛值';
+    case 'robin_rhythm':
+      return '律动';
     case 'rin_gem_energy':
       return '宝石能量';
     case 'rin_shadow_gem':
@@ -269,6 +275,8 @@ function eventDetail({ kind }: BattleEvent) {
     case 'recollection':
     case 'archer_charge':
     case 'rin_gem_energy':
+    case 'robin_vibes':
+    case 'robin_rhythm':
     case 'rin_shadow_gem':
     case 'magma_will':
     case 'memoria':

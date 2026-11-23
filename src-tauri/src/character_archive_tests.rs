@@ -18,6 +18,8 @@ mod dahlia;
 #[cfg(bundled_catalog)]
 mod rin;
 #[cfg(bundled_catalog)]
+mod robin_sunny;
+#[cfg(bundled_catalog)]
 mod saber;
 #[cfg(bundled_catalog)]
 mod trailblazer_destruction;
