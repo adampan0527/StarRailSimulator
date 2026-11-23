@@ -440,13 +440,15 @@ impl Phainon {
         self.heal(battle, actor, self.post_attack_heal_bp);
     }
 
-    fn verdict(&self, battle: &mut Battle<'_>, actor: usize) {
+    fn verdict(&self, battle: &mut Battle<'_>, actor: usize, copied: bool) {
         let cost = battle.units[actor]
             .phainon_state
             .scourge
             .min(self.verdict_full_cost);
-        let remaining = battle.units[actor].phainon_state.scourge - cost;
-        Self::set_scourge(battle, actor, remaining);
+        if !copied {
+            let remaining = battle.units[actor].phainon_state.scourge - cost;
+            Self::set_scourge(battle, actor, remaining);
+        }
         while battle.cleanse_one(actor, actor) {}
         battle.units[actor].phainon_state.verdict_damage = (self.eidolon >= 6).then_some(0);
         for hit in 0..u16::from(cost * self.verdict_bounces_per_scourge) {
@@ -459,7 +461,7 @@ impl Phainon {
         }
         if cost == self.verdict_full_cost {
             self.damage_split(battle, actor, self.verdict_aoe_bp, false);
-            if self.eidolon >= 2 {
+            if !copied && self.eidolon >= 2 {
                 battle.queue_extra_turn(actor);
             }
         }
@@ -522,13 +524,40 @@ impl Mechanics for Phainon {
         match action {
             Action::Ultimate => self.enter(battle, actor),
             Action::Skill if transformed(battle, actor) => self.calamity(battle, actor),
-            Action::EnhancedSkill => self.verdict(battle, actor),
+            Action::EnhancedSkill => self.verdict(battle, actor, false),
             Action::Skill => self.gain_coreflame(battle, actor, self.core_on_skill),
             Action::Basic if transformed(battle, actor) => {
                 Self::gain_scourge(battle, actor, self.thorn_scourge);
                 self.heal(battle, actor, self.post_attack_heal_bp);
             }
             _ => {}
+        }
+    }
+
+    fn can_copy_skill(
+        &self,
+        battle: &Battle<'_>,
+        actor: usize,
+        ability: crate::fixture::Ability<'_>,
+    ) -> bool {
+        if transformed(battle, actor) {
+            battle.action == Some(Action::EnhancedSkill)
+        } else {
+            matches!(ability.target, Target::Enemy)
+        }
+    }
+
+    fn resolve_copied_skill(
+        &self,
+        battle: &mut Battle<'_>,
+        actor: usize,
+        _: Option<usize>,
+    ) -> bool {
+        if transformed(battle, actor) && battle.action == Some(Action::EnhancedSkill) {
+            self.verdict(battle, actor, true);
+            true
+        } else {
+            false
         }
     }
 

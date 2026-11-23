@@ -98,6 +98,12 @@ struct ExtraToughness {
     maximum: u16,
 }
 
+#[derive(Clone, Copy)]
+struct NestedSkill {
+    actor: usize,
+    copied_by: Option<usize>,
+}
+
 #[derive(Clone)]
 struct UnitState {
     hp: u32,
@@ -135,6 +141,7 @@ struct UnitState {
     himeko_charge: u8,
     hysilens_state: official::HysilensState,
     cipher_state: official::CipherState,
+    cerydra_state: official::CerydraState,
     the_herta_state: official::TheHertaState,
     anaxa_state: official::AnaxaState,
     the_herta_interpretation: u8,
@@ -232,6 +239,7 @@ pub struct Battle<'a> {
     crossed_half: Vec<usize>,
     action: Option<Action>,
     action_target: Option<usize>,
+    nested_skill: Option<NestedSkill>,
     aha: Option<AhaState>,
     attack_spent_skill_points: bool,
     attack_targets: Vec<usize>,
@@ -240,6 +248,7 @@ pub struct Battle<'a> {
     tracks_ally_damage: bool,
     tracks_active_abilities: bool,
     tracks_action_end_reactions: bool,
+    tracks_skill_copies: bool,
     super_break_targets: Vec<resolve::SuperBreakTarget>,
     tracks_super_break: bool,
     attack_index: u32,
@@ -298,6 +307,7 @@ impl<'a> Battle<'a> {
                     himeko_charge: 0,
                     hysilens_state: official::HysilensState::default(),
                     cipher_state: official::CipherState::default(),
+                    cerydra_state: official::CerydraState::default(),
                     the_herta_state: official::TheHertaState::default(),
                     anaxa_state: official::AnaxaState::default(),
                     the_herta_interpretation: 0,
@@ -381,6 +391,7 @@ impl<'a> Battle<'a> {
             crossed_half: Vec::new(),
             action: None,
             action_target: None,
+            nested_skill: None,
             aha: None,
             attack_spent_skill_points: false,
             attack_targets: Vec::new(),
@@ -397,6 +408,9 @@ impl<'a> Battle<'a> {
             tracks_action_end_reactions: plan.units[..plan.ally_count]
                 .iter()
                 .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.tracks_action_end_reactions())),
+            tracks_skill_copies: plan.units[..plan.ally_count]
+                .iter()
+                .any(|unit| matches!(&unit.kit, Kit::Official(kit) if kit.mechanics.tracks_skill_copies())),
             super_break_targets: Vec::new(),
             tracks_super_break: plan.units[..plan.ally_count]
                 .iter()
@@ -491,7 +505,7 @@ impl<'a> Battle<'a> {
             skill_points,
             ultimate_cost_milli,
         } = self.check_action(actor, command.action)?;
-        let target = match (ability.target, command.target_id.as_deref()) {
+        let mut target = match (ability.target, command.target_id.as_deref()) {
             (Target::Ally | Target::OtherAlly, Some(id)) => {
                 let target = self.find_target(self.allies(), id)?;
                 if matches!(ability.target, Target::OtherAlly) && target == Some(actor) {
@@ -551,6 +565,8 @@ impl<'a> Battle<'a> {
         if let Some(mechanics) = &mechanics {
             mechanics.before_action(self, actor, command.action, target);
         }
+        self.prepare_skill_copy(actor, target, ability);
+        target = self.action_target;
         self.notify_ally_action_started(actor, target, ability);
         self.resolve_ability(actor, target, ability);
         self.gain_energy(actor, actor, ability.energy_milli);

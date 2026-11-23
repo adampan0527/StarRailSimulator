@@ -114,7 +114,9 @@ type Status =
   | 'woes_whisper'
   | 'khaslana'
   | 'after_rain'
-  | 'siren_zone';
+  | 'siren_zone'
+  | 'military_merit'
+  | 'peerage';
 type EventKind =
   | {
       event:
@@ -156,6 +158,7 @@ type EventKind =
         | 'moonlight'
         | 'basic_enhancement'
         | 'thrill'
+        | 'cerydra_charge'
         | 'squama_sacrosancta'
         | 'jade_charge'
         | 'rappa_charge'

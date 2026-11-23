@@ -11,6 +11,7 @@ mod blade;
 mod boothill;
 mod bronya;
 mod castorice;
+mod cerydra;
 mod cipher;
 mod clara;
 mod dan_heng;
@@ -83,6 +84,7 @@ pub(super) use {
     blade::BladeState,
     boothill::BoothillState,
     castorice::CastoriceState,
+    cerydra::CerydraState,
     cipher::CipherState,
     dan_heng_il::DanHengIlState,
     dr_ratio::DrRatioState,
@@ -1321,6 +1323,47 @@ pub(super) trait Mechanics: Send + Sync {
     ) {
     }
 
+    fn tracks_skill_copies(&self) -> bool {
+        false
+    }
+
+    fn before_ally_skill_copy(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+        _target: Option<usize>,
+        _ability: Ability<'_>,
+    ) {
+    }
+
+    fn can_copy_skill(&self, _battle: &Battle<'_>, _actor: usize, ability: Ability<'_>) -> bool {
+        matches!(ability.target, Target::Enemy | Target::AllEnemies)
+            && ability.effects.iter().any(|effect| effect.deals_damage())
+    }
+
+    fn resolve_copied_skill(
+        &self,
+        _battle: &mut Battle<'_>,
+        _actor: usize,
+        _target: Option<usize>,
+    ) -> bool {
+        false
+    }
+
+    fn ally_skill_crit_damage_bp(&self, _battle: &Battle<'_>, _owner: usize, _actor: usize) -> u32 {
+        0
+    }
+
+    fn ally_skill_defense_ignore_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _owner: usize,
+        _actor: usize,
+    ) -> u32 {
+        0
+    }
+
     fn on_ally_action_finished(
         &self,
         _battle: &mut Battle<'_>,
@@ -1587,6 +1630,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         anaxa::FORM => Some(anaxa::build),
         phainon::FORM => Some(phainon::build),
         cipher::FORM => Some(cipher::build),
+        cerydra::FORM => Some(cerydra::build),
         castorice::FORM => Some(castorice::build),
         hyacine::FORM => Some(hyacine::build),
         boothill::FORM => Some(boothill::build),

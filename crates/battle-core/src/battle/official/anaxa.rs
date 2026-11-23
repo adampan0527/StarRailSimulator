@@ -11,7 +11,7 @@ use super::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
 
 pub(super) const FORM: &str = "character.1405";
 const BASIC: &str = "skill.140501";
@@ -306,9 +306,27 @@ impl Mechanics for Anaxa {
         }
         let state = &mut battle.units[actor].anaxa_state;
         state.skill_damage_bonus_bp = 0;
-        if self.eidolon >= 1 && !std::mem::replace(&mut state.first_skill_used, true) {
+        if self.eidolon >= 1
+            && battle
+                .nested_skill
+                .is_none_or(|skill| skill.copied_by.is_none())
+            && !std::mem::replace(&mut state.first_skill_used, true)
+        {
             battle.restore_skill_points(actor, 1);
         }
+    }
+
+    fn resolve_copied_skill(
+        &self,
+        battle: &mut Battle<'_>,
+        actor: usize,
+        target: Option<usize>,
+    ) -> bool {
+        let Some(target) = target else { return false };
+        self.before_action(battle, actor, Action::Skill, Some(target));
+        self.resolve_special_attack(battle, actor, target);
+        battle.notify_attack(actor, Action::Skill, Some(target));
+        true
     }
 
     fn on_triggered_skill(&self, battle: &mut Battle<'_>, actor: usize, target: usize) {

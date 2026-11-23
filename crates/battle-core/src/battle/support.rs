@@ -87,6 +87,7 @@ pub(super) struct OffenseContext {
     pub break_damage: bool,
     pub follow_up: bool,
     pub summon: bool,
+    pub direct_skill: bool,
 }
 
 impl OffenseBuffs {
@@ -348,6 +349,7 @@ impl Battle<'_> {
             break_damage,
             follow_up,
             summon,
+            direct_skill,
         } = context;
         let mut bonuses = OffenseBuffs::default();
         for buff in self.units[target]
@@ -433,6 +435,14 @@ impl Battle<'_> {
             bonuses.crit_damage_bp = bonuses
                 .crit_damage_bp
                 .saturating_add(mechanics.ally_crit_damage_bonus_bp(self, source, target));
+            if direct_skill {
+                bonuses.crit_damage_bp = bonuses
+                    .crit_damage_bp
+                    .saturating_add(mechanics.ally_skill_crit_damage_bp(self, source, target));
+                bonuses.defense_ignore_bp = bonuses
+                    .defense_ignore_bp
+                    .saturating_add(mechanics.ally_skill_defense_ignore_bp(self, source, target));
+            }
             bonuses.damage_bp = bonuses
                 .damage_bp
                 .saturating_add(mechanics.ally_damage_bonus_bp(self, source, target, element));
@@ -496,6 +506,7 @@ impl Battle<'_> {
                     break_damage: false,
                     follow_up: false,
                     summon: self.memosprite_owner(actor).is_some(),
+                    direct_skill: false,
                 },
                 |source| Some(source) != excluded_owner,
             )
@@ -504,6 +515,10 @@ impl Battle<'_> {
     }
 
     pub(super) fn effective_attack(&self, actor: usize) -> u32 {
+        self.effective_attack_excluding(actor, None)
+    }
+
+    pub(super) fn effective_attack_excluding(&self, actor: usize, excluded: Option<usize>) -> u32 {
         let buffs = self.offense_buffs(
             OffenseContext {
                 actor,
@@ -514,8 +529,9 @@ impl Battle<'_> {
                 break_damage: false,
                 follow_up: false,
                 summon: false,
+                direct_skill: false,
             },
-            |_| true,
+            |source| Some(source) != excluded,
         );
         self.attack_with_buffs(actor, buffs)
     }
@@ -629,6 +645,27 @@ impl Battle<'_> {
                 && rules.tracks_active_abilities()
             {
                 rules.on_active_ability(self, owner, actor);
+            }
+        }
+    }
+
+    pub(super) fn prepare_skill_copy(
+        &mut self,
+        actor: usize,
+        target: Option<usize>,
+        ability: Ability<'_>,
+    ) {
+        if !self.tracks_skill_copies
+            || !matches!(self.action, Some(Action::Skill | Action::EnhancedSkill))
+        {
+            return;
+        }
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(rules) = self.mechanics(owner)
+                && rules.tracks_skill_copies()
+            {
+                rules.before_ally_skill_copy(self, owner, actor, target, ability);
             }
         }
     }

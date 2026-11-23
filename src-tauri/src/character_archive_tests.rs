@@ -1651,6 +1651,64 @@ fn saved_team_replays_netherwing_and_little_ica_with_hp_consumption() {
 
 #[cfg(bundled_catalog)]
 #[test]
+fn saved_cerydra_gives_low_level_peerage_to_anaxa() {
+    use star_rail_battle_core::{Action, DamageKind};
+
+    let dir = TestData::new();
+    let catalog = star_rail_profiles::Catalog::from_json(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../.m03-data/4.7.0/catalog.json"
+    )))
+    .unwrap();
+    let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
+    let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
+    let [cerydra, anaxa] = ["character.1412", "character.1405"];
+    profiles.ensure_profile(cerydra).unwrap();
+    let mut loadout = catalog.default_loadout_at(cerydra, "base", 80, 6).unwrap();
+    loadout
+        .config
+        .skill_levels
+        .values_mut()
+        .for_each(|level| *level = 2);
+    profiles
+        .save_preset(cerydra, "低档技能", &loadout, true)
+        .unwrap();
+    let team = archive
+        .save_team(
+            None,
+            "爵位复制",
+            &[Some(cerydra.into()), Some(anaxa.into()), None, None],
+        )
+        .unwrap();
+    let capture = || {
+        let readiness = archive.dpr_readiness(&team.id).unwrap();
+        assert!(readiness.unsupported_characters.is_empty());
+        readiness.result.unwrap()
+    };
+    let result = capture();
+    let hits = || result.targets.iter().flat_map(|target| &target.hits);
+    assert!(hits().any(|hit| hit.source_id == cerydra && hit.kind == DamageKind::Additional));
+    assert!(hits().any(|hit| {
+        hit.source_id == anaxa
+            && hit.action == Action::Skill
+            && hit
+                .credits
+                .iter()
+                .any(|credit| credit.unit_id == cerydra && credit.amount == hit.amount)
+    }));
+    assert_eq!(result, capture());
+    assert_eq!(
+        result
+            .characters
+            .iter()
+            .map(|unit| unit.own_damage + unit.assist_damage)
+            .sum::<u64>(),
+        result.total_damage
+    );
+}
+
+#[cfg(bundled_catalog)]
+#[test]
 fn saved_hysilens_team_replays_zone_detonations_and_keeps_dot_sources() {
     use star_rail_battle_core::{Action, DamageKind};
 
