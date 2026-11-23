@@ -183,6 +183,8 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
       return '宝石能量';
     case 'rin_shadow_gem':
       return '影子宝石';
+    case 'magma_will':
+      return '灼热意志';
     case 'squama_sacrosancta':
       return '逆鳞变化';
     case 'debt_collector':
@@ -268,6 +270,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'archer_charge':
     case 'rin_gem_energy':
     case 'rin_shadow_gem':
+    case 'magma_will':
     case 'memoria':
     case 'newbud':
     case 'coreflame':

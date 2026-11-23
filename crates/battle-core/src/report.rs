@@ -264,6 +264,10 @@ pub enum EventKind {
         before: u16,
         after: u16,
     },
+    MagmaWill {
+        before: u8,
+        after: u8,
+    },
     Interpretation {
         before: u8,
         after: u8,

@@ -486,6 +486,24 @@ impl Battle<'_> {
         );
     }
 
+    pub(super) fn attack_hit_with_defense(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        [attack_bp, defense_bp]: [u16; 2],
+        toughness: u16,
+    ) {
+        self.attack_hit_scaled(
+            actor,
+            target,
+            element,
+            u32::from(attack_bp),
+            toughness,
+            DamageScale::AttackAndDefense(defense_bp),
+        );
+    }
+
     pub(super) fn memosprite_hit(
         &mut self,
         sprite: usize,
@@ -3344,6 +3362,9 @@ impl Battle<'_> {
         let invigoration_bp = self.invigoration_damage_reduction_bp(target);
         let mut remaining_bp =
             10_000_u32.saturating_sub(personal_bp) * (10_000 - invigoration_bp) / 10_000;
+        remaining_bp = remaining_bp
+            * 10_000_u32.saturating_sub(self.support_damage_reduction_bp(target))
+            / 10_000;
         let enemy_source = self.enemies().contains(&actor);
         let ally_target = self.is_party_unit(target);
         if !enemy_source && !ally_target {

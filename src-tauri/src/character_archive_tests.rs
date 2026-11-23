@@ -23,6 +23,8 @@ mod saber;
 mod trailblazer_destruction;
 #[cfg(bundled_catalog)]
 mod trailblazer_elation;
+#[cfg(bundled_catalog)]
+mod trailblazer_preservation;
 
 #[test]
 fn dpr_checks_selected_saved_team_against_fixed_scenario() {

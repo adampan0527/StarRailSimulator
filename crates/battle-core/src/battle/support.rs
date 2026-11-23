@@ -15,6 +15,7 @@ pub(super) enum AllyBuffKind {
     Elation,
     CritOverflowRatio,
     Damage,
+    DamageReduction,
     ResistancePenetration,
     ElementResistancePenetration(Element),
     DefenseIgnore {
@@ -299,6 +300,10 @@ impl Battle<'_> {
             .fold(0, u32::saturating_add)
     }
 
+    pub(super) fn support_damage_reduction_bp(&self, actor: usize) -> u32 {
+        self.ally_buff_total(actor, AllyBuffKind::DamageReduction)
+    }
+
     pub(super) fn support_speed(&self, actor: usize) -> (u64, u64) {
         let buff_speed = (
             u64::from(self.ally_buff_total(actor, AllyBuffKind::SpeedFlat)),
@@ -385,6 +390,7 @@ impl Battle<'_> {
                 } if summon == applies_to_summon => &mut bonuses.defense_ignore_bp,
                 AllyBuffKind::DefensePercent => &mut bonuses.defense_bp,
                 AllyBuffKind::SpeedFlat
+                | AllyBuffKind::DamageReduction
                 | AllyBuffKind::SpeedPercent
                 | AllyBuffKind::EffectResistance
                 | AllyBuffKind::MaxHpFlat

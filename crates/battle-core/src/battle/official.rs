@@ -75,6 +75,7 @@ mod topaz;
 mod trailblazer_destruction;
 mod trailblazer_elation;
 mod trailblazer_harmony;
+mod trailblazer_preservation;
 mod trailblazer_remembrance;
 mod tribbie;
 mod welt;
@@ -136,6 +137,7 @@ pub(super) use {
     trailblazer_destruction::DestructionTrailblazerState,
     trailblazer_elation::ElationTrailblazerState,
     trailblazer_harmony::HarmonyTrailblazerState,
+    trailblazer_preservation::PreservationTrailblazerState,
     trailblazer_remembrance::RemembranceTrailblazerState,
     tribbie::TribbieState,
     welt::WeltState,
@@ -1825,6 +1827,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         trailblazer_destruction::FORM => Some(trailblazer_destruction::build),
         trailblazer_elation::FORM => Some(trailblazer_elation::build),
         trailblazer_harmony::FORM => Some(trailblazer_harmony::build),
+        trailblazer_preservation::FORM => Some(trailblazer_preservation::build),
         trailblazer_remembrance::FORM => Some(trailblazer_remembrance::build),
         "character.1209" => Some(yanqing::build),
         _ => None,
