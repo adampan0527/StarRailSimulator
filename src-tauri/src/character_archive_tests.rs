@@ -11,6 +11,9 @@ use crate::{
 
 const EXAMPLE: &str = include_str!("../../contracts/battle-session.v1.example.json");
 
+#[cfg(bundled_catalog)]
+mod saber;
+
 #[test]
 fn dpr_checks_selected_saved_team_against_fixed_scenario() {
     let dir = TestData::new();

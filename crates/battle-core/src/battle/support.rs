@@ -612,11 +612,13 @@ impl Battle<'_> {
             self.notify_external_energy(source, target);
             return;
         }
-        let energy = self.units[target]
-            .energy_milli
-            .saturating_add(amount_milli)
-            .min(cap);
-        self.set_energy(source, target, energy);
+        let energy = self.units[target].energy_milli.saturating_add(amount_milli);
+        if energy > cap
+            && let Some(rules) = self.mechanics(target)
+        {
+            rules.on_energy_overflow(self, target, energy - cap);
+        }
+        self.set_energy(source, target, energy.min(cap));
     }
 
     pub(super) fn notify_external_energy(&mut self, source: usize, target: usize) {

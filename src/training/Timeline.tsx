@@ -118,6 +118,8 @@ function eventTitle({ kind }: BattleEvent): string {
       return '琼玉牌变化';
     case 'apotheosis':
       return '升格变化';
+    case 'saber_core_resonance':
+      return '炉心共鸣变化';
     case 'interpretation':
       return '解读变化';
     case 'inspiration':
@@ -211,6 +213,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'toughness':
     case 'crimson_knot':
     case 'apotheosis':
+    case 'saber_core_resonance':
     case 'interpretation':
     case 'inspiration':
     case 'herta_answer':

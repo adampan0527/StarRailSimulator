@@ -147,6 +147,7 @@ type EventKind =
         | 'crimson_knot'
         | 'blind_bet'
         | 'apotheosis'
+        | 'saber_core_resonance'
         | 'interpretation'
         | 'inspiration'
         | 'herta_answer'
