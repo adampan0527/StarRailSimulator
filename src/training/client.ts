@@ -113,7 +113,8 @@ type Status =
   | 'weal_lots'
   | 'woes_whisper'
   | 'khaslana'
-  | 'after_rain';
+  | 'after_rain'
+  | 'siren_zone';
 type EventKind =
   | {
       event:

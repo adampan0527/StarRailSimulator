@@ -66,6 +66,7 @@ const statusNames = {
   woes_whisper: '凶星低语',
   khaslana: '卡厄斯兰那',
   after_rain: '雨过天晴',
+  siren_zone: '海瑟音结界',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

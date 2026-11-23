@@ -10,7 +10,7 @@ use crate::{
 use super::{
     Battle, DummyDamage, ExtraToughness, Kit, Status,
     combat_status::DebuffKind,
-    periodic::{DotEvent, DotScale},
+    periodic::{DotEvent, DotScale, DotTiming},
     support::{OffenseBuffs, OffenseContext, percentage_of},
 };
 
@@ -1339,6 +1339,7 @@ impl Battle<'_> {
             }
         }
         self.resolve_super_breaks(actor, origin, &super_break_targets);
+        self.finish_dot_batch(DotTiming::Detonation);
         if let Some(damage) = self.attack_damage.take()
             && landed
         {
@@ -1508,6 +1509,14 @@ impl Battle<'_> {
             })
     }
 
+    fn ally_dot_factor_from(&self, owner: usize, actor: usize, kind: DamageKind) -> u32 {
+        if kind != DamageKind::DamageOverTime || !self.is_party_unit(actor) {
+            return 10_000;
+        }
+        self.mechanics(owner)
+            .map_or(10_000, |rules| rules.ally_dot_damage_factor_bp(self, owner))
+    }
+
     fn damage_target(
         &self,
         actor: usize,
@@ -1624,6 +1633,18 @@ impl Battle<'_> {
             })
         });
         let personal_penetration = personal_penetration.saturating_add(sprite_penetration);
+        let outgoing_damage_factor_bp = if event.kind == DamageKind::DamageOverTime {
+            self.allies().filter(|&owner| allow_source(owner)).fold(
+                outgoing_damage_factor_bp,
+                |factor, owner| {
+                    let support = self.ally_dot_factor_from(owner, actor, event.kind);
+                    (u64::from(factor) * u64::from(support) / 10_000).min(u64::from(u32::MAX))
+                        as u32
+                },
+            )
+        } else {
+            outgoing_damage_factor_bp
+        };
         let mut stats = plan.stats;
         stats.hp = self.effective_max_hp(target);
         stats.defense = self.defense(target);
@@ -2748,6 +2769,7 @@ impl Battle<'_> {
                 )
                 .chain(self.allies().filter(|&owner| {
                     self.offense_buffs_from(owner, offense) != OffenseBuffs::default()
+                        || self.ally_dot_factor_from(owner, actor, kind) != 10_000
                         || self.target_auras_from(owner, actor, target, element, &event)
                             != DamageTargetAura::default()
                 }))
@@ -2858,6 +2880,7 @@ impl Battle<'_> {
                 from_break,
                 origin,
                 timing: self.dot_timing,
+                is_echo: self.resolving_dot_echoes,
             };
             for owner in self.allies() {
                 if self.units[owner].hp > 0

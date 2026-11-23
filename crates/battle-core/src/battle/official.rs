@@ -30,6 +30,7 @@ mod himeko;
 mod hook;
 mod huohuo;
 mod hyacine;
+mod hysilens;
 mod jade;
 mod jiaoqiu;
 mod jing_yuan;
@@ -92,6 +93,7 @@ pub(super) use {
     hanya::HanyaState,
     huohuo::HuohuoState,
     hyacine::HyacineState,
+    hysilens::HysilensState,
     jade::JadeState,
     jiaoqiu::Field as JiaoqiuField,
     jing_yuan::JingYuanState,
@@ -1348,6 +1350,12 @@ pub(super) trait Mechanics: Send + Sync {
 
     fn on_enemy_dot_damage(&self, _battle: &mut Battle<'_>, _owner: usize, _event: DotEvent) {}
 
+    fn on_dot_batch_finished(&self, _battle: &mut Battle<'_>, _owner: usize) {}
+
+    fn ally_dot_damage_factor_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        10_000
+    }
+
     fn on_enemy_turn_opening(&self, _battle: &mut Battle<'_>, _owner: usize, _target: usize) {}
 
     fn trigger_special_dot(
@@ -1553,6 +1561,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         dan_heng_il::FORM => Some(dan_heng_il::build),
         "character.1215" => Some(hanya::build),
         huohuo::FORM => Some(huohuo::build),
+        hysilens::FORM => Some(hysilens::build),
         "character.1218" => Some(jiaoqiu::build),
         feixiao::FORM => Some(feixiao::build),
         lingsha::FORM => Some(lingsha::build),
