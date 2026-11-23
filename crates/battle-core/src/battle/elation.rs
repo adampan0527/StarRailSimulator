@@ -31,6 +31,12 @@ pub(super) struct ElationDebt {
     pub minimum_bp: u32,
 }
 
+#[derive(Clone, Copy)]
+struct ElationDamageTotal {
+    actor: Option<usize>,
+    amount: u64,
+}
+
 #[derive(Clone)]
 struct CertifiedBanger {
     actor: usize,
@@ -44,7 +50,7 @@ pub(super) struct AhaState {
     punchline: u32,
     pending_extra: Option<AhaTurn>,
     bangers: Vec<CertifiedBanger>,
-    instant_damage: Option<u64>,
+    instant_damage: Option<ElationDamageTotal>,
     resolve_advanced_turn: bool,
 }
 
@@ -184,12 +190,17 @@ impl Battle<'_> {
         amount: u32,
     ) {
         if kind != crate::DamageKind::TrueDamage
-            && let Some(total) = self.aha.as_ref().and_then(|aha| aha.instant_damage)
             && self.is_party_unit(source)
             && self.enemies().contains(&target)
-            && let Some(aha) = &mut self.aha
+            && let Some(total) = self
+                .aha
+                .as_mut()
+                .and_then(|aha| aha.instant_damage.as_mut())
+            && total
+                .actor
+                .is_none_or(|actor| actor == source && kind == crate::DamageKind::Elation)
         {
-            aha.instant_damage = Some(total.saturating_add(u64::from(amount)));
+            total.amount = total.amount.saturating_add(u64::from(amount));
         }
     }
 
@@ -197,7 +208,7 @@ impl Battle<'_> {
         self.aha
             .as_ref()
             .and_then(|aha| aha.instant_damage)
-            .unwrap_or(0)
+            .map_or(0, |total| total.amount)
     }
 
     fn banger_change(&self, before: u32, after: u32) -> EventKind {
@@ -218,7 +229,7 @@ impl Battle<'_> {
             .reduce(u32::saturating_add)
     }
 
-    fn grant_certified_banger(&mut self, actor: usize, punchline: u32) {
+    pub(super) fn grant_certified_banger(&mut self, actor: usize, punchline: u32) {
         let duration = self
             .mechanics(actor)
             .map_or(2, |rules| rules.certified_banger_duration());
@@ -311,6 +322,46 @@ impl Battle<'_> {
         }
     }
 
+    pub(super) fn resolve_elation_skill(&mut self, actor: usize, instant: AhaInstant) {
+        let Some(rules) = self
+            .mechanics(actor)
+            .filter(|rules| rules.elation_participant().is_some())
+        else {
+            return;
+        };
+        let previous_action = self.action.replace(Action::ElationSkill);
+        let parent_debuff_targets = self.begin_debuff_action();
+        self.begin_attack();
+        self.emit(EventKind::Action(Action::ElationSkill), Some(actor), None);
+        rules.on_elation_skill(self, actor, instant);
+        self.notify_attack(actor, Action::ElationSkill, None);
+        self.finish_debuff_action(actor, parent_debuff_targets);
+        self.resolve_follow_ups();
+        self.notify_ally_action_finished(actor, Action::ElationSkill);
+        self.notify_unit_action_finished(actor);
+        self.action = previous_action;
+    }
+
+    pub(super) fn resolve_elation_skill_tracking_damage(
+        &mut self,
+        actor: usize,
+        instant: AhaInstant,
+    ) -> u64 {
+        let Some(aha) = &mut self.aha else {
+            return 0;
+        };
+        let previous = aha.instant_damage.replace(ElationDamageTotal {
+            actor: Some(actor),
+            amount: 0,
+        });
+        self.resolve_elation_skill(actor, instant);
+        let amount = self.aha_instant_damage();
+        if let Some(aha) = &mut self.aha {
+            aha.instant_damage = previous;
+        }
+        amount
+    }
+
     fn resolve_aha_instant(&mut self, turn: AhaTurn) {
         let (actor, punchline, skill_damage_factor_bp) = match turn {
             AhaTurn::Natural => (
@@ -339,7 +390,10 @@ impl Battle<'_> {
         };
         self.emit(event, actor, None);
         if let Some(aha) = &mut self.aha {
-            aha.instant_damage = Some(0);
+            aha.instant_damage = Some(ElationDamageTotal {
+                actor: None,
+                amount: 0,
+            });
         }
         for &owner in &actors {
             self.cleanse_crowd_control(owner, owner);
@@ -364,24 +418,13 @@ impl Battle<'_> {
                 || self.aha.as_ref().map_or(0, |aha| aha.punchline),
                 |_| punchline,
             );
-            let previous_action = self.action.replace(Action::ElationSkill);
-            let parent_debuff_targets = self.begin_debuff_action();
-            self.begin_attack();
-            self.emit(EventKind::Action(Action::ElationSkill), Some(owner), None);
-            rules.on_elation_skill(
-                self,
+            self.resolve_elation_skill(
                 owner,
                 AhaInstant {
                     punchline,
                     skill_damage_factor_bp,
                 },
             );
-            self.notify_attack(owner, Action::ElationSkill, None);
-            self.finish_debuff_action(owner, parent_debuff_targets);
-            self.resolve_follow_ups();
-            self.notify_ally_action_finished(owner, Action::ElationSkill);
-            self.notify_unit_action_finished(owner);
-            self.action = previous_action;
             participants.push(owner);
         }
         let natural = matches!(turn, AhaTurn::Natural);

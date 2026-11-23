@@ -72,6 +72,7 @@ mod sushang;
 mod the_herta;
 mod tingyun;
 mod topaz;
+mod trailblazer_elation;
 mod trailblazer_harmony;
 mod trailblazer_remembrance;
 mod tribbie;
@@ -131,6 +132,7 @@ pub(super) use {
     sunday::SundayState,
     the_herta::TheHertaState,
     topaz::TopazState,
+    trailblazer_elation::ElationTrailblazerState,
     trailblazer_harmony::HarmonyTrailblazerState,
     trailblazer_remembrance::RemembranceTrailblazerState,
     tribbie::TribbieState,
@@ -1818,6 +1820,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         march_hunt::FORM => Some(march_hunt::build),
         "march_7th.preservation" => Some(march_preservation::build),
         "natasha.abundance" => Some(natasha::build),
+        trailblazer_elation::FORM => Some(trailblazer_elation::build),
         trailblazer_harmony::FORM => Some(trailblazer_harmony::build),
         trailblazer_remembrance::FORM => Some(trailblazer_remembrance::build),
         "character.1209" => Some(yanqing::build),

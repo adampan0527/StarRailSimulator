@@ -157,6 +157,26 @@ fn faces_active(battle: &Battle<'_>, actor: usize) -> bool {
     battle.units[actor].aeon_aha_state.faces_turns > 0
 }
 
+pub(super) fn deal_elation_truth(battle: &mut Battle<'_>, actor: usize, damage: u64) {
+    let targets: Vec<_> = battle
+        .enemies()
+        .filter(|&enemy| battle.is_targetable(enemy))
+        .collect();
+    let count = targets.len() as u64;
+    for (index, target) in targets.into_iter().enumerate() {
+        let amount = damage / count + u64::from((index as u64) < damage % count);
+        if amount > 0 {
+            battle.true_damage(
+                actor,
+                target,
+                Action::ElationSkill,
+                amount.min(u64::from(u32::MAX)) as u32,
+                Vec::new(),
+            );
+        }
+    }
+}
+
 impl AeonAha {
     fn hit(
         &self,
@@ -359,32 +379,14 @@ impl Mechanics for AeonAha {
         natural: bool,
         skill_damage_factor_bp: u16,
     ) {
-        let targets: Vec<_> = battle
-            .enemies()
-            .filter(|&enemy| battle.is_targetable(enemy))
-            .collect();
-        if !targets.is_empty() {
-            let truth_bp =
-                self.truth_bp + percentage_of(self.truth_bp, 2_500) * u32::from(self.eidolon >= 4);
-            let damage = battle
-                .aha_instant_damage()
-                .saturating_mul(u64::from(truth_bp))
-                .saturating_mul(u64::from(skill_damage_factor_bp))
-                / 100_000_000;
-            let count = targets.len() as u64;
-            for (index, target) in targets.into_iter().enumerate() {
-                let amount = damage / count + u64::from((index as u64) < damage % count);
-                if amount > 0 {
-                    battle.true_damage(
-                        actor,
-                        target,
-                        Action::ElationSkill,
-                        amount.min(u64::from(u32::MAX)) as u32,
-                        Vec::new(),
-                    );
-                }
-            }
-        }
+        let truth_bp =
+            self.truth_bp + percentage_of(self.truth_bp, 2_500) * u32::from(self.eidolon >= 4);
+        let damage = battle
+            .aha_instant_damage()
+            .saturating_mul(u64::from(truth_bp))
+            .saturating_mul(u64::from(skill_damage_factor_bp))
+            / 100_000_000;
+        deal_elation_truth(battle, actor, damage);
 
         if natural {
             battle.units[actor].aeon_aha_state.threshold_triggered = false;

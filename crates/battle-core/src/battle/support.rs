@@ -12,6 +12,7 @@ pub(super) enum AllyBuffKind {
     BreakEffect,
     CritRate,
     CritDamage,
+    Elation,
     CritOverflowRatio,
     Damage,
     ResistancePenetration,
@@ -374,6 +375,7 @@ impl Battle<'_> {
                 AllyBuffKind::CritDamage => &mut bonuses.crit_damage_bp,
                 AllyBuffKind::CritOverflowRatio => &mut bonuses.crit_overflow_ratio_bp,
                 AllyBuffKind::Damage => &mut bonuses.damage_bp,
+                AllyBuffKind::Elation => &mut bonuses.elation_bp,
                 AllyBuffKind::ResistancePenetration => &mut bonuses.resistance_penetration_bp,
                 AllyBuffKind::ElementResistancePenetration(affected) if affected == element => {
                     &mut bonuses.resistance_penetration_bp
@@ -411,7 +413,9 @@ impl Battle<'_> {
         {
             if self.is_party_unit(target) && self.is_targetable(source) {
                 if self.aha.is_some() {
-                    bonuses.elation_bp = mechanics.ally_elation_bp(self, source, target);
+                    bonuses.elation_bp = bonuses
+                        .elation_bp
+                        .saturating_add(mechanics.ally_elation_bp(self, source, target));
                 }
                 bonuses.defense_ignore_bp = bonuses
                     .defense_ignore_bp
