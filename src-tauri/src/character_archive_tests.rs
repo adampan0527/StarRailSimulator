@@ -20,6 +20,8 @@ mod rin;
 #[cfg(bundled_catalog)]
 mod saber;
 #[cfg(bundled_catalog)]
+mod trailblazer_destruction;
+#[cfg(bundled_catalog)]
 mod trailblazer_elation;
 
 #[test]

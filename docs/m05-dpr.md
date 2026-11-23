@@ -47,6 +47,7 @@
 | 第三十批 | [大丽花](characters/dahlia.md) |
 | 第三十一批 | [星神★阿哈](characters/aeon-aha.md) |
 | 第三十二批 | [远坂凛](characters/rin.md) |
+| 第三十三批 | [欢愉开拓者](characters/trailblazer-elation.md)、[毁灭开拓者](characters/trailblazer-destruction.md) |
 
 - 正式角色的有效技能等级从档案解析，技能倍率来自冻结的 4.7.0 快照。面板计算纳入配装静态属性，生命、攻击与防御四舍五入为整数，速度保留百万分位，倍率以万分比计算。光锥和遗器战斗触发效果、秘技及客户端逐事件对照待补。
 - 固定靶机保持满生命，正常排程、承受击破、冻结和触电。80 级击破基值使用 3767.5533。雷击破触电在目标回合开始结算，冰击破冻结跳过一次行动并将下一次行动提前 50%。这些结算属于当前靶场规则。合成回放仍使用原合成版本。[游戏内冰击破教程](https://hsr.gachabase.net/tutorials/battle/2202/weakness-break-ice/beta?lang=en)
@@ -86,6 +87,7 @@
 - 大丽花的结界允许符合条件的超击破来源在敌方保有韧性时结算，并将由结界增加的伤害记为大丽花的贡献。共舞者触发天赋追击，各弹射段和整次追击分别结算对应超击破。冻结档案复验 E0 和 E6 击破队的弱点植入、固定削韧与伤害归因。[档案回归](../src-tauri/src/character_archive_tests/dahlia.rs)
 - 星神★阿哈使用独立愿力，终结技触发欢愉命途升格，改变共享笑点的消费回收和爻光、火花的对应效果。阿哈时刻按实际非真实伤害计算尾段真实伤害，并分摊给在场敌人。低技能等级档案复验三人同队的升格事件和逐击归因，有限敌人夹具另验欢愉负债。[档案回归](../src-tauri/src/character_archive_tests.rs)
 - 远坂凛按战技点实际支出和恢复累积宝石，强化战技逐段花费宝石弹射，E1 另有影子宝石。与 Archer 的连携追加攻击分别保留两人的伤害来源，连携恢复的战技点在 Archer 的回路续射判断前到账。冻结档案复验低等级、满技能及满星魂的连携与战技增益归因。[档案回归](../src-tauri/src/character_archive_tests/rin.rs)
+- 欢愉开拓者的终结技可为指定队友独立触发欢愉技。升格期间选中星神★阿哈时，按开拓者先出手、阿哈后出手的时序结算，并以开拓者本次欢愉技伤害分摊真伤。毁灭开拓者的单体和扩散终结技共用能量，按存活目标分布选择范围。冻结档案复验两种形态的有效技能等级、星魂和伤害归因。[欢愉档案回归](../src-tauri/src/character_archive_tests/trailblazer_elation.rs) · [毁灭档案回归](../src-tauri/src/character_archive_tests/trailblazer_destruction.rs)
 
 ## 后续归因扩展
 
