@@ -2698,7 +2698,13 @@ impl Battle<'_> {
             summon: self.memosprite_owner(actor).is_some()
                 || self
                     .mechanics(actor)
-                    .is_some_and(|rules| rules.damage_comes_from_summon(self, actor, origin, kind)),
+                    .is_some_and(|rules| rules.damage_comes_from_summon(self, actor, origin, kind))
+                || assisted_by.is_some_and(|provider| {
+                    kind == DamageKind::Additional
+                        && self.mechanics(provider).is_some_and(|rules| {
+                            rules.assisted_damage_comes_from_summon(self, provider)
+                        })
+                }),
         };
         let distribution = self.damage_distribution(actor, target);
         let recipient = |unit, share_bp| DamageRecipient {
@@ -3022,7 +3028,7 @@ impl Battle<'_> {
                     remaining_bp = remaining_bp * 10_000_u32.saturating_sub(bp) / 10_000;
                 }
                 if ally_target {
-                    let bp = mechanics.ally_damage_reduction_bp(self, owner);
+                    let bp = mechanics.ally_damage_reduction_bp_for_target(self, owner, target);
                     remaining_bp = remaining_bp * 10_000_u32.saturating_sub(bp) / 10_000;
                 }
             }

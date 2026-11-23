@@ -69,6 +69,7 @@ const statusNames = {
   siren_zone: '海瑟音结界',
   military_merit: '军功',
   peerage: '爵位',
+  bondmate: '同袍',
 };
 const number = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 6 });
 

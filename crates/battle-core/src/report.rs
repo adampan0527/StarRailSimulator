@@ -60,10 +60,11 @@ pub enum StatusKind {
     SirenZone,
     MilitaryMerit,
     Peerage,
+    Bondmate,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Peerage.index() + 1;
+    pub(crate) const COUNT: usize = Self::Bondmate.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -108,6 +109,7 @@ impl StatusKind {
             Self::SirenZone => 37,
             Self::MilitaryMerit => 38,
             Self::Peerage => 39,
+            Self::Bondmate => 40,
         }
     }
 }

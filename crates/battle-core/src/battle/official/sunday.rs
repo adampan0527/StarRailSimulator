@@ -146,9 +146,9 @@ fn eligible_for_advance(battle: &Battle<'_>, target: usize) -> bool {
 }
 
 fn has_combat_summon(battle: &Battle<'_>, target: usize) -> bool {
-    battle.units[target]
-        .summon_turn
-        .is_some_and(|summon| summon.can_advance)
+    battle
+        .allies()
+        .any(|owner| battle.has_advanceable_summon(owner, target))
 }
 
 fn preferred_target(battle: &Battle<'_>, actor: usize) -> Option<usize> {
@@ -249,9 +249,13 @@ impl Sunday {
         }
         if eligible_for_advance(battle, target) {
             battle.advance_ally_immediate(actor, target);
-            if let Some(summon) = &mut battle.units[target].summon_turn {
-                // Equal advanced AV puts the chosen ally before the summon.
-                summon.advance(ADVANCE_BP);
+            for owner in battle.allies() {
+                if battle.has_advanceable_summon(owner, target)
+                    && let Some(summon) = &mut battle.units[owner].summon_turn
+                {
+                    // Equal advanced AV puts the chosen ally before the summon.
+                    summon.advance(ADVANCE_BP);
+                }
             }
         }
     }

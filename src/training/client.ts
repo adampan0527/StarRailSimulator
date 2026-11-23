@@ -116,7 +116,8 @@ type Status =
   | 'after_rain'
   | 'siren_zone'
   | 'military_merit'
-  | 'peerage';
+  | 'peerage'
+  | 'bondmate';
 type EventKind =
   | {
       event:
