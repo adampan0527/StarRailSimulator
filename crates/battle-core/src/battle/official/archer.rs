@@ -36,6 +36,12 @@ pub(in crate::battle) struct ArcherState {
     circuit_skills: u8,
 }
 
+impl ArcherState {
+    pub(super) fn circuit_is_full(&self) -> bool {
+        self.circuit_skills >= CIRCUIT_LIMIT
+    }
+}
+
 struct Archer {
     end: OfficialAbility,
     follow_up: FollowUpAttack,
@@ -192,7 +198,7 @@ impl Mechanics for Archer {
 
     fn ends_retained_turn(&self, battle: &Battle<'_>, actor: usize) -> bool {
         circuit_active(battle, actor)
-            && (battle.units[actor].archer_state.circuit_skills >= CIRCUIT_LIMIT
+            && (battle.units[actor].archer_state.circuit_is_full()
                 || battle.skill_points < SKILL_COST
                 || !battle.enemies().any(|enemy| battle.is_targetable(enemy)))
     }
@@ -317,7 +323,13 @@ impl Mechanics for Archer {
         2 * u8::from(self.raises_skill_point_cap)
     }
 
-    fn on_ally_skill_points_restored(&self, battle: &mut Battle<'_>, owner: usize) {
+    fn on_ally_skill_points_restored(
+        &self,
+        battle: &mut Battle<'_>,
+        owner: usize,
+        _: usize,
+        _: u8,
+    ) {
         if self.crit_damage_trace && battle.skill_points >= CRIT_DAMAGE_MIN_SKILL_POINTS {
             battle.apply_ally_buff_with_id(
                 owner,

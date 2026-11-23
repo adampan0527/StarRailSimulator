@@ -232,6 +232,14 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    RinGemEnergy {
+        before: u16,
+        after: u16,
+    },
+    RinShadowGem {
+        before: u16,
+        after: u16,
+    },
     Interpretation {
         before: u8,
         after: u8,

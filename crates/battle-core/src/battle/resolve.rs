@@ -238,7 +238,15 @@ pub(super) struct FollowUp {
 #[derive(Clone)]
 pub(super) enum PendingAttack {
     FollowUp(FollowUp),
-    TriggeredSkill { actor: usize, target: usize },
+    TriggeredSkill {
+        actor: usize,
+        target: usize,
+    },
+    JointFollowUp {
+        participants: [(usize, FollowUpAttack); 2],
+        origin: Action,
+        restores_skill_points: u8,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -1137,6 +1145,20 @@ impl Battle<'_> {
             .push_back(PendingAttack::TriggeredSkill { actor, target });
     }
 
+    pub(super) fn queue_joint_follow_up(
+        &mut self,
+        participants: [(usize, FollowUpAttack); 2],
+        origin: Action,
+        restores_skill_points: u8,
+    ) {
+        self.pending_follow_ups
+            .push_back(PendingAttack::JointFollowUp {
+                participants,
+                origin,
+                restores_skill_points,
+            });
+    }
+
     pub(super) fn queue_counter_blast(
         &mut self,
         actor: usize,
@@ -1246,6 +1268,14 @@ impl Battle<'_> {
                     {
                         rules.on_triggered_skill(self, actor, target);
                     }
+                    continue;
+                }
+                PendingAttack::JointFollowUp {
+                    participants,
+                    origin,
+                    restores_skill_points,
+                } => {
+                    self.resolve_joint_follow_up(participants, origin, restores_skill_points);
                     continue;
                 }
             };
@@ -1416,6 +1446,48 @@ impl Battle<'_> {
         }
     }
 
+    fn resolve_joint_follow_up(
+        &mut self,
+        participants: [(usize, FollowUpAttack); 2],
+        origin: Action,
+        restores_skill_points: u8,
+    ) {
+        if participants
+            .iter()
+            .any(|(actor, _)| !self.is_targetable(*actor) || self.is_crowd_controlled(*actor))
+            || !self.enemies().any(|target| self.is_targetable(target))
+        {
+            return;
+        }
+        let [(source, first), (partner, second)] = participants;
+        let was_follow_up = std::mem::replace(&mut self.resolving_follow_up, true);
+        for (actor, other, attack) in [(source, partner, first), (partner, source, second)] {
+            if !self.is_targetable(actor)
+                || !self.enemies().any(|target| self.is_targetable(target))
+            {
+                continue;
+            }
+            let parent_debuff_targets = self.begin_debuff_action();
+            self.begin_attack();
+            self.emit(EventKind::FollowUp, Some(actor), None);
+            for target in self.enemies() {
+                self.follow_up_hit(
+                    actor,
+                    target,
+                    origin,
+                    attack.element,
+                    attack.multiplier_bp,
+                    attack.toughness,
+                );
+            }
+            self.gain_energy(actor, actor, attack.energy_milli);
+            self.notify_attack_except_partner(actor, origin, None, Some(other));
+            self.finish_debuff_action(actor, parent_debuff_targets);
+        }
+        self.resolving_follow_up = was_follow_up;
+        self.restore_skill_points(source, restores_skill_points);
+    }
+
     pub(super) fn follow_up_hit(
         &mut self,
         actor: usize,
@@ -1445,6 +1517,16 @@ impl Battle<'_> {
         origin: Action,
         primary_target: Option<usize>,
     ) {
+        self.notify_attack_except_partner(actor, origin, primary_target, None);
+    }
+
+    fn notify_attack_except_partner(
+        &mut self,
+        actor: usize,
+        origin: Action,
+        primary_target: Option<usize>,
+        joint_partner: Option<usize>,
+    ) {
         let landed = !self.attack_targets.is_empty();
         if self.tracks_fixed_attack_toughness && landed {
             for owner in self.allies() {
@@ -1462,7 +1544,7 @@ impl Battle<'_> {
                 && let Some(mechanics) = self.mechanics(owner)
             {
                 mechanics.on_attack_finished(self, owner, actor, origin);
-                if landed {
+                if landed && joint_partner != Some(owner) {
                     mechanics.on_ally_attack(self, owner, actor, origin, primary_target);
                 }
             }
@@ -3001,6 +3083,10 @@ impl Battle<'_> {
             defender.resistance_down_bp = defender
                 .resistance_down_bp
                 .saturating_add(bonus.resistance_penetration_bp);
+            defender.outgoing_damage_factor_bp = combine_damage_factors(
+                defender.outgoing_damage_factor_bp,
+                10_000 + bonus.skill_damage_factor_bonus_bp,
+            );
             let defense = self.defense_with_buff(actor, bonus.defense_bp);
             let (break_crit_rate, break_crit_damage) = crit_from_break(bonus);
             let total_crit_rate = crit_rate_bp
