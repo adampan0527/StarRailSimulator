@@ -182,6 +182,7 @@ fn ruan_mei_skill_adds_efficiency_before_rounding_and_a6_uses_live_break_effect(
         kind: DamageKind::Direct,
         break_damage: false,
         follow_up: false,
+        ultimate: false,
         summon: false,
         direct_skill: false,
     };

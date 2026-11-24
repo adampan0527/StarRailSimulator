@@ -92,6 +92,7 @@ pub(super) struct OffenseContext {
     pub kind: DamageKind,
     pub break_damage: bool,
     pub follow_up: bool,
+    pub ultimate: bool,
     pub summon: bool,
     pub direct_skill: bool,
 }
@@ -388,6 +389,7 @@ impl Battle<'_> {
             kind,
             break_damage,
             follow_up,
+            ultimate,
             summon,
             direct_skill,
         } = context;
@@ -516,6 +518,18 @@ impl Battle<'_> {
             bonuses.damage_bp = bonuses
                 .damage_bp
                 .saturating_add(mechanics.ally_damage_bonus_bp(self, source, target, element));
+            if self.is_targetable(source) {
+                if follow_up {
+                    bonuses.damage_bp = bonuses
+                        .damage_bp
+                        .saturating_add(mechanics.ally_follow_up_damage_bonus_bp());
+                }
+                if ultimate {
+                    bonuses.damage_bp = bonuses
+                        .damage_bp
+                        .saturating_add(mechanics.ally_ultimate_damage_bonus_bp(self, source));
+                }
+            }
             if kind == DamageKind::DamageOverTime {
                 bonuses.damage_bp = bonuses
                     .damage_bp
@@ -575,6 +589,7 @@ impl Battle<'_> {
                     kind: DamageKind::Direct,
                     break_damage: false,
                     follow_up: false,
+                    ultimate: false,
                     summon: self.memosprite_owner(actor).is_some(),
                     direct_skill: false,
                 },
@@ -598,6 +613,7 @@ impl Battle<'_> {
                 kind: DamageKind::Direct,
                 break_damage: false,
                 follow_up: false,
+                ultimate: false,
                 summon: false,
                 direct_skill: false,
             },

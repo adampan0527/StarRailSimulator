@@ -12,6 +12,9 @@ pub(super) enum DebuffKind {
         resistance_down_bp: u16,
     },
     DefenseDown,
+    BalefireBind {
+        vulnerability_bp: u16,
+    },
     Wilt {
         weaknesses: u8,
     },
@@ -73,6 +76,7 @@ impl DebuffKind {
             Self::SkillImprisonment => StatusKind::Imprisoned,
             Self::Weightless { .. } => StatusKind::Weightless,
             Self::DefenseDown | Self::DefenseBug => StatusKind::DefenseDown,
+            Self::BalefireBind { .. } => StatusKind::BalefireBind,
             Self::Wilt { .. } => StatusKind::Wilt,
             Self::Vulnerability => StatusKind::Vulnerability,
             Self::WoesWhisper => StatusKind::WoesWhisper,
@@ -113,7 +117,7 @@ impl DebuffKind {
     pub(super) fn reduces_defense(self) -> bool {
         matches!(
             self,
-            Self::DefenseDown | Self::DefenseBug | Self::Wilt { .. }
+            Self::DefenseDown | Self::DefenseBug | Self::Wilt { .. } | Self::BalefireBind { .. }
         )
     }
 

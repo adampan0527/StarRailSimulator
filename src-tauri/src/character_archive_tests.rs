@@ -16,6 +16,8 @@ mod archer;
 #[cfg(bundled_catalog)]
 mod ashveil;
 #[cfg(bundled_catalog)]
+mod blade_recast;
+#[cfg(bundled_catalog)]
 mod dahlia;
 #[cfg(bundled_catalog)]
 mod gilgamesh;

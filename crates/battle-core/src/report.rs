@@ -72,10 +72,12 @@ pub enum StatusKind {
     Fever,
     SpecialGuest,
     Bait,
+    InfiniteFury,
+    BalefireBind,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::Bait.index() + 1;
+    pub(crate) const COUNT: usize = Self::BalefireBind.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -132,6 +134,8 @@ impl StatusKind {
             Self::Fever => 49,
             Self::SpecialGuest => 50,
             Self::Bait => 51,
+            Self::InfiniteFury => 52,
+            Self::BalefireBind => 53,
         }
     }
 }
@@ -281,6 +285,10 @@ pub enum EventKind {
         after: u8,
     },
     AshveilCharge {
+        before: u8,
+        after: u8,
+    },
+    BladeRecastCharge {
         before: u8,
         after: u8,
     },
