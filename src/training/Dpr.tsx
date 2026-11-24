@@ -2,7 +2,7 @@ import { actionNames, av, damageNames } from './Timeline';
 import type { DprResult } from './client';
 import './dpr.css';
 
-const format = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
+const format = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
 
 const memospriteNames = new Map([
   ['trailblazer.remembrance:mem', '迷迷'],
