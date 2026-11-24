@@ -3,5 +3,6 @@
 /target/
 /src-tauri/gen/
 /.local-toolchain/
+/.archiver/
 /.m03-data/
 /html_report/

@@ -114,13 +114,16 @@ Windows x64 Release 可执行文件 SHA-256 为 `36e9e5fc901b1d957482da46794e073
 
 ## Archiver 账号导入
 
-- 「账号导入」页可选择并打开本机的 Reliquary Archiver，成功启动后记住所选路径。Windows 文件对话框使用已有锁定版本的 `windows-sys`。模拟器通过固定的本机 WebSocket 读取实时首包，也可读取第 4 版原始 JSON 和第 1 版遗器快照。[Windows 4.7 对应版本](https://github.com/IceDynamix/reliquary-archiver/releases/tag/v0.20.0)
+- 模拟器通过固定的本机 WebSocket 读取 Reliquary Archiver 实时首包，也可读取第 4 版原始 JSON 和第 1 版遗器快照。
 - 完整快照沿用 Archiver 原始 JSON 结构，在本地保留角色、光锥、遗器、UID、材料、货币和活动字段。账号预览显示 UID、开拓者、记录数和货币余额。点击「导入角色与装备」后，角色养成与两种装备库存一起写入 SQLite。材料、货币和「奇库寻遗」记录保存在 JSON 快照中。
 - 第 6 版存档记录账号 UID、已应用的角色养成和装备来源实例。第一次导入可填补空装备槽，旧存档的遗器匹配后沿用现有库存 ID。重复导入同一 UID 可更新尚未被本地改动的角色养成和装备数值，手动调整的养成与穿戴继续保留。
 - 2026-11-19 Rust 工作区回归覆盖完整快照字段保留、第 5 版存档迁移、装备关联、同一扫描重复导入、强化更新、保留本地改动、UID 冲突与失败回滚。正式服账号的全量联调待验收。[账号导入测试](../src-tauri/src/character_archive_tests.rs) · [快照测试](../src-tauri/src/desktop_relic_export.rs)
 - 2026-11-19 在 Windows WebView2 的独立测试存档中验证原生程序选择与取消、已打开进程复用、本机实时首包、保存与重开 JSON、穿戴恢复、重复导入、UID 冲突提示和 360 CSS px 布局。实时数据来自模拟导出器。
-- 「获取账号信息」先连接本机 Archiver，已有完整快照时直接预览。无法连接时启动已配置的程序，首次需选择可执行文件，随后自动重试连接。导出器未就绪或尚未采集账号时，页面提示从游戏登录界面重新登录。文件导入和更换程序入口在「导入选项」中。
+- 「获取账号信息」先连接本机 Archiver，已有完整快照时直接预览。无法连接时启动已配置的程序，缺少有效自定义路径时使用内置版本，随后自动重试连接。导出器未就绪或尚未采集账号时，页面提示从游戏登录界面重新登录。
+- Windows x64 Release 将官方 Reliquary Archiver v0.20.0 PktMon 版与 MIT 许可嵌入模拟器的单个可执行文件。开发和构建脚本从官方发布下载并校验 SHA-256。用户首次启动内置导出器时在应用数据目录释放已校验的副本，可离线使用。PktMon 使用 Windows 自带的捕获功能，可能出现 Windows 管理员权限确认。[官方发布](https://github.com/IceDynamix/reliquary-archiver/releases/tag/v0.20.0)
+- 点击「更换 Archiver」才会打开 Windows 程序选择器。确认后保存路径，供下次启动导出器使用。文件导入仍通过「导入选项」打开。
 - 2026-11-24 使用 Edge 模拟 Tauri 调用和实时导出，验证已有快照直达预览、未采集时的登录提示、启动后重试、取消等待和取消选择程序、JSON 导入入口以及 360 CSS px 布局。正式服登录联调待验收。
+- 2026-11-24 Edge 模拟验证主按钮只调用启动命令，「更换 Archiver」单独调用程序选择器，并核对说明文案、取消、保存和 360 CSS px 布局。Rust 回归核对内置程序释放与修复、MIT 许可和旧路径读取。[启动与回归测试](../src-tauri/src/archiver_launcher.rs)
 
 ### 多账号切换
 

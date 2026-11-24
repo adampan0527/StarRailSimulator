@@ -46,16 +46,28 @@ export type ImportedAccount = {
 
 export type ExportOrigin = 'live' | 'file';
 
-async function openArchiver(reselect: boolean) {
+async function openArchiver() {
   try {
-    return await invoke<'opened' | 'already_open' | 'canceled'>(
-      'archiver_open',
-      { reselect },
-    );
+    await invoke('archiver_open');
   } catch (cause) {
-    if (cause === 'already_open') {
-      throw new Error('请先关闭模拟器打开的 Archiver，再更换程序。', { cause });
+    if (cause === 'bundled_unavailable') {
+      throw new Error(
+        '内置 Archiver 无法使用。请重新获取模拟器，或更换 Archiver。',
+        {
+          cause,
+        },
+      );
     }
+    throw new Error('无法打开 Archiver。请检查程序路径，或手动启动后重试。', {
+      cause,
+    });
+  }
+}
+
+export async function chooseArchiver() {
+  try {
+    return await invoke<boolean>('archiver_choose');
+  } catch (cause) {
     if (cause === 'invalid_program') {
       throw new Error('请选择官方的 reliquary-archiver Windows 可执行文件。', {
         cause,
@@ -64,9 +76,7 @@ async function openArchiver(reselect: boolean) {
     if (cause === 'dialog_failed') {
       throw new Error('选取程序失败，请重试。', { cause });
     }
-    throw new Error('无法打开 Archiver。请检查程序路径，或手动启动后重试。', {
-      cause,
-    });
+    throw new Error('无法保存所选 Archiver，请重试。', { cause });
   }
 }
 
@@ -75,19 +85,15 @@ type ReceiveProgress = 'opening' | 'starting' | 'waiting';
 export async function receiveAccount(
   signal: AbortSignal,
   onProgress: (progress: ReceiveProgress) => void,
-  reselect = false,
-): Promise<string | null> {
+): Promise<string> {
   const onWaiting = () => onProgress('waiting');
-  if (!reselect) {
-    const snapshot = await readLiveSnapshot(signal, onWaiting);
-    if (snapshot !== null) return snapshot;
-  }
+  const available = await readLiveSnapshot(signal, onWaiting);
+  if (available !== null) return available;
 
   signal.throwIfAborted();
   onProgress('opening');
-  const launch = await openArchiver(reselect);
+  await openArchiver();
   signal.throwIfAborted();
-  if (launch === 'canceled') return null;
 
   onProgress('starting');
   const deadline = performance.now() + startupTimeoutMs;

@@ -3,6 +3,7 @@ import { AccountPanel } from './AccountPanel';
 import { accountError, gameAccounts } from './accounts';
 import type { AccountSelection } from './accounts';
 import {
+  chooseArchiver,
   importAccount,
   readRelicExportFile,
   receiveAccount,
@@ -56,6 +57,9 @@ export function RelicExportPage({
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [imported, setImported] = useState<ImportedAccount>();
+  const [archiverChoice, setArchiverChoice] = useState<
+    { kind: 'choosing' | 'saved' } | { kind: 'error'; message: string }
+  >();
   const [managing, setManaging] = useState(false);
   const [managementIssue, setManagementIssue] = useState('');
   const activeRequest = useRef<AbortController>(null);
@@ -70,7 +74,8 @@ export function RelicExportPage({
     state.kind === 'opening' ||
     state.kind === 'saving' ||
     importing ||
-    managing;
+    managing ||
+    archiverChoice?.kind === 'choosing';
 
   useEffect(() => () => activeRequest.current?.abort(), []);
 
@@ -86,7 +91,21 @@ export function RelicExportPage({
     }
   }
 
-  async function receive(file?: File, reselect = false) {
+  async function selectArchiver() {
+    setArchiverChoice({ kind: 'choosing' });
+    try {
+      setArchiverChoice(
+        (await chooseArchiver()) ? { kind: 'saved' } : undefined,
+      );
+    } catch (error) {
+      setArchiverChoice({
+        kind: 'error',
+        message: error instanceof Error ? error.message : '无法更换 Archiver。',
+      });
+    }
+  }
+
+  async function receive(file?: File) {
     if (activeRequest.current) return;
     const request = new AbortController();
     activeRequest.current = request;
@@ -98,16 +117,8 @@ export function RelicExportPage({
       const origin = file ? 'file' : 'live';
       const snapshot = file
         ? await readRelicExportFile(file)
-        : await receiveAccount(
-            request.signal,
-            (kind) => setState({ kind }),
-            reselect,
-          );
+        : await receiveAccount(request.signal, (kind) => setState({ kind }));
       request.signal.throwIfAborted();
-      if (snapshot === null) {
-        setState({ kind: 'idle' });
-        return;
-      }
       setState({ kind: 'saving' });
       const result = await saveRelicExport(snapshot, origin);
       if (!request.signal.aborted)
@@ -245,6 +256,29 @@ export function RelicExportPage({
             </div>
           </>
         )}
+        <div className="form-actions">
+          <button
+            type="button"
+            className="secondary"
+            disabled={busy}
+            aria-describedby="archiver-choice-hint"
+            onClick={() => void selectArchiver()}
+          >
+            更换 Archiver
+          </button>
+          <span id="archiver-choice-hint" className="muted">
+            软件已为你配置好
+            Archiver，直接获取账号信息即可。只有需要使用其他版本时才更换。
+          </span>
+        </div>
+        {archiverChoice?.kind === 'saved' && (
+          <p role="status">已保存所选程序，下次启动 Archiver 时生效。</p>
+        )}
+        {archiverChoice?.kind === 'error' && (
+          <p className="outcome-defeat" role="alert">
+            {archiverChoice.message}
+          </p>
+        )}
         <details className="account-import-options">
           <summary>导入选项</summary>
           <div className="form-actions">
@@ -255,14 +289,6 @@ export function RelicExportPage({
               onClick={() => fileInput.current?.click()}
             >
               选择导出 JSON
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={busy}
-              onClick={() => void receive(undefined, true)}
-            >
-              更换 Archiver 程序
             </button>
           </div>
           <input

@@ -26,6 +26,8 @@ fn main() -> ExitCode {
         .invoke_handler(tauri::generate_handler![
             #[cfg(windows)]
             archiver_launcher::archiver_open,
+            #[cfg(windows)]
+            archiver_launcher::archiver_choose,
             desktop_status::desktop_status,
             desktop_relic_export::relic_export_save,
             desktop_characters::account_list,

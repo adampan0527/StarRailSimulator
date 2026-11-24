@@ -1,6 +1,7 @@
 /target/
 /src-tauri/gen/
 /.local-toolchain/
+/.archiver/
 /.m03-data/
 /dist/
 /html_report/
