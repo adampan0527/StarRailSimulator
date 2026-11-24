@@ -9,18 +9,21 @@ function RelicCardStat({
   id,
   value,
   upgrades,
+  matchesFilter,
 }: {
   catalog: Catalog;
   id: string;
   value: number;
   upgrades?: number;
+  matchesFilter?: boolean;
 }) {
   const icon = relicIcon(`stat.${id}`);
   const upgradeLabel =
     upgrades === undefined ? undefined : `强化 ${upgrades} 次`;
+  const StatRow = matchesFilter ? 'mark' : 'span';
 
   return (
-    <span className="relic-card-stat">
+    <StatRow className="relic-card-stat">
       <span className="relic-card-stat-name">
         {icon && (
           <img src={icon} alt="" width={16} height={16} loading="lazy" />
@@ -43,7 +46,7 @@ function RelicCardStat({
           </span>
         )}
       </span>
-    </span>
+    </StatRow>
   );
 }
 
@@ -65,6 +68,7 @@ export function RelicCard({
   disabled = false,
   action = 'edit',
   equipped,
+  selectedSubstats,
   onSelect,
 }: {
   catalog: Catalog;
@@ -73,6 +77,7 @@ export function RelicCard({
   disabled?: boolean;
   action?: 'edit' | 'equip' | 'change';
   equipped?: boolean;
+  selectedSubstats?: readonly string[];
   onSelect: (button: HTMLButtonElement) => void;
 }) {
   const [failedIcon, setFailedIcon] = useState<string>();
@@ -173,6 +178,7 @@ export function RelicCard({
                 id={id}
                 value={value}
                 upgrades={rolls ? rolls.count - 1 : undefined}
+                matchesFilter={selectedSubstats?.includes(id)}
               />
             );
           })}

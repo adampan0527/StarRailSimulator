@@ -252,6 +252,7 @@ export function RelicPage({ catalog }: { catalog: Catalog }) {
                 catalog={catalog}
                 item={item}
                 data={data}
+                selectedSubstats={filters.substats}
                 disabled={editing !== undefined || importing}
                 onSelect={(button) => {
                   editTrigger.current = button;

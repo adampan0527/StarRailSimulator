@@ -193,6 +193,7 @@ function RelicPicker({
                   catalog={catalog}
                   item={item}
                   data={data}
+                  selectedSubstats={filters.substats}
                   disabled={otherOwner !== null}
                   action="equip"
                   equipped={equipment[data.slot] === item.id}

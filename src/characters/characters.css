@@ -617,6 +617,20 @@
   font-weight: 500;
 }
 
+mark.relic-card-stat {
+  margin-inline: -0.125rem;
+  padding-inline: 0.125rem;
+  border-radius: 0.25rem;
+  background: var(--warm-surface);
+  color: var(--warm);
+  font-weight: 700;
+}
+
+mark.relic-card-stat .relic-card-stat-value {
+  color: inherit;
+  font-weight: inherit;
+}
+
 .relic-card-upgrades {
   display: grid;
   width: 0.875rem;
