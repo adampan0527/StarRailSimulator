@@ -251,6 +251,10 @@ pub(super) enum PendingAttack {
         actor: usize,
         target: usize,
     },
+    TriggeredElationSkill {
+        actor: usize,
+        punchline: u32,
+    },
     JointFollowUp {
         participants: [(usize, JointFollowUpAttack); 2],
         origin: Action,
@@ -310,9 +314,9 @@ impl Battle<'_> {
     ) -> bool {
         match (kind, action, &self.plan.units[actor].kit) {
             (DamageKind::FollowUp, _, _) => true,
-            (DamageKind::Direct | DamageKind::Elation, Some(action), Kit::Official(kit)) => {
-                kit.mechanics.primary_attack_counts_as_follow_up(action)
-            }
+            (DamageKind::Direct | DamageKind::Elation, Some(action), Kit::Official(kit)) => kit
+                .mechanics
+                .primary_attack_counts_as_follow_up(self, actor, action),
             _ => false,
         }
     }
@@ -1310,6 +1314,30 @@ impl Battle<'_> {
                         && let Some(rules) = self.mechanics(actor)
                     {
                         rules.on_triggered_skill(self, actor, target);
+                    }
+                    continue;
+                }
+                PendingAttack::TriggeredElationSkill { actor, punchline } => {
+                    use super::elation::{AhaInstant, ElationSkillSource};
+
+                    if self.wave_index + 1 < self.plan.wave_ends.len()
+                        && self.enemies().all(|target| self.units[target].hp == 0)
+                    {
+                        self.pending_follow_ups
+                            .push_front(PendingAttack::TriggeredElationSkill { actor, punchline });
+                        break;
+                    }
+                    if self.is_targetable(actor)
+                        && self.enemies().any(|target| self.is_targetable(target))
+                    {
+                        self.resolve_elation_skill_from(
+                            actor,
+                            AhaInstant {
+                                punchline,
+                                skill_damage_factor_bp: 10_000,
+                            },
+                            ElationSkillSource::Triggered,
+                        );
                     }
                     continue;
                 }

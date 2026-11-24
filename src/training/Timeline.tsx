@@ -122,6 +122,10 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
       return '愿力变化';
     case 'hidden_mmr':
       return '隐藏分变化';
+    case 'aventurine_surf_heat':
+      return '热意变化';
+    case 'aventurine_surf_elation':
+      return kind.detail.enhanced ? '强化欢愉技' : '普通欢愉技';
     case 'elation_debt':
       return '欢愉负债变化';
     case 'action':
@@ -259,6 +263,10 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
 
 function eventDetail({ kind }: BattleEvent) {
   switch (kind.event) {
+    case 'aventurine_surf_elation':
+      return kind.detail.heat > 0
+        ? `计入 ${kind.detail.punchline} 笑点，消耗 ${kind.detail.heat} 热意`
+        : `计入 ${kind.detail.punchline} 笑点`;
     case 'aha_instant':
       return `${kind.detail.punchline} 笑点`;
     case 'ascended_aha_instant':
@@ -270,6 +278,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'party_trick':
     case 'wishpower':
     case 'hidden_mmr':
+    case 'aventurine_surf_heat':
     case 'elation_debt':
     case 'blind_bet':
     case 'cloudflame_luster':
