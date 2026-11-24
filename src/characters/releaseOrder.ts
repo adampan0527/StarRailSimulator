@@ -228,3 +228,19 @@ export function compareLightConeRelease(
     second?.rarity,
   );
 }
+
+type InventoryLightConeEntry = {
+  data: LightConeReleaseEntry | undefined;
+  cone: { level: number };
+};
+
+export function compareInventoryLightCones(
+  first: InventoryLightConeEntry,
+  second: InventoryLightConeEntry,
+) {
+  return (
+    (second.data?.rarity ?? 0) - (first.data?.rarity ?? 0) ||
+    second.cone.level - first.cone.level ||
+    compareLightConeRelease(first.data, second.data)
+  );
+}

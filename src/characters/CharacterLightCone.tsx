@@ -9,7 +9,10 @@ import type {
   LightConeEquipment,
   LightConeSummary,
 } from './client';
-import { compareLightConeRelease } from './releaseOrder';
+import {
+  compareInventoryLightCones,
+  compareLightConeRelease,
+} from './releaseOrder';
 
 const tabs = [
   ['custom', '自选光锥'],
@@ -110,7 +113,11 @@ function LightConePicker({
       : owned;
   const visible = choices
     .filter(({ data }) => !path || data.path === path)
-    .sort((first, second) => compareLightConeRelease(first.data, second.data));
+    .sort(
+      source === 'inventory'
+        ? compareInventoryLightCones
+        : (first, second) => compareLightConeRelease(first.data, second.data),
+    );
 
   useEffect(() => {
     dialog.current?.showModal();

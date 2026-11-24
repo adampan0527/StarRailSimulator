@@ -4,7 +4,7 @@ import { LightConeCard } from './LightConeCard';
 import { LightConeCatalogPicker } from './LightConeCatalogPicker';
 import { catalogError, characters } from './client';
 import type { Catalog, InventoryLightCone, LightCone } from './client';
-import { compareLightConeRelease } from './releaseOrder';
+import { compareInventoryLightCones } from './releaseOrder';
 
 export function LightConePage({ catalog }: { catalog: Catalog }) {
   const [items, setItems] = useState<InventoryLightCone[]>();
@@ -16,8 +16,8 @@ export function LightConePage({ catalog }: { catalog: Catalog }) {
     catalog.light_cones.map((cone) => [cone.default.data_id, cone]),
   );
   const sortedItems = items
-    ?.map((item) => ({ item, data: definitions.get(item.cone.data_id) }))
-    .sort((first, second) => compareLightConeRelease(first.data, second.data));
+    ?.map((item) => ({ ...item, data: definitions.get(item.cone.data_id) }))
+    .sort(compareInventoryLightCones);
 
   useEffect(() => {
     let canceled = false;
@@ -85,7 +85,7 @@ export function LightConePage({ catalog }: { catalog: Catalog }) {
       )}
       {sortedItems && sortedItems.length > 0 && (
         <ul className="light-cone-results">
-          {sortedItems.map(({ item, data }) => {
+          {sortedItems.map((item) => {
             const owner = catalog.characters.find(
               ({ id }) => id === item.owner_id,
             )?.name;
@@ -99,7 +99,7 @@ export function LightConePage({ catalog }: { catalog: Catalog }) {
                   title={`编辑光锥 #${item.id}`}
                   onClick={() => edit(item)}
                 >
-                  <LightConeCard data={data} dataId={item.cone.data_id}>
+                  <LightConeCard data={item.data} dataId={item.cone.data_id}>
                     Lv. {item.cone.level} · S{item.cone.superimposition} · #
                     {item.id} · {owner ?? item.owner_id ?? '未装备'}
                   </LightConeCard>

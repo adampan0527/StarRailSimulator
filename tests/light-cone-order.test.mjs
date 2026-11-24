@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { compareLightConeRelease } from '../src/characters/releaseOrder.ts';
+import {
+  compareInventoryLightCones,
+  compareLightConeRelease,
+} from '../src/characters/releaseOrder.ts';
 
 test('orders light cones by version, rarity, debut date, then English name', () => {
   const entries = [
@@ -43,19 +46,25 @@ test('orders light cones by version, rarity, debut date, then English name', () 
   );
 });
 
-test('keeps duplicate inventory instances and imports without a date stable', () => {
+test('orders owned light cones by rarity, saved level, then debut date', () => {
   const items = [
-    { id: 1 },
-    { id: 3, data: { default: { data_id: 'cone.23065' }, rarity: 5 } },
-    { id: 8, data: { default: { data_id: 'cone.22009' }, rarity: 4 } },
-    { id: 4, data: { default: { data_id: 'cone.23065' }, rarity: 5 } },
-    { id: 7, data: { default: { data_id: 'import.other' }, rarity: 5 } },
+    { id: 1, data: undefined, cone: { level: 80 } },
+    owned(2, 'cone.23065', 5, 1),
+    owned(8, 'cone.22009', 4, 80),
+    owned(3, 'cone.23062', 5, 60),
+    owned(4, 'cone.23065', 5, 60),
+    owned(5, 'cone.23055', 5, 80),
+    owned(6, 'cone.23065', 5, 60),
+    owned(7, 'import.other', 5, 60),
+    owned(9, 'cone.23061', 5, 60),
   ];
-  items.sort((first, second) =>
-    compareLightConeRelease(first.data, second.data),
-  );
+  items.sort(compareInventoryLightCones);
   assert.deepEqual(
     items.map(({ id }) => id),
-    [3, 4, 8, 1, 7],
+    [5, 4, 6, 9, 3, 7, 2, 8, 1],
   );
 });
+
+function owned(id, data_id, rarity, level) {
+  return { id, data: { default: { data_id }, rarity }, cone: { level } };
+}
