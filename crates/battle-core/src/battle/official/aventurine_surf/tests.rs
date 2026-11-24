@@ -279,6 +279,7 @@ fn speed_crit_and_defense_traces_use_the_correct_sources_and_limits() {
         kind: DamageKind::Direct,
         break_damage: false,
         follow_up: false,
+        ultimate: false,
         summon: false,
         direct_skill: false,
     };

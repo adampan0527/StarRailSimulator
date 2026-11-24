@@ -322,9 +322,19 @@ impl Battle<'_> {
     ) -> bool {
         match (kind, action, &self.plan.units[actor].kit) {
             (DamageKind::FollowUp, _, _) => true,
-            (DamageKind::Direct | DamageKind::Elation, Some(action), Kit::Official(kit)) => kit
-                .mechanics
-                .primary_attack_counts_as_follow_up(self, actor, action),
+            (DamageKind::Direct | DamageKind::Elation, Some(action), Kit::Official(kit)) => {
+                kit.mechanics
+                    .primary_attack_counts_as_follow_up(self, actor, action)
+                    || (kind == DamageKind::Direct
+                        && action.is_ultimate()
+                        && self.is_party_unit(actor)
+                        && self.allies().any(|owner| {
+                            self.is_targetable(owner)
+                                && self
+                                    .mechanics(owner)
+                                    .is_some_and(|rules| rules.grants_ultimate_follow_up())
+                        }))
+            }
             _ => false,
         }
     }
@@ -1107,6 +1117,13 @@ impl Battle<'_> {
             }));
     }
 
+    pub(super) fn has_pending_special_follow_up(&self, actor: usize) -> bool {
+        self.pending_follow_ups.iter().any(|pending| {
+            matches!(pending, PendingAttack::FollowUp(queued)
+                if queued.actor == actor && matches!(queued.targets, FollowUpTargets::Special))
+        })
+    }
+
     /// Hit the original target and its neighbors while the primary target is still living.
     pub(super) fn follow_up_blast(
         &mut self,
@@ -1622,6 +1639,29 @@ impl Battle<'_> {
         );
     }
 
+    pub(super) fn follow_up_hit_with_max_hp(
+        &mut self,
+        actor: usize,
+        target: usize,
+        origin: Action,
+        element: Element,
+        multiplier_bp: u16,
+        toughness: u16,
+    ) {
+        self.strike(
+            actor,
+            target,
+            DamageKind::FollowUp,
+            Hit {
+                element,
+                multiplier_bp: u32::from(multiplier_bp),
+                toughness,
+                origin: Some(origin),
+                scale: DamageScale::MaxHp,
+            },
+        );
+    }
+
     fn follow_up_hit_with_multiplier(
         &mut self,
         actor: usize,
@@ -1918,6 +1958,15 @@ impl Battle<'_> {
             .saturating_add(sum(DebuffKind::Vulnerability))
             .saturating_add(sum(DebuffKind::SeamStitch))
             .saturating_add(sum(DebuffKind::WoesWhisper));
+        for status in state
+            .debuffs
+            .iter()
+            .filter(|status| allow_source(status.source))
+        {
+            if let DebuffKind::BalefireBind { vulnerability_bp } = status.kind {
+                vulnerability = vulnerability.saturating_add(u32::from(vulnerability_bp));
+            }
+        }
         if event.kind != DamageKind::DamageOverTime
             && let Some(standoff) = state
                 .debuffs
@@ -3216,6 +3265,7 @@ impl Battle<'_> {
             kind,
             break_damage: from_break || kind.is_break(),
             follow_up: self.is_follow_up_damage(actor, origin, kind),
+            ultimate: self.is_ultimate_damage(actor, &event),
             direct_skill: kind == DamageKind::Direct
                 && matches!(origin, Some(Action::Skill | Action::EnhancedSkill)),
             summon: self.memosprite_owner(actor).is_some()

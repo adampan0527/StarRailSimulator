@@ -11,7 +11,8 @@
 
 ## 4.7.0 角色覆盖
 
-- 当前支持目录锁定修订下的 80 级角色配置，包括表中的基础形态，以及卡芙卡、瓦尔特、黑天鹅、银狼、希儿、花火、藿藿、刃、镜流和流萤的强化版。保存只包含受支持配置的配队后点击「计算 DPR」。开战时角色满生命，普通能量以半能量为预设并结算入场效果，飞霄与黄泉分别按自身规则初始化飞黄和残梦。队伍起始有 3 个共用战技点，使用固定打法和三轮窗口。
+- 固定靶场已接入 4.7.0 冻结目录的全部 94 个 80 级角色形态及 104 套配置，其中 10 套为强化版。冻结档案回归逐一保存并执行 104 套配置，检查角色来源和伤害合计。[全目录档案回归](../src-tauri/src/character_archive_tests.rs)
+- 在「组队」中保存配队后点击「计算 DPR」。开战时角色满生命，普通能量以半能量为预设并结算入场效果，飞霄与黄泉分别按自身规则初始化飞黄和残梦。队伍起始有 3 个共用战技点，使用固定打法和三轮窗口。
 
 | 批次 | 角色机制与回归 |
 | --- | --- |
@@ -53,6 +54,7 @@
 | 第三十六批 | [真珠](characters/pearl.md)、[知更鸟·晴歌](characters/robin-sunny.md) |
 | 第三十七批 | [姬子·启行](characters/himeko-departure.md)、[不死途](characters/ashveil.md) |
 | 第三十八批 | [银狼 LV.999](characters/silver-wolf-999.md) |
+| 第三十九批 | [绯英](characters/evanescia.md)、[砂金·戏浪](characters/aventurine-surf.md)、[千冶·刃](characters/blade-recast.md) |
 
 - 正式角色的有效技能等级从档案解析，技能倍率来自冻结的 4.7.0 快照。面板计算纳入配装静态属性，生命、攻击与防御四舍五入为整数，速度保留百万分位，倍率以万分比计算。光锥和遗器战斗触发效果、秘技及客户端逐事件对照待补。
 - 固定靶机保持满生命，正常排程、承受击破、冻结和触电。80 级击破基值使用 3767.5533。雷击破触电在目标回合开始结算，冰击破冻结跳过一次行动并将下一次行动提前 50%。这些结算属于当前靶场规则。合成回放仍使用原合成版本。[游戏内冰击破教程](https://hsr.gachabase.net/tutorials/battle/2202/weakness-break-ice/beta?lang=en)
@@ -98,6 +100,7 @@
 - 真珠按好活当赏消耗抵挡值，并在四欢愉配队为底本安排独立额外回合，升格时按对应比例回收临时资源。知更鸟·晴歌按气氛值召集乐手，【Fever】期间独立推进忆灵与倒计时，保留各自的伤害来源及助攻。冻结档案复验低等级和满星魂配队、末段真实伤害与逐击归因。[真珠档案](../src-tauri/src/character_archive_tests/pearl.rs) · [晴歌档案](../src-tauri/src/character_archive_tests/robin_sunny.rs)
 - 姬子·启行的拓星者助战可以由队友发起，战技伤害仍归姬子。终结技按源能结算光束、脉冲和终结打击。不死途的强化追击在同一次攻击内逐段消耗婪酣，饲饵退场后重选目标。冻结档案复验两人的低等级和满星魂配队、触发时序与逐击归因。[启行档案](../src-tauri/src/character_archive_tests/himeko_departure.rs) · [不死途档案](../src-tauri/src/character_archive_tests/ashveil.rs)
 - 银狼 LV.999 以隐藏分开启无敌玩家状态，强化普攻的连击可延续到下一波。星魂六的禁限弱点独立计入抗性变化与助攻。冻结档案复验低技能和满星魂四欢愉配队、盲盒、升格及逐击归因。[档案回归](../src-tauri/src/character_archive_tests/silver_wolf_999.rs)
+- 绯英的能量和好活当赏双向转换，狐狸老师可由无伤害的终结技触发，冻结同队档案同时验证银狼 LV.999 的强化普攻。砂金·戏浪分别处理阈值触发和阿哈时刻的资源支出，复验升格与换波。千冶·刃独立推进无量忿怒结界，按攻击次数结算追加战技、追击与助攻。[绯英档案](../src-tauri/src/character_archive_tests/evanescia.rs) · [戏浪档案](../src-tauri/src/character_archive_tests/aventurine_surf.rs) · [千冶档案](../src-tauri/src/character_archive_tests/blade_recast.rs)
 
 ## 后续归因扩展
 

@@ -90,6 +90,7 @@ fn buff_context(actor: usize, target: usize) -> OffenseContext {
         kind: DamageKind::Elation,
         break_damage: false,
         follow_up: false,
+        ultimate: false,
         summon: false,
         direct_skill: false,
     }

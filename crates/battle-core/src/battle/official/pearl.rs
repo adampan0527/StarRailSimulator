@@ -215,6 +215,7 @@ impl Pearl {
                     kind: DamageKind::Elation,
                     break_damage: false,
                     follow_up: false,
+                    ultimate: false,
                     direct_skill: false,
                     summon: false,
                 },

@@ -12,6 +12,7 @@ mod aventurine_surf;
 mod bailu;
 mod black_swan;
 mod blade;
+mod blade_recast;
 mod boothill;
 mod bronya;
 mod castorice;
@@ -105,6 +106,7 @@ pub(super) use {
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
     blade::BladeState,
+    blade_recast::BladeRecastState,
     boothill::BoothillState,
     castorice::CastoriceState,
     cerydra::CerydraState,
@@ -1797,6 +1799,18 @@ pub(super) trait Mechanics: Send + Sync {
         false
     }
 
+    fn grants_ultimate_follow_up(&self) -> bool {
+        false
+    }
+
+    fn ally_ultimate_damage_bonus_bp(&self, _battle: &Battle<'_>, _owner: usize) -> u32 {
+        0
+    }
+
+    fn ally_follow_up_damage_bonus_bp(&self) -> u32 {
+        0
+    }
+
     fn primary_attack_counts_as_ultimate(&self, action: Action) -> bool {
         action.is_ultimate()
     }
@@ -1963,6 +1977,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         "character.1202" => Some(tingyun::build),
         jing_yuan::FORM => Some(jing_yuan::build),
         blade::FORM => Some(blade::build),
+        blade_recast::FORM => Some(blade_recast::build),
         luocha::FORM => Some(luocha::build),
         "character.1206" => Some(sushang::build),
         "character.1207" => Some(yukong::build),

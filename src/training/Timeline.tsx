@@ -67,6 +67,8 @@ const statusNames = {
   bait: '饲饵',
   godmode_player: '无敌玩家',
   restricted_weakness: '禁限弱点',
+  infinite_fury: '无量忿怒',
+  balefire_bind: '煞火缠身',
   withered_leaf: '枯叶',
   sublimation: '升华',
   vendetta: '血仇',
@@ -202,6 +204,8 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
       return 'Archer 充能';
     case 'ashveil_charge':
       return '不死途充能';
+    case 'blade_recast_charge':
+      return '千冶·刃充能';
     case 'gluttony':
       return '婪酣';
     case 'robin_vibes':
@@ -308,6 +312,7 @@ function eventDetail({ kind }: BattleEvent) {
     case 'recollection':
     case 'archer_charge':
     case 'ashveil_charge':
+    case 'blade_recast_charge':
     case 'gluttony':
     case 'rin_gem_energy':
     case 'robin_vibes':

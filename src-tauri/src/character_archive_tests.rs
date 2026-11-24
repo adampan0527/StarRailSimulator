@@ -18,6 +18,8 @@ mod ashveil;
 #[cfg(bundled_catalog)]
 mod aventurine_surf;
 #[cfg(bundled_catalog)]
+mod blade_recast;
+#[cfg(bundled_catalog)]
 mod dahlia;
 #[cfg(bundled_catalog)]
 mod evanescia;
@@ -125,7 +127,7 @@ fn official_saved_team_runs_fixed_dpr_with_resolved_loadouts() {
 
 #[cfg(bundled_catalog)]
 #[test]
-fn every_registered_official_variant_runs_from_a_saved_loadout() {
+fn every_frozen_official_variant_runs_from_a_saved_loadout() {
     use star_rail_battle_core::supports_official_dpr_variant;
 
     let dir = TestData::new();
@@ -137,11 +139,14 @@ fn every_registered_official_variant_runs_from_a_saved_loadout() {
     let mut archive = CharacterArchive::open(dir.path(), catalog.clone()).unwrap();
     let mut profiles = Archive::open(dir.path().join("profiles.sqlite"), catalog.clone()).unwrap();
 
+    assert_eq!(catalog.characters.len(), 94);
+    let mut replayed = 0;
     for (form_id, character) in &catalog.characters {
         for variant in character.variants.keys() {
-            if !supports_official_dpr_variant(form_id, variant) {
-                continue;
-            }
+            assert!(
+                supports_official_dpr_variant(form_id, variant),
+                "{form_id}/{variant}: battle kit is missing"
+            );
             profiles.ensure_profile(form_id).unwrap();
             let loadout = catalog.default_loadout_at(form_id, variant, 80, 6).unwrap();
             profiles
@@ -166,8 +171,10 @@ fn every_registered_official_variant_runs_from_a_saved_loadout() {
                 result.total_damage,
                 "{form_id}/{variant}"
             );
+            replayed += 1;
         }
     }
+    assert_eq!(replayed, 104);
 }
 
 #[cfg(bundled_catalog)]
