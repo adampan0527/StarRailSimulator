@@ -4,7 +4,6 @@ import { accountError, gameAccounts } from './accounts';
 import type { AccountSelection } from './accounts';
 import {
   importAccount,
-  openArchiver,
   readRelicExportFile,
   receiveAccount,
   saveRelicExport,
@@ -12,7 +11,15 @@ import {
 import type { ExportOrigin, ImportedAccount, RelicExport } from './client';
 
 type ExportState =
-  | { kind: 'idle' | 'connecting' | 'waiting' | 'saving' }
+  | {
+      kind:
+        | 'idle'
+        | 'connecting'
+        | 'opening'
+        | 'starting'
+        | 'waiting'
+        | 'saving';
+    }
   | { kind: 'error'; message: string }
   | {
       kind: 'ready';
@@ -21,10 +28,13 @@ type ExportState =
       origin: ExportOrigin;
     };
 
+const loginHint = '请登陆游戏，若已经登陆，请退回到登陆界面重新登录';
+
 const progress = {
-  idle: '等待连接导出器。',
   connecting: '正在连接本机导出器…',
-  waiting: '正在等待账号数据。请在游戏标题画面点击「开始游戏」。',
+  opening: loginHint,
+  starting: loginHint,
+  waiting: loginHint,
   saving: '正在保存本地快照…',
 };
 
@@ -43,11 +53,6 @@ export function RelicExportPage({
 }) {
   const [state, setState] = useState<ExportState>({ kind: 'idle' });
   const [copyStatus, setCopyStatus] = useState('');
-  const [launching, setLaunching] = useState(false);
-  const [launchFeedback, setLaunchFeedback] = useState<{
-    message: string;
-    error: boolean;
-  }>();
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [imported, setImported] = useState<ImportedAccount>();
@@ -56,9 +61,16 @@ export function RelicExportPage({
   const activeRequest = useRef<AbortController>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const linkInput = useRef<HTMLInputElement>(null);
-  const receiving = state.kind === 'connecting' || state.kind === 'waiting';
+  const receiving =
+    state.kind === 'connecting' ||
+    state.kind === 'starting' ||
+    state.kind === 'waiting';
   const busy =
-    receiving || state.kind === 'saving' || importing || launching || managing;
+    receiving ||
+    state.kind === 'opening' ||
+    state.kind === 'saving' ||
+    importing ||
+    managing;
 
   useEffect(() => () => activeRequest.current?.abort(), []);
 
@@ -74,33 +86,11 @@ export function RelicExportPage({
     }
   }
 
-  async function launch(reselect: boolean) {
-    setLaunching(true);
-    setLaunchFeedback(undefined);
-    try {
-      const result = await openArchiver(reselect);
-      if (result !== 'canceled') {
-        setLaunchFeedback({
-          message: 'Archiver 已打开。请开启实时导出，然后返回开始接收。',
-          error: false,
-        });
-      }
-    } catch (error) {
-      setLaunchFeedback({
-        message: error instanceof Error ? error.message : '无法打开 Archiver。',
-        error: true,
-      });
-    } finally {
-      setLaunching(false);
-    }
-  }
-
-  async function receive(file?: File) {
+  async function receive(file?: File, reselect = false) {
     if (activeRequest.current) return;
     const request = new AbortController();
     activeRequest.current = request;
     setCopyStatus('');
-    setLaunchFeedback(undefined);
     setImported(undefined);
     setImportError('');
     setState({ kind: file ? 'saving' : 'connecting' });
@@ -108,10 +98,16 @@ export function RelicExportPage({
       const origin = file ? 'file' : 'live';
       const snapshot = file
         ? await readRelicExportFile(file)
-        : await receiveAccount(request.signal, () =>
-            setState({ kind: 'waiting' }),
+        : await receiveAccount(
+            request.signal,
+            (kind) => setState({ kind }),
+            reselect,
           );
       request.signal.throwIfAborted();
+      if (snapshot === null) {
+        setState({ kind: 'idle' });
+        return;
+      }
       setState({ kind: 'saving' });
       const result = await saveRelicExport(snapshot, origin);
       if (!request.signal.aborted)
@@ -185,71 +181,23 @@ export function RelicExportPage({
       />
       <section className="panel" aria-labelledby="relic-export-title">
         <h2 id="relic-export-title">账号导入</h2>
-        <p className="muted">
-          在 Reliquary Archiver 开启 23313
-          端口的实时导出后接收账号快照，也可直接选择已导出的 JSON。
-        </p>
         <div className="form-actions">
           <button type="button" disabled={busy} onClick={() => void receive()}>
-            {state.kind === 'ready' ? '重新接收' : '开始接收'}
+            获取账号信息
           </button>
-          <button
-            type="button"
-            className="secondary"
-            disabled={busy}
-            onClick={() => fileInput.current?.click()}
-          >
-            选择导出 JSON
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            disabled={busy}
-            onClick={() => void launch(false)}
-          >
-            打开 Archiver
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            disabled={busy}
-            onClick={() => void launch(true)}
-          >
-            更换并打开
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".json,application/json"
-            hidden
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = '';
-              if (file) void receive(file);
-            }}
-          />
           {receiving && (
             <button type="button" className="secondary" onClick={cancel}>
               取消
             </button>
           )}
         </div>
-        {launching && <p role="status">正在打开 Archiver…</p>}
-        {launchFeedback && (
-          <p
-            className={launchFeedback.error ? 'outcome-defeat' : undefined}
-            role={launchFeedback.error ? 'alert' : 'status'}
-          >
-            {launchFeedback.message}
-          </p>
-        )}
         {state.kind === 'error' ? (
           <p className="outcome-defeat" role="alert">
             {state.message}
           </p>
-        ) : (
-          state.kind !== 'ready' && <p role="status">{progress[state.kind]}</p>
-        )}
+        ) : state.kind !== 'ready' && state.kind !== 'idle' ? (
+          <p role="status">{progress[state.kind]}</p>
+        ) : null}
         {state.kind === 'ready' && (
           <>
             <SnapshotSummary result={state.result} />
@@ -297,6 +245,38 @@ export function RelicExportPage({
             </div>
           </>
         )}
+        <details className="account-import-options">
+          <summary>导入选项</summary>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="secondary"
+              disabled={busy}
+              onClick={() => fileInput.current?.click()}
+            >
+              选择导出 JSON
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              disabled={busy}
+              onClick={() => void receive(undefined, true)}
+            >
+              更换 Archiver 程序
+            </button>
+          </div>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file) void receive(file);
+            }}
+          />
+        </details>
       </section>
     </div>
   );

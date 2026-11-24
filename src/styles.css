@@ -185,6 +185,16 @@ h3 {
   min-width: 0;
 }
 
+.account-import-options summary {
+  width: fit-content;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.account-import-options .form-actions {
+  margin-top: 0.45rem;
+}
+
 .account-workspace,
 .account-fields,
 .account-fields label {

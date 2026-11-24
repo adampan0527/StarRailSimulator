@@ -3,7 +3,11 @@ import { accountError, invokeForAccount } from './accounts';
 import type { AccountSelection } from './accounts';
 
 const endpoint = 'ws://127.0.0.1:23313/ws';
-const timeoutMs = 120_000;
+const connectTimeoutMs = 1_000;
+const startupTimeoutMs = 60_000;
+const snapshotTimeoutMs = 120_000;
+const retryIntervalMs = 500;
+const waitingHintDelayMs = 500;
 const maxMessageBytes = 8 * 1024 * 1024;
 
 export type RelicExport = {
@@ -42,7 +46,7 @@ export type ImportedAccount = {
 
 export type ExportOrigin = 'live' | 'file';
 
-export async function openArchiver(reselect: boolean) {
+async function openArchiver(reselect: boolean) {
   try {
     return await invoke<'opened' | 'already_open' | 'canceled'>(
       'archiver_open',
@@ -60,21 +64,58 @@ export async function openArchiver(reselect: boolean) {
     if (cause === 'dialog_failed') {
       throw new Error('选取程序失败，请重试。', { cause });
     }
-    throw new Error('无法打开 Archiver。可手动启动后再开始接收。', { cause });
+    throw new Error('无法打开 Archiver。请检查程序路径，或手动启动后重试。', {
+      cause,
+    });
   }
 }
 
-export function receiveAccount(
+type ReceiveProgress = 'opening' | 'starting' | 'waiting';
+
+export async function receiveAccount(
   signal: AbortSignal,
-  onConnected: () => void,
-): Promise<string> {
+  onProgress: (progress: ReceiveProgress) => void,
+  reselect = false,
+): Promise<string | null> {
+  const onWaiting = () => onProgress('waiting');
+  if (!reselect) {
+    const snapshot = await readLiveSnapshot(signal, onWaiting);
+    if (snapshot !== null) return snapshot;
+  }
+
+  signal.throwIfAborted();
+  onProgress('opening');
+  const launch = await openArchiver(reselect);
+  signal.throwIfAborted();
+  if (launch === 'canceled') return null;
+
+  onProgress('starting');
+  const deadline = performance.now() + startupTimeoutMs;
+  do {
+    const snapshot = await readLiveSnapshot(signal, onWaiting);
+    if (snapshot !== null) return snapshot;
+    await new Promise<void>((resolve) =>
+      window.setTimeout(resolve, retryIntervalMs),
+    );
+    signal.throwIfAborted();
+  } while (performance.now() < deadline);
+
+  throw new Error('无法连接 Archiver。请确认实时导出端口为 23313，再重试。');
+}
+
+function readLiveSnapshot(
+  signal: AbortSignal,
+  onWaiting: () => void,
+): Promise<string | null> {
   return new Promise((resolve, reject) => {
     signal.throwIfAborted();
     const socket = new WebSocket(endpoint);
     let connected = false;
+    let waitingHint: number | undefined;
 
     function finish() {
       window.clearTimeout(timeout);
+      window.clearTimeout(waitingHint);
       signal.removeEventListener('abort', cancel);
       socket.onopen = null;
       socket.onmessage = null;
@@ -92,25 +133,28 @@ export function receiveAccount(
       reject(signal.reason);
     }
 
-    const timeout = window.setTimeout(() => {
-      fail(
-        connected
-          ? '已连接导出器，但两分钟内没有收到库存。请确认导出器已识别当前账号，或选择导出的 JSON 文件。'
-          : '连接导出器超时。请检查实时导出是否已在 23313 端口开启。',
-      );
-    }, timeoutMs);
+    function unavailable() {
+      finish();
+      resolve(null);
+    }
 
+    let timeout = window.setTimeout(unavailable, connectTimeoutMs);
     signal.addEventListener('abort', cancel, { once: true });
     socket.onopen = () => {
       connected = true;
-      onConnected();
+      window.clearTimeout(timeout);
+      waitingHint = window.setTimeout(onWaiting, waitingHintDelayMs);
+      timeout = window.setTimeout(
+        () => fail('两分钟内未收到账号信息。请重新登录游戏后重试。'),
+        snapshotTimeoutMs,
+      );
     };
     socket.onclose = () => {
-      fail(
-        connected
-          ? '导出器已断开。请重新开启实时导出后再试，或选择导出的 JSON 文件。'
-          : '未能连接到导出器。请先打开 Reliquary Archiver，在其中开启实时导出并确认端口为 23313。',
-      );
+      if (connected) {
+        fail('Archiver 已断开，请重新获取账号信息。');
+      } else {
+        unavailable();
+      }
     };
     socket.onmessage = (message: MessageEvent<unknown>) => {
       const body = message.data;
