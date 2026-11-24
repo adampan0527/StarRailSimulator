@@ -8,6 +8,7 @@ mod arlan;
 mod ashveil;
 mod asta;
 mod aventurine;
+mod aventurine_surf;
 mod bailu;
 mod black_swan;
 mod blade;
@@ -100,6 +101,7 @@ pub(super) use {
     archer::ArcherState,
     ashveil::AshveilState,
     aventurine::AventurineState,
+    aventurine_surf::AventurineSurfState,
     bailu::{BailuState, Invigoration},
     black_swan::BlackSwanTarget,
     blade::BladeState,
@@ -412,6 +414,10 @@ pub(super) trait Mechanics: Send + Sync {
         None
     }
 
+    fn aha_flat_speed_micros(&self, _battle: &Battle<'_>, _actor: usize) -> u64 {
+        0
+    }
+
     fn elation_ascension(
         &self,
         _battle: &Battle<'_>,
@@ -475,6 +481,16 @@ pub(super) trait Mechanics: Send + Sync {
         _actor: usize,
         _instant: super::elation::AhaInstant,
     ) {
+    }
+
+    fn on_elation_skill_from(
+        &self,
+        battle: &mut Battle<'_>,
+        actor: usize,
+        instant: super::elation::AhaInstant,
+        _source: super::elation::ElationSkillSource,
+    ) {
+        self.on_elation_skill(battle, actor, instant);
     }
 
     fn on_aha_instant_finished(&self, _battle: &mut Battle<'_>, _actor: usize) {}
@@ -1797,7 +1813,12 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
-    fn primary_attack_counts_as_follow_up(&self, action: Action) -> bool {
+    fn primary_attack_counts_as_follow_up(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        action: Action,
+    ) -> bool {
         action.is_ultimate() && self.ultimate_counts_as_follow_up()
     }
 
@@ -1970,6 +1991,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         evanescia::FORM => Some(evanescia::build),
         ruan_mei::FORM => Some(ruan_mei::build),
         aventurine::FORM => Some(aventurine::build),
+        aventurine_surf::FORM => Some(aventurine_surf::build),
         "character.1305" => Some(dr_ratio::build),
         sparkle::FORM => Some(sparkle::build),
         black_swan::FORM => Some(black_swan::build),

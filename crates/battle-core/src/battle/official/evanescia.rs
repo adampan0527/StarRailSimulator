@@ -455,7 +455,7 @@ impl Mechanics for Evanescia {
     fn after_follow_up(&self, battle: &mut Battle<'_>, actor: usize, _: Action) {
         self.queue_fox(battle, actor);
         if self.eidolon >= 1 {
-            battle.queue_triggered_elation_skill(actor);
+            battle.queue_elation_skill_from_banger(actor);
         }
     }
 

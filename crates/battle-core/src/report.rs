@@ -256,6 +256,15 @@ pub enum EventKind {
         before: u8,
         after: u8,
     },
+    AventurineSurfHeat {
+        before: u8,
+        after: u8,
+    },
+    AventurineSurfElation {
+        enhanced: bool,
+        heat: u8,
+        punchline: u32,
+    },
     JadeTiles {
         suits: [u8; 3],
         hidden_hand: bool,

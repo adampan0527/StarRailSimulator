@@ -149,6 +149,10 @@ type EventKind =
   | { event: 'action'; detail: Action }
   | { event: 'aha_instant'; detail: { punchline: number; extra: boolean } }
   | { event: 'ascended_aha_instant'; detail: { bliss: number; extra: boolean } }
+  | {
+      event: 'aventurine_surf_elation';
+      detail: { enhanced: boolean; heat: number; punchline: number };
+    }
   | { event: 'complete_combustion'; detail: { active: boolean } }
   | { event: 'battle_ended'; detail: Outcome }
   | {
@@ -160,6 +164,7 @@ type EventKind =
         | 'party_trick'
         | 'wishpower'
         | 'hidden_mmr'
+        | 'aventurine_surf_heat'
         | 'elation_debt'
         | 'toughness'
         | 'cloudflame_luster'

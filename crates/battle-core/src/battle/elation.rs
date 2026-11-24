@@ -18,6 +18,13 @@ pub(super) struct AhaInstant {
     pub skill_damage_factor_bp: u16,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ElationSkillSource {
+    AhaInstant,
+    Directed,
+    Triggered,
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct ElationAscension {
     pub innate_level: u8,
@@ -121,8 +128,13 @@ impl Battle<'_> {
         let base = self
             .elation_allies()
             .find_map(|actor| self.mechanics(actor)?.aha_base_speed_micros(self, actor));
+        let flat = self
+            .elation_allies()
+            .filter_map(|actor| Some(self.mechanics(actor)?.aha_flat_speed_micros(self, actor)))
+            .sum::<u64>();
         Some(
             base.unwrap_or(AHA_BASE_SPEED_MICROS)
+                + flat
                 + speeds
                     .into_iter()
                     .zip(AHA_SPEED_WEIGHTS)
@@ -492,6 +504,15 @@ impl Battle<'_> {
     }
 
     pub(super) fn resolve_elation_skill(&mut self, actor: usize, instant: AhaInstant) {
+        self.resolve_elation_skill_from(actor, instant, ElationSkillSource::Directed);
+    }
+
+    pub(super) fn resolve_elation_skill_from(
+        &mut self,
+        actor: usize,
+        instant: AhaInstant,
+        source: ElationSkillSource,
+    ) {
         let Some(rules) = self
             .mechanics(actor)
             .filter(|rules| rules.elation_participant().is_some())
@@ -499,13 +520,21 @@ impl Battle<'_> {
             return;
         };
         let previous_action = self.action.replace(Action::ElationSkill);
+        let previous_follow_up = self.resolving_follow_up;
+        if rules.primary_attack_counts_as_follow_up(self, actor, Action::ElationSkill) {
+            self.resolving_follow_up = true;
+            self.emit(EventKind::FollowUp, Some(actor), None);
+        }
         let parent_debuff_targets = self.begin_debuff_action();
         self.begin_attack();
         self.emit(EventKind::Action(Action::ElationSkill), Some(actor), None);
-        rules.on_elation_skill(self, actor, instant);
+        rules.on_elation_skill_from(self, actor, instant, source);
         self.notify_attack(actor, Action::ElationSkill, None);
         self.finish_debuff_action(actor, parent_debuff_targets);
-        self.resolve_follow_ups();
+        self.resolving_follow_up = previous_follow_up;
+        if source != ElationSkillSource::Triggered {
+            self.resolve_follow_ups();
+        }
         self.notify_ally_action_finished(actor, Action::ElationSkill);
         self.notify_unit_action_finished(actor);
         self.action = previous_action;
@@ -580,12 +609,13 @@ impl Battle<'_> {
                 continue;
             }
             let punchline = actor.map_or_else(|| self.current_punchline(), |_| punchline);
-            self.resolve_elation_skill(
+            self.resolve_elation_skill_from(
                 owner,
                 AhaInstant {
                     punchline,
                     skill_damage_factor_bp,
                 },
+                ElationSkillSource::AhaInstant,
             );
             participants.push(owner);
         }

@@ -16,6 +16,8 @@ mod archer;
 #[cfg(bundled_catalog)]
 mod ashveil;
 #[cfg(bundled_catalog)]
+mod aventurine_surf;
+#[cfg(bundled_catalog)]
 mod dahlia;
 #[cfg(bundled_catalog)]
 mod evanescia;

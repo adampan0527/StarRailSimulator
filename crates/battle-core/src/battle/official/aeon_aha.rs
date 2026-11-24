@@ -468,7 +468,7 @@ impl Mechanics for AeonAha {
         grant_wishpower(battle, actor, 1);
     }
 
-    fn primary_attack_counts_as_follow_up(&self, action: Action) -> bool {
+    fn primary_attack_counts_as_follow_up(&self, _: &Battle<'_>, _: usize, action: Action) -> bool {
         action == Action::Skill
     }
 

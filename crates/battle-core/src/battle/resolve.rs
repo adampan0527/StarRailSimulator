@@ -247,12 +247,16 @@ pub(super) struct FollowUp {
 #[derive(Clone)]
 pub(super) enum PendingAttack {
     FollowUp(FollowUp),
-    TriggeredElationSkill {
+    ElationSkillFromBanger {
         actor: usize,
     },
     TriggeredSkill {
         actor: usize,
         target: usize,
+    },
+    TriggeredElationSkill {
+        actor: usize,
+        punchline: u32,
     },
     JointFollowUp {
         participants: [(usize, JointFollowUpAttack); 2],
@@ -292,9 +296,9 @@ pub(super) struct DamageTargetAura {
 }
 
 impl Battle<'_> {
-    pub(super) fn queue_triggered_elation_skill(&mut self, actor: usize) {
+    pub(super) fn queue_elation_skill_from_banger(&mut self, actor: usize) {
         self.pending_follow_ups
-            .push_front(PendingAttack::TriggeredElationSkill { actor });
+            .push_front(PendingAttack::ElationSkillFromBanger { actor });
     }
 
     fn is_ultimate_damage(&self, actor: usize, event: &DamageEvent) -> bool {
@@ -318,9 +322,9 @@ impl Battle<'_> {
     ) -> bool {
         match (kind, action, &self.plan.units[actor].kit) {
             (DamageKind::FollowUp, _, _) => true,
-            (DamageKind::Direct | DamageKind::Elation, Some(action), Kit::Official(kit)) => {
-                kit.mechanics.primary_attack_counts_as_follow_up(action)
-            }
+            (DamageKind::Direct | DamageKind::Elation, Some(action), Kit::Official(kit)) => kit
+                .mechanics
+                .primary_attack_counts_as_follow_up(self, actor, action),
             _ => false,
         }
     }
@@ -1313,7 +1317,7 @@ impl Battle<'_> {
         while let Some(attack) = self.pending_follow_ups.pop_front() {
             let follow_up = match attack {
                 PendingAttack::FollowUp(follow_up) => follow_up,
-                PendingAttack::TriggeredElationSkill { actor } => {
+                PendingAttack::ElationSkillFromBanger { actor } => {
                     if self.is_targetable(actor)
                         && self.enemies().any(|target| self.is_targetable(target))
                     {
@@ -1332,6 +1336,30 @@ impl Battle<'_> {
                         && let Some(rules) = self.mechanics(actor)
                     {
                         rules.on_triggered_skill(self, actor, target);
+                    }
+                    continue;
+                }
+                PendingAttack::TriggeredElationSkill { actor, punchline } => {
+                    use super::elation::{AhaInstant, ElationSkillSource};
+
+                    if self.wave_index + 1 < self.plan.wave_ends.len()
+                        && self.enemies().all(|target| self.units[target].hp == 0)
+                    {
+                        self.pending_follow_ups
+                            .push_front(PendingAttack::TriggeredElationSkill { actor, punchline });
+                        break;
+                    }
+                    if self.is_targetable(actor)
+                        && self.enemies().any(|target| self.is_targetable(target))
+                    {
+                        self.resolve_elation_skill_from(
+                            actor,
+                            AhaInstant {
+                                punchline,
+                                skill_damage_factor_bp: 10_000,
+                            },
+                            ElationSkillSource::Triggered,
+                        );
                     }
                     continue;
                 }
