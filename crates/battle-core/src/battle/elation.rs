@@ -246,6 +246,10 @@ impl Battle<'_> {
     }
 
     pub(super) fn grant_certified_banger(&mut self, actor: usize, punchline: u32) {
+        self.add_certified_banger(actor, punchline, true);
+    }
+
+    fn add_certified_banger(&mut self, actor: usize, punchline: u32, new_gain: bool) {
         let rules = self.mechanics(actor);
         let cap = rules
             .as_ref()
@@ -275,6 +279,29 @@ impl Battle<'_> {
             Some(actor),
             None,
         );
+        if new_gain {
+            self.notify_certified_banger_gained(actor, punchline);
+        }
+    }
+
+    fn notify_certified_banger_gained(&mut self, actor: usize, points: u32) {
+        if points > 0
+            && let Some(rules) = self.mechanics(actor)
+        {
+            rules.on_certified_banger_gained(self, actor, points);
+        }
+    }
+
+    pub(super) fn extend_certified_banger_by_one_turn(&mut self, actor: usize) {
+        if let Some(aha) = &mut self.aha {
+            for banger in aha
+                .bangers
+                .iter_mut()
+                .filter(|banger| banger.actor == actor)
+            {
+                banger.last_turn = banger.last_turn.saturating_add(1);
+            }
+        }
     }
 
     pub(super) fn spend_certified_banger(&mut self, actor: usize, mut points: u32) {
@@ -332,6 +359,7 @@ impl Battle<'_> {
             Some(actor),
             None,
         );
+        self.notify_certified_banger_gained(actor, banger);
         self.notify_punchline_changed(Some(actor), before);
     }
 
@@ -356,7 +384,7 @@ impl Battle<'_> {
         );
         let retained_banger = percentage_of(extra.banger, banger_bp);
         if retained_banger != 0 {
-            self.grant_certified_banger(extra.actor, retained_banger);
+            self.add_certified_banger(extra.actor, retained_banger, false);
         }
         self.notify_punchline_changed(Some(extra.actor), before);
     }
@@ -413,6 +441,9 @@ impl Battle<'_> {
                 && let Some(rules) = self.mechanics(owner)
             {
                 rules.on_punchline_changed(self, owner);
+                if after > before {
+                    rules.on_punchline_gained(self, owner, after - before);
+                }
             }
         }
     }

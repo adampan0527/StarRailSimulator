@@ -70,6 +70,7 @@ mod sampo;
 mod seele;
 mod serval;
 mod silver_wolf;
+mod silver_wolf_999;
 mod sparkle;
 mod sparxie;
 mod sunday;
@@ -139,6 +140,7 @@ pub(super) use {
     ruan_mei::RuanMeiState,
     saber::SaberState,
     seele::SeeleState,
+    silver_wolf_999::SilverWolf999State,
     sparkle::SparkleState,
     sparxie::SparxieState,
     sunday::SundayState,
@@ -417,6 +419,10 @@ pub(super) trait Mechanics: Send + Sync {
     }
 
     fn on_punchline_changed(&self, _battle: &mut Battle<'_>, _actor: usize) {}
+
+    fn on_punchline_gained(&self, _battle: &mut Battle<'_>, _actor: usize, _points: u32) {}
+
+    fn on_certified_banger_gained(&self, _battle: &mut Battle<'_>, _actor: usize, _points: u32) {}
 
     fn on_aha_instant_ending(
         &self,
@@ -1445,6 +1451,16 @@ pub(super) trait Mechanics: Send + Sync {
         0
     }
 
+    /// Extra critical damage from a portion of the already resolved critical rate.
+    fn crit_rate_overflow_damage_bp(
+        &self,
+        _battle: &Battle<'_>,
+        _actor: usize,
+        _total_crit_rate_bp: u32,
+    ) -> u32 {
+        0
+    }
+
     fn resistance_penetration_bp(
         &self,
         _battle: &Battle<'_>,
@@ -1561,6 +1577,15 @@ pub(super) trait Mechanics: Send + Sync {
         _battle: &mut Battle<'_>,
         _owner: usize,
         _actor: usize,
+        _points: u8,
+    ) {
+    }
+
+    /// Actual team skill points paid, excluding character-specific substitutes.
+    fn on_ally_shared_skill_points_spent(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
         _points: u8,
     ) {
     }
@@ -1862,6 +1887,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
     match form_id {
         aeon_aha::FORM => Some(aeon_aha::build),
         pearl::FORM => Some(pearl::build),
+        silver_wolf_999::FORM => Some(silver_wolf_999::build),
         archer::FORM => Some(archer::build),
         rin::FORM => Some(rin::build),
         aglaea::FORM => Some(aglaea::build),
