@@ -247,6 +247,9 @@ pub(super) struct FollowUp {
 #[derive(Clone)]
 pub(super) enum PendingAttack {
     FollowUp(FollowUp),
+    TriggeredElationSkill {
+        actor: usize,
+    },
     TriggeredSkill {
         actor: usize,
         target: usize,
@@ -289,6 +292,11 @@ pub(super) struct DamageTargetAura {
 }
 
 impl Battle<'_> {
+    pub(super) fn queue_triggered_elation_skill(&mut self, actor: usize) {
+        self.pending_follow_ups
+            .push_front(PendingAttack::TriggeredElationSkill { actor });
+    }
+
     fn is_ultimate_damage(&self, actor: usize, event: &DamageEvent) -> bool {
         match (event.kind, &self.plan.units[actor].kit) {
             (DamageKind::Direct, Kit::Official(kit)) => event
@@ -1305,6 +1313,20 @@ impl Battle<'_> {
         while let Some(attack) = self.pending_follow_ups.pop_front() {
             let follow_up = match attack {
                 PendingAttack::FollowUp(follow_up) => follow_up,
+                PendingAttack::TriggeredElationSkill { actor } => {
+                    if self.is_targetable(actor)
+                        && self.enemies().any(|target| self.is_targetable(target))
+                    {
+                        self.resolve_elation_skill(
+                            actor,
+                            super::elation::AhaInstant {
+                                punchline: self.certified_banger(actor).unwrap_or(0),
+                                skill_damage_factor_bp: 10_000,
+                            },
+                        );
+                    }
+                    continue;
+                }
                 PendingAttack::TriggeredSkill { actor, target } => {
                     if self.is_targetable(actor)
                         && let Some(rules) = self.mechanics(actor)
@@ -2439,7 +2461,7 @@ impl Battle<'_> {
             DamageScale::Elation { .. } | DamageScale::AttackWithElation(_)
         );
         let intrinsic_elation = if uses_elation {
-            self.intrinsic_elation_bp(actor)
+            self.base_elation_bp(actor)
         } else {
             0
         };
@@ -2500,9 +2522,11 @@ impl Battle<'_> {
                     .crit_damage_bp
                     .saturating_add(view.bonus.crit_damage_bp);
                 let elation_bp = if uses_elation {
-                    let converted = mechanics
-                        .as_ref()
-                        .map_or(0, |rules| rules.elation_from_attack_bp(view.attack));
+                    let converted = mechanics.as_ref().map_or(0, |rules| {
+                        rules.elation_from_attack_bp(view.attack).saturating_add(
+                            rules.elation_from_crit_damage_bp(adjusted.crit_damage_bp),
+                        )
+                    });
                     intrinsic_elation
                         .saturating_add(converted)
                         .max(fallback_elation)
@@ -3866,6 +3890,11 @@ impl Battle<'_> {
             );
             let cap = self.plan.units[target].kit.max_energy_milli();
             if target < self.plan.ally_count && after_milli > before_milli {
+                if self.is_targetable(target)
+                    && let Some(mechanics) = self.mechanics(target)
+                {
+                    mechanics.on_energy_gained(self, target, after_milli - before_milli);
+                }
                 for owner in self.allies() {
                     if self.is_targetable(owner)
                         && let Some(mechanics) = self.mechanics(owner)

@@ -275,6 +275,20 @@ impl Battle<'_> {
             Some(actor),
             None,
         );
+        self.notify_banger_gained(actor, punchline);
+    }
+
+    fn notify_banger_gained(&mut self, actor: usize, amount: u32) {
+        if amount == 0 {
+            return;
+        }
+        for owner in self.allies() {
+            if self.is_targetable(owner)
+                && let Some(rules) = self.mechanics(owner)
+            {
+                rules.on_banger_gained(self, owner, actor, amount);
+            }
+        }
     }
 
     pub(super) fn spend_certified_banger(&mut self, actor: usize, mut points: u32) {
@@ -332,6 +346,7 @@ impl Battle<'_> {
             Some(actor),
             None,
         );
+        self.notify_banger_gained(actor, banger);
         self.notify_punchline_changed(Some(actor), before);
     }
 
@@ -374,11 +389,18 @@ impl Battle<'_> {
                 return;
             }
         }
-        self.emit(
-            self.banger_change(before, self.certified_banger(actor).unwrap_or(0)),
-            Some(actor),
-            None,
-        );
+        let after = self.certified_banger(actor).unwrap_or(0);
+        self.emit(self.banger_change(before, after), Some(actor), None);
+        let expired = before.saturating_sub(after);
+        if expired > 0 {
+            for owner in self.allies() {
+                if self.is_targetable(owner)
+                    && let Some(rules) = self.mechanics(owner)
+                {
+                    rules.on_banger_expired(self, owner, actor, expired);
+                }
+            }
+        }
     }
 
     pub(super) fn add_punchline(&mut self, actor: usize, points: u32) {
@@ -591,6 +613,26 @@ impl Battle<'_> {
     }
 
     pub(super) fn intrinsic_elation_bp(&self, actor: usize) -> u32 {
+        self.base_elation_bp(actor)
+            .saturating_add(self.mechanics(actor).map_or(0, |rules| {
+                let crit_damage_bp = self.plan.units[actor]
+                    .stats
+                    .crit_damage_bp
+                    .saturating_add(rules.crit_damage_bonus_bp(
+                        self,
+                        actor,
+                        actor,
+                        None,
+                        crate::DamageKind::Elation,
+                    ))
+                    .saturating_add(
+                        self.ally_buff_total(actor, super::support::AllyBuffKind::CritDamage),
+                    );
+                rules.elation_from_crit_damage_bp(crit_damage_bp)
+            }))
+    }
+
+    pub(super) fn base_elation_bp(&self, actor: usize) -> u32 {
         self.plan.units[actor].elation_bp.saturating_add(
             self.mechanics(actor)
                 .map_or(0, |rules| rules.personal_elation_bp(self, actor)),

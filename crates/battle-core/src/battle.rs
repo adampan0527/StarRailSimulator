@@ -190,6 +190,7 @@ struct UnitState {
     mydei_state: official::MydeiState,
     aeon_aha_state: official::AeonAhaState,
     elation_trailblazer_state: official::ElationTrailblazerState,
+    evanescia_state: official::EvanesciaState,
     pearl_state: official::PearlState,
     elation_debt: u32,
     sparxie_state: official::SparxieState,
@@ -378,6 +379,7 @@ impl<'a> Battle<'a> {
                     mydei_state: official::MydeiState::default(),
                     aeon_aha_state: official::AeonAhaState::default(),
                     elation_trailblazer_state: official::ElationTrailblazerState::default(),
+                    evanescia_state: official::EvanesciaState::default(),
                     pearl_state: official::PearlState::default(),
                     elation_debt: 0,
                     sparxie_state: official::SparxieState::default(),
@@ -686,9 +688,7 @@ impl<'a> Battle<'a> {
             );
         }
         self.finish_debuff_action(actor, parent_debuff_targets);
-        if attacking {
-            self.resolve_follow_ups();
-        }
+        self.resolve_follow_ups();
         self.notify_ally_action_finished(actor, command.action);
         self.units[actor].active_attack_bonus_bp = 0;
         self.units[actor].active_penetration_bp = 0;
@@ -1535,6 +1535,8 @@ impl<'a> Battle<'a> {
         if self.outcome != Outcome::Ongoing {
             return;
         }
+        // Energy recovery and resource expiration can queue attacks without an attacking action.
+        self.resolve_follow_ups();
         loop {
             if !self.allies().any(|unit| self.units[unit].hp > 0) {
                 self.end(Outcome::Defeat);

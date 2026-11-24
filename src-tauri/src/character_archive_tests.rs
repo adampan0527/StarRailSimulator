@@ -18,6 +18,8 @@ mod ashveil;
 #[cfg(bundled_catalog)]
 mod dahlia;
 #[cfg(bundled_catalog)]
+mod evanescia;
+#[cfg(bundled_catalog)]
 mod gilgamesh;
 #[cfg(bundled_catalog)]
 mod himeko_departure;
