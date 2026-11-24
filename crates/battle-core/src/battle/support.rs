@@ -316,7 +316,7 @@ impl Battle<'_> {
             .map_or(10_000, |rules| rules.max_hp_multiplier_bp(self, actor))
     }
 
-    fn ally_buff_total(&self, actor: usize, kind: AllyBuffKind) -> u32 {
+    pub(super) fn ally_buff_total(&self, actor: usize, kind: AllyBuffKind) -> u32 {
         self.units[actor]
             .ally_buffs
             .iter()

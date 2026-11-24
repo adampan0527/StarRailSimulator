@@ -23,6 +23,7 @@ mod dan_heng;
 mod dan_heng_il;
 mod dan_heng_permansor;
 mod dr_ratio;
+mod evanescia;
 mod evernight;
 mod feixiao;
 mod firefly;
@@ -111,6 +112,7 @@ pub(super) use {
     dan_heng_il::DanHengIlState,
     dan_heng_permansor::PermansorState,
     dr_ratio::DrRatioState,
+    evanescia::EvanesciaState,
     evernight::EvernightState,
     feixiao::FeixiaoState,
     firefly::FireflyState,
@@ -484,6 +486,30 @@ pub(super) trait Mechanics: Send + Sync {
     fn elation_from_attack_bp(&self, _attack: u32) -> u32 {
         0
     }
+
+    fn elation_from_crit_damage_bp(&self, _crit_damage_bp: u32) -> u32 {
+        0
+    }
+
+    fn on_banger_gained(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _recipient: usize,
+        _amount: u32,
+    ) {
+    }
+
+    fn on_banger_expired(
+        &self,
+        _battle: &mut Battle<'_>,
+        _owner: usize,
+        _recipient: usize,
+        _amount: u32,
+    ) {
+    }
+
+    fn on_energy_gained(&self, _battle: &mut Battle<'_>, _actor: usize, _milli: u32) {}
 
     fn ally_elation_bp(&self, _battle: &Battle<'_>, _source: usize, _actor: usize) -> u32 {
         0
@@ -1941,6 +1967,7 @@ fn kit_builder(form_id: &str) -> Option<KitBuilder> {
         saber::FORM => Some(saber::build),
         gilgamesh::FORM => Some(gilgamesh::build),
         ashveil::FORM => Some(ashveil::build),
+        evanescia::FORM => Some(evanescia::build),
         ruan_mei::FORM => Some(ruan_mei::build),
         aventurine::FORM => Some(aventurine::build),
         "character.1305" => Some(dr_ratio::build),
