@@ -1,4 +1,8 @@
-import { invoke } from '@tauri-apps/api/core';
+import {
+  accountError,
+  accountScope,
+  invokeForAccount,
+} from '../relic-export/accounts';
 import { readRelicExportFile } from '../relic-export/client';
 import { describeError, errorCode } from '../training/client';
 import type {
@@ -107,14 +111,14 @@ export type CharacterProfile = {
 };
 
 export const characters = {
-  index: () => invoke<Catalog>('character_index'),
-  roster: () => invoke<CharacterSummary[]>('character_roster'),
+  index: () => invokeForAccount<Catalog>('character_index'),
+  roster: () => invokeForAccount<CharacterSummary[]>('character_roster'),
   importCatalog: (json: string) =>
-    invoke<Catalog>('character_import_catalog', { json }),
+    invokeForAccount<Catalog>('character_import_catalog', { json }),
   profile: (characterId: string) =>
-    invoke<CharacterProfile>('character_profile', { characterId }),
+    invokeForAccount<CharacterProfile>('character_profile', { characterId }),
   save: (characterId: string, edit: CharacterEdit) =>
-    invoke<[CharacterProfile, InventoryItem[], InventoryLightCone[]]>(
+    invokeForAccount<[CharacterProfile, InventoryItem[], InventoryLightCone[]]>(
       'character_save',
       {
         characterId,
@@ -122,29 +126,39 @@ export const characters = {
       },
     ),
   saveTeam: (id: string | null, name: string, slots: TeamSlots) =>
-    invoke<SavedTeam>('character_save_team', { id, name, slots }),
+    invokeForAccount<SavedTeam>('character_save_team', { id, name, slots }),
   dprReadiness: (teamId: string) =>
-    invoke<TeamDprReadiness>('character_dpr_readiness', { teamId }),
-  inventory: () => invoke<InventoryItem[]>('relic_inventory'),
-  importRelics: async (file: File) =>
-    invoke<[RelicImportSummary, InventoryItem[]]>('relic_inventory_import', {
-      snapshot: await readRelicExportFile(file),
-    }),
+    invokeForAccount<TeamDprReadiness>('character_dpr_readiness', { teamId }),
+  inventory: () => invokeForAccount<InventoryItem[]>('relic_inventory'),
+  async importRelics(file: File) {
+    const scope = accountScope();
+    return invokeForAccount<[RelicImportSummary, InventoryItem[]]>(
+      'relic_inventory_import',
+      { snapshot: await readRelicExportFile(file) },
+      scope,
+    );
+  },
   lightConeInventory: () =>
-    invoke<InventoryLightCone[]>('light_cone_inventory'),
+    invokeForAccount<InventoryLightCone[]>('light_cone_inventory'),
   saveLightCone: (id: number | null, cone: LightCone) =>
-    invoke<InventoryLightCone[]>('light_cone_save', { id, cone }),
+    invokeForAccount<InventoryLightCone[]>('light_cone_save', { id, cone }),
   deleteLightCone: (id: number) =>
-    invoke<InventoryLightCone[]>('light_cone_delete', { id }),
+    invokeForAccount<InventoryLightCone[]>('light_cone_delete', { id }),
   saveRelic: (id: number | null, relic: Relic) =>
-    invoke<InventoryItem[]>('relic_save', { id, relic }),
-  deleteRelic: (id: number) => invoke<InventoryItem[]>('relic_delete', { id }),
+    invokeForAccount<InventoryItem[]>('relic_save', { id, relic }),
+  deleteRelic: (id: number) =>
+    invokeForAccount<InventoryItem[]>('relic_delete', { id }),
   relicOptions: (relicId: string, level: number) =>
-    invoke<RelicOptions>('character_relic_options', { relicId, level }),
+    invokeForAccount<RelicOptions>('character_relic_options', {
+      relicId,
+      level,
+    }),
 };
 
 export function catalogError(error: unknown) {
   switch (errorCode(error)) {
+    case 'invalid_account_selection':
+      return accountError(error);
     case 'catalog_missing':
       return '尚未载入正式服数据。';
     case 'catalog_invalid':

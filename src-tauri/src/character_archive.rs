@@ -10,10 +10,11 @@ use star_rail_profiles::{
     TeamSlots,
 };
 
-use crate::desktop_relic_export::{ExportError, ExportOrigin, account, inventory_snapshot};
+use crate::desktop_relic_export::{ExportError, account::AccountSnapshot, inventory_snapshot};
 
 const MAX_CATALOG_BYTES: usize = 8 * 1024 * 1024;
 const CATALOG_FILE: &str = "catalog.json";
+const PROFILES_FILE: &str = "profiles.sqlite";
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -29,6 +30,14 @@ pub enum Error {
     Io(#[from] io::Error),
     #[error("invalid team name")]
     TeamName,
+    #[error("account selection is unavailable or has changed")]
+    AccountSelection,
+    #[error("invalid account remark")]
+    AccountRemark,
+    #[error("account snapshot is missing its game UID")]
+    AccountUidMissing,
+    #[error("account preferences: {0}")]
+    AccountStorage(#[from] rusqlite::Error),
     #[error("fixed DPR: {0}")]
     Dpr(#[from] BattleError),
     #[error(transparent)]
@@ -119,8 +128,13 @@ pub struct TeamDprReadiness {
 }
 
 impl CharacterArchive {
+    #[cfg(test)]
     pub fn installed(path: &Path) -> Result<Self, Error> {
-        let file = path.join(CATALOG_FILE);
+        Self::installed_at(path, path)
+    }
+
+    pub fn installed_at(path: &Path, catalog_directory: &Path) -> Result<Self, Error> {
+        let file = catalog_directory.join(CATALOG_FILE);
         match read_catalog(&file) {
             Ok(catalog) => Self::open(path, catalog),
             Err(Error::Io(error)) if error.kind() == io::ErrorKind::NotFound => {
@@ -130,18 +144,31 @@ impl CharacterArchive {
         }
     }
 
-    pub fn import(path: &Path, json: &str) -> Result<Self, Error> {
+    pub fn import_catalog(
+        path: &Path,
+        catalog_directory: &Path,
+        json: &str,
+    ) -> Result<Self, Error> {
         let catalog = parse_catalog(json)?;
         let archive = Self::open(path, catalog)?;
-        let staged = path.join(format!("catalog.{}.tmp", std::process::id()));
+        let staged = catalog_directory.join(format!("catalog.{}.tmp", std::process::id()));
         fs::write(&staged, json)?;
-        fs::rename(staged, path.join(CATALOG_FILE))?;
+        fs::rename(staged, catalog_directory.join(CATALOG_FILE))?;
         Ok(archive)
     }
 
     pub fn open(path: &Path, catalog: Catalog) -> Result<Self, Error> {
         fs::create_dir_all(path)?;
-        Ok(Self(Archive::open(path.join("profiles.sqlite"), catalog)?))
+        Ok(Self(Archive::open(path.join(PROFILES_FILE), catalog)?))
+    }
+
+    pub fn stored_account_uid(path: &Path) -> Result<Option<u32>, Error> {
+        let database = path.join(PROFILES_FILE);
+        if database.try_exists()? {
+            Ok(Archive::stored_account_uid(&database)?)
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn dpr_readiness(&self, team_id: &str) -> Result<TeamDprReadiness, Error> {
@@ -319,12 +346,20 @@ impl CharacterArchive {
         Ok(self.0.import_inventory_relics(&relics)?)
     }
 
+    #[cfg(test)]
     pub fn import_account(
         &mut self,
         snapshot: &str,
-        origin: ExportOrigin,
+        origin: crate::desktop_relic_export::ExportOrigin,
     ) -> Result<AccountImportSummary, Error> {
-        let inventory = account::convert_snapshot(snapshot, origin, self.0.catalog())?;
+        self.apply_snapshot(AccountSnapshot::parse(snapshot, origin)?)
+    }
+
+    pub fn apply_snapshot(
+        &mut self,
+        snapshot: AccountSnapshot,
+    ) -> Result<AccountImportSummary, Error> {
+        let inventory = snapshot.inventory(self.0.catalog())?;
         Ok(self.0.import_account(&inventory)?)
     }
 

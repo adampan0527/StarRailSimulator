@@ -6,6 +6,12 @@ import { catalogError, characters } from '../characters/client';
 import type { Catalog, SavedTeam } from '../characters/client';
 import { Diagnostics } from '../desktop/Diagnostics';
 import { RelicExportPage } from '../relic-export/RelicExportPage';
+import {
+  accountError,
+  gameAccounts,
+  setAccountScope,
+} from '../relic-export/accounts';
+import type { AccountSelection } from '../relic-export/accounts';
 import { TeamWorkspace } from '../team/TeamWorkspace';
 import { BattlePanel } from './Battle';
 import { History } from './History';
@@ -33,6 +39,9 @@ export function Workbench() {
   const [catalogIssue, setCatalogIssue] = useState('');
   const [rosterIssue, setRosterIssue] = useState('');
   const [catalogBusy, setCatalogBusy] = useState(true);
+  const [accountSelection, setAccountSelection] = useState<AccountSelection>();
+  const [accountIssue, setAccountIssue] = useState('');
+  const [archiveRevision, setArchiveRevision] = useState(0);
   const [battle, setBattle] = useState<BattleView>();
   const [startIssue, setStartIssue] = useState('');
   const [actionIssue, setActionIssue] = useState('');
@@ -40,6 +49,12 @@ export function Workbench() {
   const main = useRef<HTMLElement>(null);
   const requestedFocus = useRef(false);
   const loadingTraining = useRef(false);
+  const currentRevision = useRef(0);
+  const catalogRequest = useRef(0);
+
+  const activeAccount = accountSelection?.accounts.find(
+    ({ uid }) => uid === accountSelection.active_uid,
+  );
 
   async function load() {
     if (loadingTraining.current) return;
@@ -60,10 +75,36 @@ export function Workbench() {
   }
 
   useEffect(() => {
-    void loadCatalog();
+    void loadAccounts();
   }, []);
 
+  async function loadAccounts() {
+    setAccountIssue('');
+    try {
+      updateAccountSelection(await gameAccounts.list());
+    } catch (error) {
+      const message = accountError(error);
+      setAccountIssue(message);
+      setCatalogIssue(message);
+      setCatalogBusy(false);
+    }
+  }
+
+  function updateAccountSelection(next: AccountSelection, refresh = false) {
+    const switched = accountSelection?.active_uid !== next.active_uid;
+    setAccountScope(next.active_uid);
+    setAccountSelection(next);
+    if (switched) {
+      currentRevision.current += 1;
+      setArchiveRevision(currentRevision.current);
+      setCatalog(undefined);
+      setRosterIssue('');
+    }
+    if (switched || refresh) void loadCatalog();
+  }
+
   async function loadCatalog(file?: File) {
+    const request = ++catalogRequest.current;
     setCatalogBusy(true);
     setCatalogIssue('');
     try {
@@ -71,15 +112,18 @@ export function Workbench() {
         setCatalogIssue('数据文件超过 8 MB，请选择项目生成的 catalog.json。');
         return;
       }
-      setCatalog(
-        file
-          ? await characters.importCatalog(await file.text())
-          : await characters.index(),
-      );
+      const json = await file?.text();
+      if (request !== catalogRequest.current) return;
+      const next =
+        json === undefined
+          ? await characters.index()
+          : await characters.importCatalog(json);
+      if (request === catalogRequest.current) setCatalog(next);
     } catch (error) {
-      setCatalogIssue(catalogError(error));
+      if (request === catalogRequest.current)
+        setCatalogIssue(catalogError(error));
     } finally {
-      setCatalogBusy(false);
+      if (request === catalogRequest.current) setCatalogBusy(false);
     }
   }
 
@@ -102,9 +146,11 @@ export function Workbench() {
     setRosterIssue('');
     try {
       const roster = await characters.roster();
-      setCatalog((current) => current && { ...current, characters: roster });
+      if (archiveRevision === currentRevision.current)
+        setCatalog((current) => current && { ...current, characters: roster });
     } catch (error) {
-      setRosterIssue(catalogError(error));
+      if (archiveRevision === currentRevision.current)
+        setRosterIssue(catalogError(error));
     }
   }
 
@@ -125,6 +171,7 @@ export function Workbench() {
   }
 
   function updateCatalogTeam(team: SavedTeam) {
+    if (archiveRevision !== currentRevision.current) return;
     setCatalog((current) => {
       if (!current) return current;
       const teams = current.teams.some(({ id }) => id === team.id)
@@ -179,6 +226,7 @@ export function Workbench() {
               {catalog
                 ? `离线工作台 · 数据 ${catalog.game_version}`
                 : '离线工作台'}
+              {activeAccount && ` · ${activeAccount.remark}`}
             </p>
           </div>
         </div>
@@ -213,6 +261,7 @@ export function Workbench() {
       >
         <div hidden={page !== 'setup'}>
           <TeamWorkspace
+            key={archiveRevision}
             catalog={catalog}
             catalogStatus={
               catalogBusy ? (
@@ -283,11 +332,11 @@ export function Workbench() {
           page === 'light-cones') &&
           (catalog ? (
             page === 'characters' ? (
-              <CharacterPage catalog={catalog} />
+              <CharacterPage key={archiveRevision} catalog={catalog} />
             ) : page === 'relics' ? (
-              <RelicPage catalog={catalog} />
+              <RelicPage key={archiveRevision} catalog={catalog} />
             ) : (
-              <LightConePage catalog={catalog} />
+              <LightConePage key={archiveRevision} catalog={catalog} />
             )
           ) : (
             <section className="panel">
@@ -297,26 +346,42 @@ export function Workbench() {
               ) : (
                 <>
                   <p role="status">{catalogIssue}</p>
-                  <label className="catalog-file">
-                    选择数据文件
-                    <input
-                      type="file"
-                      accept=".json,application/json"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) void loadCatalog(file);
-                      }}
-                    />
-                  </label>
-                  <p className="muted">
-                    选择项目生成的 <code>catalog.json</code>，载入后可离线使用。
-                  </p>
+                  {accountSelection && (
+                    <>
+                      <label className="catalog-file">
+                        选择数据文件
+                        <input
+                          type="file"
+                          accept=".json,application/json"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) void loadCatalog(file);
+                          }}
+                        />
+                      </label>
+                      <p className="muted">
+                        选择项目生成的 <code>catalog.json</code>
+                        ，载入后可离线使用。
+                      </p>
+                    </>
+                  )}
                 </>
               )}
             </section>
           ))}
         <div hidden={page !== 'relic-export'}>
-          <RelicExportPage />
+          <RelicExportPage
+            selection={accountSelection}
+            accountIssue={accountIssue}
+            onRetry={() => void loadAccounts()}
+            onSelection={updateAccountSelection}
+            onImported={({ selection, uid }) => {
+              updateAccountSelection(
+                selection,
+                uid === selection.active_uid || uid === null,
+              );
+            }}
+          />
         </div>
         {page === 'battle' && battle && (
           <>

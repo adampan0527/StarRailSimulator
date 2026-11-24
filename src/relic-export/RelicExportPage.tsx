@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { AccountPanel } from './AccountPanel';
+import { accountError, gameAccounts } from './accounts';
+import type { AccountSelection } from './accounts';
 import {
   importAccount,
   openArchiver,
@@ -6,7 +9,7 @@ import {
   receiveAccount,
   saveRelicExport,
 } from './client';
-import type { AccountImport, ExportOrigin, RelicExport } from './client';
+import type { ExportOrigin, ImportedAccount, RelicExport } from './client';
 
 type ExportState =
   | { kind: 'idle' | 'connecting' | 'waiting' | 'saving' }
@@ -25,7 +28,19 @@ const progress = {
   saving: '正在保存本地快照…',
 };
 
-export function RelicExportPage() {
+export function RelicExportPage({
+  selection,
+  accountIssue,
+  onRetry,
+  onSelection,
+  onImported,
+}: {
+  selection?: AccountSelection;
+  accountIssue: string;
+  onRetry: () => void;
+  onSelection: (selection: AccountSelection) => void;
+  onImported: (result: ImportedAccount) => void;
+}) {
   const [state, setState] = useState<ExportState>({ kind: 'idle' });
   const [copyStatus, setCopyStatus] = useState('');
   const [launching, setLaunching] = useState(false);
@@ -35,14 +50,29 @@ export function RelicExportPage() {
   }>();
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
-  const [imported, setImported] = useState<AccountImport>();
+  const [imported, setImported] = useState<ImportedAccount>();
+  const [managing, setManaging] = useState(false);
+  const [managementIssue, setManagementIssue] = useState('');
   const activeRequest = useRef<AbortController>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const linkInput = useRef<HTMLInputElement>(null);
   const receiving = state.kind === 'connecting' || state.kind === 'waiting';
-  const busy = receiving || state.kind === 'saving' || importing || launching;
+  const busy =
+    receiving || state.kind === 'saving' || importing || launching || managing;
 
   useEffect(() => () => activeRequest.current?.abort(), []);
+
+  async function manage(operation: () => Promise<AccountSelection>) {
+    setManaging(true);
+    setManagementIssue('');
+    try {
+      onSelection(await operation());
+    } catch (error) {
+      setManagementIssue(accountError(error));
+    } finally {
+      setManaging(false);
+    }
+  }
 
   async function launch(reselect: boolean) {
     setLaunching(true);
@@ -108,7 +138,10 @@ export function RelicExportPage() {
     setImported(undefined);
     try {
       const result = await importAccount(state.snapshot, state.origin);
-      if (!request.signal.aborted) setImported(result);
+      if (!request.signal.aborted) {
+        onImported(result);
+        setImported(result);
+      }
     } catch (error) {
       if (!request.signal.aborted) {
         setImportError(
@@ -139,114 +172,133 @@ export function RelicExportPage() {
   }
 
   return (
-    <section className="panel" aria-labelledby="relic-export-title">
-      <h2 id="relic-export-title">账号导入</h2>
-      <p className="muted">
-        在 Reliquary Archiver 开启 23313
-        端口的实时导出后接收账号快照，也可直接选择已导出的 JSON。
-      </p>
-      <div className="form-actions">
-        <button type="button" disabled={busy} onClick={() => void receive()}>
-          {state.kind === 'ready' ? '重新接收' : '开始接收'}
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          disabled={busy}
-          onClick={() => fileInput.current?.click()}
-        >
-          选择导出 JSON
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          disabled={busy}
-          onClick={() => void launch(false)}
-        >
-          打开 Archiver
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          disabled={busy}
-          onClick={() => void launch(true)}
-        >
-          更换并打开
-        </button>
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".json,application/json"
-          hidden
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (file) void receive(file);
-          }}
-        />
-        {receiving && (
-          <button type="button" className="secondary" onClick={cancel}>
-            取消
+    <div className="account-workspace">
+      <AccountPanel
+        selection={selection}
+        issue={managementIssue || accountIssue}
+        busy={busy}
+        onRetry={onRetry}
+        onSelect={(uid) => void manage(() => gameAccounts.select(uid))}
+        onRename={(uid, remark) =>
+          void manage(() => gameAccounts.rename(uid, remark))
+        }
+      />
+      <section className="panel" aria-labelledby="relic-export-title">
+        <h2 id="relic-export-title">账号导入</h2>
+        <p className="muted">
+          在 Reliquary Archiver 开启 23313
+          端口的实时导出后接收账号快照，也可直接选择已导出的 JSON。
+        </p>
+        <div className="form-actions">
+          <button type="button" disabled={busy} onClick={() => void receive()}>
+            {state.kind === 'ready' ? '重新接收' : '开始接收'}
           </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={busy}
+            onClick={() => fileInput.current?.click()}
+          >
+            选择导出 JSON
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={busy}
+            onClick={() => void launch(false)}
+          >
+            打开 Archiver
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={busy}
+            onClick={() => void launch(true)}
+          >
+            更换并打开
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file) void receive(file);
+            }}
+          />
+          {receiving && (
+            <button type="button" className="secondary" onClick={cancel}>
+              取消
+            </button>
+          )}
+        </div>
+        {launching && <p role="status">正在打开 Archiver…</p>}
+        {launchFeedback && (
+          <p
+            className={launchFeedback.error ? 'outcome-defeat' : undefined}
+            role={launchFeedback.error ? 'alert' : 'status'}
+          >
+            {launchFeedback.message}
+          </p>
         )}
-      </div>
-      {launching && <p role="status">正在打开 Archiver…</p>}
-      {launchFeedback && (
-        <p
-          className={launchFeedback.error ? 'outcome-defeat' : undefined}
-          role={launchFeedback.error ? 'alert' : 'status'}
-        >
-          {launchFeedback.message}
-        </p>
-      )}
-      {state.kind === 'error' ? (
-        <p className="outcome-defeat" role="alert">
-          {state.message}
-        </p>
-      ) : (
-        state.kind !== 'ready' && <p role="status">{progress[state.kind]}</p>
-      )}
-      {state.kind === 'ready' && (
-        <>
-          <SnapshotSummary result={state.result} />
-          <div className="form-actions">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void applySnapshot()}
-            >
-              {state.result.account ? '导入角色与装备' : '导入遗器'}
-            </button>
-          </div>
-          {importing && <p role="status">正在写入存档…</p>}
-          {importError && (
-            <p className="outcome-defeat" role="alert">
-              {importError}
-            </p>
-          )}
-          {imported && (
-            <ImportSummary
-              result={imported}
-              account={Boolean(state.result.account)}
-            />
-          )}
-          <label className="relic-export-link">
-            本地文件链接
-            <input ref={linkInput} readOnly value={state.result.file_url} />
-          </label>
-          <div className="form-actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => void copyLink(state.result.file_url)}
-            >
-              复制链接
-            </button>
-            <span role="status">{copyStatus}</span>
-          </div>
-        </>
-      )}
-    </section>
+        {state.kind === 'error' ? (
+          <p className="outcome-defeat" role="alert">
+            {state.message}
+          </p>
+        ) : (
+          state.kind !== 'ready' && <p role="status">{progress[state.kind]}</p>
+        )}
+        {state.kind === 'ready' && (
+          <>
+            <SnapshotSummary result={state.result} />
+            <div className="form-actions">
+              <button
+                type="button"
+                disabled={
+                  busy || !selection || state.result.account?.uid === null
+                }
+                onClick={() => void applySnapshot()}
+              >
+                {state.result.account ? '导入角色与装备' : '导入遗器'}
+              </button>
+            </div>
+            {state.result.account?.uid === null && (
+              <p className="outcome-defeat" role="alert">
+                账号快照缺少 UID，请重新导出完整账号快照。
+              </p>
+            )}
+            {importing && <p role="status">正在写入存档…</p>}
+            {importError && (
+              <p className="outcome-defeat" role="alert">
+                {importError}
+              </p>
+            )}
+            {imported && (
+              <ImportSummary
+                result={imported}
+                account={Boolean(state.result.account)}
+              />
+            )}
+            <label className="relic-export-link">
+              本地文件链接
+              <input ref={linkInput} readOnly value={state.result.file_url} />
+            </label>
+            <div className="form-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => void copyLink(state.result.file_url)}
+              >
+                复制链接
+              </button>
+              <span role="status">{copyStatus}</span>
+            </div>
+          </>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -280,15 +332,20 @@ function SnapshotSummary({ result }: { result: RelicExport }) {
 }
 
 function ImportSummary({
-  result,
+  result: { uid, created, summary: result },
   account,
 }: {
-  result: AccountImport;
+  result: ImportedAccount;
   account: boolean;
 }) {
   const skipped = result.characters_skipped + result.light_cones_skipped;
   return (
     <div role="status">
+      {uid !== null && (
+        <p>
+          {created ? '已创建账号' : '已更新账号'} UID {uid}。
+        </p>
+      )}
       {account && (
         <p>
           写入 {result.characters_applied} 名角色的养成数据，保留{' '}

@@ -185,6 +185,38 @@ h3 {
   min-width: 0;
 }
 
+.account-workspace,
+.account-fields,
+.account-fields label {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.account-fields {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+.account-fields label {
+  gap: 0.3rem;
+}
+
+.account-fields :is(input, select) {
+  width: 100%;
+  min-width: 0;
+}
+
+.account-remark {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.45rem 0.65rem;
+}
+
+.account-remark label {
+  flex: 1 1 9rem;
+}
+
 .section-heading,
 .unit-heading,
 .battle-summary {

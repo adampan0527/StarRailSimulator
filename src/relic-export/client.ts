@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
+import { accountError, invokeForAccount } from './accounts';
+import type { AccountSelection } from './accounts';
 
 const endpoint = 'ws://127.0.0.1:23313/ws';
 const timeoutMs = 120_000;
@@ -29,6 +31,13 @@ export type AccountImport = {
   light_cones_skipped: number;
   relics: { added: number; equipped: number };
   relics_updated: number;
+};
+
+export type ImportedAccount = {
+  uid: number | null;
+  created: boolean;
+  summary: AccountImport;
+  selection: AccountSelection;
 };
 
 export type ExportOrigin = 'live' | 'file';
@@ -162,20 +171,28 @@ export async function readRelicExportFile(file: File): Promise<string> {
 export async function importAccount(
   snapshot: string,
   origin: ExportOrigin,
-): Promise<AccountImport> {
+): Promise<ImportedAccount> {
   try {
-    return await invoke<AccountImport>('archiver_import', { snapshot, origin });
+    return await invokeForAccount<ImportedAccount>('archiver_import', {
+      snapshot,
+      origin,
+    });
   } catch (cause) {
     const code =
       typeof cause === 'object' && cause !== null && 'code' in cause
         ? cause.code
         : undefined;
     switch (code) {
+      case 'invalid_account_selection':
+        throw new Error(accountError(cause), { cause });
+      case 'archiver_uid_missing':
+        throw new Error('账号快照缺少 UID，请重新导出完整账号快照。', {
+          cause,
+        });
       case 'archiver_account_mismatch':
-        throw new Error(
-          '此存档已绑定其他游戏 UID。请选择同一账号的导出文件。',
-          { cause },
-        );
+        throw new Error('账号存档绑定的 UID 与快照不一致，请检查导出文件。', {
+          cause,
+        });
       case 'catalog_missing':
         throw new Error('请先在「角色」页载入正式服数据，再重试导入。', {
           cause,

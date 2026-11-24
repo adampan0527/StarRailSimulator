@@ -6,7 +6,7 @@ use star_rail_profiles::{AccountInventory, Catalog, ImportedLightCone, LightCone
 
 use crate::character_archive::Error;
 
-use super::{ExportError, ExportOrigin, inventory::convert_relics, parse_snapshot};
+use super::{ExportError, ExportOrigin, SourceExport, inventory::convert_relics, parse_snapshot};
 
 #[derive(Deserialize)]
 pub(super) struct AccountData {
@@ -116,18 +116,40 @@ pub(super) fn read_account(
     Ok(Some((raw, account)))
 }
 
-pub(crate) fn convert_snapshot(
-    snapshot: &str,
-    origin: ExportOrigin,
+pub(crate) struct AccountSnapshot {
+    export: SourceExport,
+    account: Option<AccountData>,
+}
+
+impl AccountSnapshot {
+    pub(crate) fn parse(snapshot: &str, origin: ExportOrigin) -> Result<Self, ExportError> {
+        let export = parse_snapshot(snapshot, origin)?;
+        let account = read_account(snapshot, origin)?.map(|(_, account)| account);
+        Ok(Self { export, account })
+    }
+
+    pub(crate) fn import_uid(&self) -> Result<Option<u32>, Error> {
+        self.account
+            .as_ref()
+            .map(|account| account.uid().ok_or(Error::AccountUidMissing))
+            .transpose()
+    }
+
+    pub(crate) fn inventory(self, catalog: &Catalog) -> Result<AccountInventory, Error> {
+        convert_inventory(self.export, self.account, catalog)
+    }
+}
+
+fn convert_inventory(
+    export: SourceExport,
+    account: Option<AccountData>,
     catalog: &Catalog,
 ) -> Result<AccountInventory, Error> {
-    let export = parse_snapshot(snapshot, origin)?;
-    let full = read_account(snapshot, origin)?;
     let mut inventory = AccountInventory {
         relics: convert_relics(export.relics, catalog)?,
         ..AccountInventory::default()
     };
-    let Some((_, account)) = full else {
+    let Some(account) = account else {
         return Ok(inventory);
     };
     inventory.uid = account.uid();

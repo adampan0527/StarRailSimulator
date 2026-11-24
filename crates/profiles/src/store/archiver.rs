@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, path::Path};
 
-use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, params};
 use serde::Serialize;
 
 use super::{
@@ -61,6 +61,21 @@ pub struct AccountImportSummary {
 }
 
 impl Archive {
+    /// Reads the binding of an existing archive without opening its catalog or migrating it.
+    pub fn stored_account_uid(path: &Path) -> Result<Option<u32>, Error> {
+        let db = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+        let has_binding: bool = db.query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name = 'archiver_account' AND type = 'table')",
+            [],
+            |row| row.get(0),
+        )?;
+        if has_binding {
+            bound_account(&db)
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Applies the account snapshot together with its inventory in one transaction.
     pub fn import_account(
         &mut self,
@@ -105,14 +120,7 @@ impl Archive {
 }
 
 fn bind_account(db: &Connection, uid: u32) -> Result<(), Error> {
-    let previous = db
-        .query_row(
-            "SELECT uid FROM archiver_account WHERE singleton = 1",
-            [],
-            |row| row.get::<_, u32>(0),
-        )
-        .optional()?;
-    match previous {
+    match bound_account(db)? {
         Some(previous) if previous != uid => Err(Error::invalid("archiver.uid", uid.to_string())),
         Some(_) => Ok(()),
         None => {
@@ -120,6 +128,16 @@ fn bind_account(db: &Connection, uid: u32) -> Result<(), Error> {
             Ok(())
         }
     }
+}
+
+fn bound_account(db: &Connection) -> Result<Option<u32>, Error> {
+    Ok(db
+        .query_row(
+            "SELECT uid FROM archiver_account WHERE singleton = 1",
+            [],
+            |row| row.get(0),
+        )
+        .optional()?)
 }
 
 fn active_preset(db: &Connection, id: &str) -> Result<Option<(String, Loadout)>, Error> {

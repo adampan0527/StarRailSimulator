@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod account_archives;
 #[cfg(windows)]
 mod archiver_launcher;
 mod character_archive;
@@ -27,6 +28,9 @@ fn main() -> ExitCode {
             archiver_launcher::archiver_open,
             desktop_status::desktop_status,
             desktop_relic_export::relic_export_save,
+            desktop_characters::account_list,
+            desktop_characters::account_select,
+            desktop_characters::account_rename,
             desktop_characters::archiver_import,
             desktop_characters::character_index,
             desktop_characters::character_dpr_readiness,
