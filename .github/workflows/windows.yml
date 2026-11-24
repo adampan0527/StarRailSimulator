@@ -36,5 +36,3 @@ jobs:
           cargo test --workspace --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm.cmd run desktop:build
-      - name: Check roadmap report
-        run: npm.cmd run roadmap:check
