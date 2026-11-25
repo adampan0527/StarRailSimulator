@@ -92,7 +92,7 @@ export function enemyPreview(tables, textMap) {
     return seriesIds.get(key);
   }
   const enemies = selectableEnemies(tables, monsters, templates, textMap).map(
-    ({ monster, template, name, sourceIds }) => {
+    ({ monster, template, name, variant, sourceIds }) => {
       const id = monster.MonsterID;
       const group = lookup(elite, monster.EliteGroup, 'elite group');
       const levelCurves = levels.map((level) =>
@@ -112,6 +112,7 @@ export function enemyPreview(tables, textMap) {
         name,
         sourceIds,
         rank: lookup(ranks, template.Rank, 'rank'),
+        variant,
         avatar: assetName(template.IconPath, 'MosterIcon'),
         artwork: assetName(template.ImagePath, 'MonsterFigure'),
         weaknesses,

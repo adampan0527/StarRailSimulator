@@ -6,7 +6,12 @@ const pageSize = 24;
 const collator = new Intl.Collator('zh-CN');
 const searchText = (value: string) => value.normalize('NFKC').toLowerCase();
 const roster = preview.enemies
-  .map((enemy) => ({ ...enemy, searchName: searchText(enemy.name) }))
+  .map((enemy) => ({
+    ...enemy,
+    searchName: searchText(
+      enemy.variant ? `${enemy.name} ${enemy.variant}` : enemy.name,
+    ),
+  }))
   .sort(
     (a, b) => collator.compare(a.name, b.name) || Number(a.id) - Number(b.id),
   );
@@ -32,7 +37,10 @@ export function EnemyPicker({
   const term = searchText(query.trim());
   const matches = roster.filter(
     (enemy) =>
-      (!rank || enemy.rank === rank) &&
+      (!rank ||
+        (rank === '末日幻影'
+          ? enemy.variant === '末日幻影'
+          : enemy.rank === rank)) &&
       (enemy.searchName.includes(term) ||
         enemy.sourceIds.some((id) => id.includes(term))),
   );
@@ -93,6 +101,7 @@ export function EnemyPicker({
             <option value="普通">普通</option>
             <option value="精英">精英</option>
             <option value="首领">首领</option>
+            <option value="末日幻影">末日幻影</option>
           </select>
         </label>
       </div>
@@ -106,7 +115,7 @@ export function EnemyPicker({
         className="picker-results enemy-results"
         aria-label="可选敌人"
       >
-        {visible.map(({ id, name, rank, avatar }) => (
+        {visible.map(({ id, name, rank, variant, avatar }) => (
           <li key={id}>
             <button
               className="choice picker-card"
@@ -121,7 +130,9 @@ export function EnemyPicker({
                 <EnemyAvatar file={avatar} />
                 <span className="enemy-card-label">
                   <strong>{name}</strong>
-                  <span className="muted">{rank}</span>
+                  <span className="muted">
+                    {variant ? `${rank} · ${variant}` : rank}
+                  </span>
                 </span>
               </span>
             </button>
