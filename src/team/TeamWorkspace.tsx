@@ -39,42 +39,62 @@ export function TeamWorkspace({
   onSideChange: (side: FormationSide) => void;
 }) {
   return (
-    <section className="panel team-board" aria-labelledby="team-title">
-      <h2 id="team-title">编队</h2>
-      <div className="workspace-tabs" role="group" aria-label="配置阵营">
+    <div className="team-workspace">
+      <div className="side-switcher" role="tablist" aria-label="配置阵营">
         <button
+          id="side-tab-ally"
           type="button"
-          className="choice"
-          aria-pressed={side === 'ally'}
+          role="tab"
+          className="side-tab"
+          aria-selected={side === 'ally'}
+          aria-controls="side-panel-ally"
           onClick={() => onSideChange('ally')}
         >
           己方
         </button>
         <button
+          id="side-tab-enemy"
           type="button"
-          className="choice"
-          aria-pressed={side === 'enemy'}
+          role="tab"
+          className="side-tab"
+          aria-selected={side === 'enemy'}
+          aria-controls="side-panel-enemy"
           onClick={() => onSideChange('enemy')}
         >
           敌方
         </button>
       </div>
-      <div className="team-field" hidden={side !== 'ally'}>
-        {catalog ? (
-          <NamedTeam
-            key={accountRevision}
-            catalog={catalog}
-            onSaved={onSaved}
-            rosterIssue={rosterIssue}
-          />
-        ) : (
-          catalogStatus
-        )}
-      </div>
-      <div className="team-field" hidden={side !== 'enemy'}>
-        {enemyContent}
-      </div>
-    </section>
+      <section className="panel team-board" aria-labelledby="team-title">
+        <h2 id="team-title">编队</h2>
+        <div
+          id="side-panel-ally"
+          role="tabpanel"
+          aria-labelledby="side-tab-ally"
+          className="team-field"
+          hidden={side !== 'ally'}
+        >
+          {catalog ? (
+            <NamedTeam
+              key={accountRevision}
+              catalog={catalog}
+              onSaved={onSaved}
+              rosterIssue={rosterIssue}
+            />
+          ) : (
+            catalogStatus
+          )}
+        </div>
+        <div
+          id="side-panel-enemy"
+          role="tabpanel"
+          aria-labelledby="side-tab-enemy"
+          className="team-field"
+          hidden={side !== 'enemy'}
+        >
+          {enemyContent}
+        </div>
+      </section>
+    </div>
   );
 }
 
