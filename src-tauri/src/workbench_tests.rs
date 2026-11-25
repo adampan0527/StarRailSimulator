@@ -5,7 +5,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::workbench::{AnalysisRequest, LoadoutEdit, TrainingAnalysis, Workbench};
+use crate::workbench::{
+    AnalysisRequest, Error, LoadoutEdit, TrainingAnalysis, Workbench, archived_battles,
+    archived_replay,
+};
 use star_rail_battle_core::{Command, Outcome};
 
 const SCRIPT: &str = include_str!("../../crates/battle-core/fixtures/full-replay.commands.json");
@@ -157,16 +160,28 @@ fn a_completed_session_keeps_frozen_equipment_and_is_available_after_reopen() {
     assert_eq!(edited_step.snapshot.outcome, Outcome::Victory);
     drop(app);
 
-    let reopened = Workbench::open(dir.path()).unwrap();
-    assert_eq!(reopened.replays().unwrap().len(), 2);
-    let old_replay = reopened.replay(original_step.id).unwrap();
+    assert_eq!(archived_battles(dir.path()).unwrap().len(), 2);
+    let old_replay = archived_replay(dir.path(), original_step.id).unwrap();
     assert_eq!(old_replay.snapshot, original_step.snapshot);
     assert_eq!(old_replay.events, original_step.events);
     assert_eq!(old_replay.events.len(), 64);
+    let reopened = Workbench::open(dir.path()).unwrap();
     assert_eq!(
         reopened.setup().unwrap().profiles[0].current_preset,
         "速度训练"
     );
+}
+
+#[test]
+fn reading_history_on_a_fresh_install_does_not_initialize_training() {
+    let directory = TestData::new();
+    let missing = directory.path().join("training");
+    assert!(archived_battles(&missing).unwrap().is_empty());
+    assert!(matches!(
+        archived_replay(&missing, 1),
+        Err(Error::ReplayNotFound(1))
+    ));
+    assert!(!missing.exists());
 }
 
 #[test]

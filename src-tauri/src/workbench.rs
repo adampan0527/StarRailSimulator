@@ -1,28 +1,41 @@
 mod replays;
 
-use std::{collections::BTreeSet, fs, num::NonZeroU32, path::Path};
+use std::path::Path;
+#[cfg(test)]
+use std::{collections::BTreeSet, fs, num::NonZeroU32};
 
-use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use serde::Deserialize;
+use serde::Serialize;
 use star_rail_battle_core::{
-    ActionOrderEntry, Battle, BattleError, Command, DprResult, Event, LogMode, PreparedBattle,
-    STANDARD_DPR_SCENARIO, Session, Snapshot, VictorySearch, calculate_dpr, search_fastest_victory,
-    training_attributes,
+    ActionOrderEntry, Battle, BattleError, Event, LogMode, PreparedBattle, Session, Snapshot,
 };
-use star_rail_profiles::{
-    Archive, Catalog, CharacterStats, Loadout, Profile, Relic, Team, TeamSlots, training_catalog,
+#[cfg(test)]
+use star_rail_battle_core::{
+    Command, DprResult, STANDARD_DPR_SCENARIO, VictorySearch, calculate_dpr,
+    search_fastest_victory, training_attributes,
 };
+#[cfg(test)]
+use star_rail_profiles::{Archive, CharacterStats, Loadout, Profile, Relic, Team, TeamSlots};
+use star_rail_profiles::{Catalog, training_catalog};
 
 use replays::ReplayStore;
 pub use replays::ReplaySummary;
 
 const TEMPLATE: &str = include_str!("../../contracts/battle-session.v1.example.json");
+#[cfg(test)]
 const TRAINING_TEAM: &str = "training.team";
+#[cfg(test)]
 const INITIAL_PRESET: &str = "初始训练配装";
+#[cfg(test)]
 const SPEED_TIERS: [u32; 3] = [2_000_000, 2_300_000, 2_600_000];
+#[cfg(test)]
 const SEARCH_BUDGET: NonZeroU32 = NonZeroU32::new(20_000).unwrap();
+const REPLAYS_FILE: &str = "training-replays.sqlite";
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[cfg(test)]
     #[error("profile archive: {0}")]
     Archive(#[from] star_rail_profiles::Error),
     #[error("battle session: {0}")]
@@ -31,14 +44,19 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("replay database: {0}")]
     Database(#[from] rusqlite::Error),
+    #[cfg(test)]
     #[error("replay serialization: {0}")]
     Json(#[from] serde_json::Error),
+    #[cfg(test)]
     #[error("invalid loadout")]
     Loadout,
+    #[cfg(test)]
     #[error("invalid team")]
     Team,
+    #[cfg(test)]
     #[error("invalid enemy selection")]
     Enemies,
+    #[cfg(test)]
     #[error("fastest victory search requires a deterministic training encounter")]
     RandomAnalysis,
     #[error("replay {0} not found")]
@@ -47,6 +65,7 @@ pub enum Error {
     ReplayVersion(u32),
 }
 
+#[cfg(test)]
 #[derive(Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct LoadoutEdit {
@@ -54,12 +73,14 @@ pub struct LoadoutEdit {
     pub boots_speed_micros: Option<u32>,
 }
 
+#[cfg(test)]
 #[derive(Serialize)]
 pub struct PresetView {
     pub name: String,
     pub equipment: LoadoutEdit,
 }
 
+#[cfg(test)]
 #[derive(Serialize)]
 pub struct ProfileView {
     pub id: String,
@@ -82,6 +103,7 @@ pub struct Name {
     pub character_id: Option<String>,
 }
 
+#[cfg(test)]
 #[derive(Serialize)]
 pub struct Setup {
     pub profiles: Vec<ProfileView>,
@@ -95,11 +117,13 @@ pub struct BattleView {
     pub id: u32,
     pub snapshot: Snapshot,
     pub order: Vec<ActionOrderEntry>,
+    #[cfg(test)]
     pub legal_actions: Vec<Command>,
     pub events: Vec<Event>,
     pub names: Vec<Name>,
 }
 
+#[cfg(test)]
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AnalysisRequest {
@@ -107,6 +131,7 @@ pub enum AnalysisRequest {
     FastestVictory { enemy_ids: Vec<String> },
 }
 
+#[cfg(test)]
 #[derive(Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TrainingAnalysis {
@@ -121,24 +146,28 @@ pub enum TrainingAnalysis {
     },
 }
 
+#[cfg(test)]
 #[derive(Serialize)]
 pub struct PlannedReplay {
     pub frames: Vec<PlannedFrame>,
     pub events: Vec<Event>,
 }
 
+#[cfg(test)]
 #[derive(Serialize)]
 pub struct PlannedFrame {
     pub snapshot: Snapshot,
     pub event_count: usize,
 }
 
+#[cfg(test)]
 pub struct AnalysisInput {
     session: Session,
     names: Vec<Name>,
     request: AnalysisRequest,
 }
 
+#[cfg(test)]
 impl AnalysisInput {
     pub fn run(self) -> Result<TrainingAnalysis, Error> {
         let plan = PreparedBattle::new(&self.session.input)?;
@@ -172,6 +201,7 @@ impl AnalysisInput {
     }
 }
 
+#[cfg(test)]
 fn planned_replay(plan: &PreparedBattle, commands: &[Command]) -> Result<PlannedReplay, Error> {
     let mut battle = Battle::start(plan, LogMode::Detailed);
     let mut frames = Vec::with_capacity(commands.len() + 1);
@@ -193,12 +223,14 @@ fn planned_replay(plan: &PreparedBattle, commands: &[Command]) -> Result<Planned
     })
 }
 
+#[cfg(test)]
 pub struct Workbench {
     archive: Archive,
     replays: ReplayStore,
     template: Session,
 }
 
+#[cfg(test)]
 impl Workbench {
     pub fn open(path: &Path) -> Result<Self, Error> {
         fs::create_dir_all(path)?;
@@ -231,7 +263,7 @@ impl Workbench {
         })?;
         Ok(Self {
             archive,
-            replays: ReplayStore::open(&path.join("training-replays.sqlite"))?,
+            replays: ReplayStore::open(&path.join(REPLAYS_FILE))?,
             template,
         })
     }
@@ -298,11 +330,6 @@ impl Workbench {
             affinitive_eidolon: false,
         };
         self.archive.save_preset(id, preset_name, &draft, true)?;
-        self.profile(id)
-    }
-
-    pub fn select_loadout(&mut self, id: &str, preset_name: &str) -> Result<ProfileView, Error> {
-        self.archive.select_preset(id, preset_name)?;
         self.profile(id)
     }
 
@@ -433,10 +460,7 @@ impl Workbench {
     }
 
     pub fn replay(&self, id: u32) -> Result<BattleView, Error> {
-        let session = self.replays.session(id)?;
-        let prepared = PreparedBattle::new(&session.input)?;
-        let battle = Battle::replay(&prepared, &session.commands, LogMode::Detailed)?;
-        Ok(battle_view(id, &session, &battle, self.archive.catalog()))
+        resolve_replay(id, &self.replays.session(id)?, self.archive.catalog())
     }
 
     pub fn replays(&self) -> Result<Vec<ReplaySummary>, Error> {
@@ -444,11 +468,33 @@ impl Workbench {
     }
 }
 
+pub fn archived_battles(path: &Path) -> Result<Vec<ReplaySummary>, Error> {
+    match ReplayStore::open_read_only(&path.join(REPLAYS_FILE))? {
+        Some(store) => store.list(),
+        None => Ok(Vec::new()),
+    }
+}
+
+pub fn archived_replay(path: &Path, id: u32) -> Result<BattleView, Error> {
+    let store =
+        ReplayStore::open_read_only(&path.join(REPLAYS_FILE))?.ok_or(Error::ReplayNotFound(id))?;
+    let session = store.session(id)?;
+    let catalog = training_catalog(&Session::from_json(TEMPLATE)?);
+    resolve_replay(id, &session, &catalog)
+}
+
+fn resolve_replay(id: u32, session: &Session, catalog: &Catalog) -> Result<BattleView, Error> {
+    let prepared = PreparedBattle::new(&session.input)?;
+    let battle = Battle::replay(&prepared, &session.commands, LogMode::Detailed)?;
+    Ok(battle_view(id, session, &battle, catalog))
+}
+
 fn battle_view(id: u32, session: &Session, battle: &Battle<'_>, catalog: &Catalog) -> BattleView {
     BattleView {
         id,
         snapshot: battle.snapshot(),
         order: battle.action_order(),
+        #[cfg(test)]
         legal_actions: battle.legal_actions(),
         events: battle.events().to_vec(),
         names: battle_names(session, catalog),

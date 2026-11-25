@@ -18,9 +18,7 @@ mod workbench_tests;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    let builder = tauri::Builder::default()
-        .manage(desktop_characters::CharacterState::default())
-        .manage(desktop_workbench::WorkbenchState::default());
+    let builder = tauri::Builder::default().manage(desktop_characters::CharacterState::default());
     #[cfg(windows)]
     let builder = builder.manage(archiver_launcher::ArchiverLauncher::default());
     let app = builder
@@ -50,15 +48,8 @@ fn main() -> ExitCode {
             desktop_characters::light_cone_inventory,
             desktop_characters::light_cone_save,
             desktop_characters::light_cone_delete,
-            desktop_workbench::training_setup,
-            desktop_workbench::training_save_loadout,
-            desktop_workbench::training_select_loadout,
-            desktop_workbench::training_save_team,
-            desktop_workbench::training_start,
-            desktop_workbench::training_analyze,
-            desktop_workbench::training_act,
-            desktop_workbench::training_replays,
-            desktop_workbench::training_replay,
+            desktop_workbench::battle_history,
+            desktop_workbench::battle_replay,
             enemy_formations::enemy_formations,
             enemy_formations::enemy_formation_save,
         ])

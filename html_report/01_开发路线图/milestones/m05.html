@@ -49,11 +49,12 @@
 <li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>接入冻结 4.7.0 目录的全部 94 个角色形态及 104 套 80 级配置，逐一从真实存档执行固定靶场回归。</span></li>
 <li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>接入装备战斗触发与战前秘技，并按角色与 4.7.0 客户端逐事件对照。</span></li>
 <li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>在固定样本和评估次数预算下重复搜索，结果与排序可复现；近似结果标记为「本次预算内找到的最佳」。取消后应用仍可操作，旧任务消息不会覆盖新结果。</span></li>
-<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>在 Windows 桌面复验合成最快胜利的单步回放。右栏高亮下一条待执行指令，战场展示上一条指令结算后的快照，结算记录从开局可展开。自动敌方行动有独立步骤后补验逐行动进度。</span></li>
+<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>正式编队接入后，在 Windows 桌面验收最快胜利的单步回放。右栏高亮下一条待执行指令，战场展示上一条指令结算后的快照，结算记录从开局可展开。自动敌方行动有独立步骤后补验逐行动进度。</span></li>
 </ul>
 <p><strong>验收证据：</strong> <a href="../../../crates/battle-core/tests/analysis.rs">战斗核心穷举对照、击破与归因回归</a> · <a href="../../../src-tauri/src/workbench_tests.rs">桌面工作台集成测试</a> · <a href="../../../docs/m05-dpr.md#470-角色覆盖">4.7.0 角色与保存配队回归</a>。进度、取消与随机场景搜索待实现。</p>
 <h3>进展记录</h3>
 <ul>
+<li>2026-11-25 确定性搜索和快照对照继续用于自动化回归。方案回放组件在正式编队可计算后接入桌面。<a href="../../../docs/battle-simulation-plan.md">开发计划</a></li>
 <li>2026-11-25 合成最快胜利返回冻结输入的初始快照、逐指令快照与事件边界，界面支持前进、后退和自动播放。回归用相同指令逐步比对正式回放接口的快照与事件。自动敌方行动目前在指令结算中显示，后台进度、取消、正式敌方规则与随机搜索待开发。<a href="../../../docs/battle-simulation-plan.md">开发计划</a> · <a href="../../../src-tauri/src/workbench_tests.rs">快照回归</a></li>
 <li>2026-11-17 接入合成确定性场景的最少行动值搜索和固定打法 DPR。搜索会返回通关指令并注明预算内结果，计算链路复用原战斗核心。正式服战斗输入、搜索进度和取消待接入。<a href="../../../docs/m04-desktop.md#合成数据计算">计算口径与验证</a></li>
 <li>2026-11-17 合成 DPR 和最少行动值搜索移至「组队」的合成训练战场。Edge 模拟 IPC 核对两个入口都提交当前所选靶机，Rust 回归通过。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">组队入口与验证</a></li>

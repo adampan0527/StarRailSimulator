@@ -1,11 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export type Equipment = {
-  light_cone_equipped: boolean;
-  boots_speed_micros: number | null;
-};
-
-export type Preset = { name: string; equipment: Equipment };
 export type Name = { id: string; name: string; character_id?: string };
 export type ScaledStat = { base: number; total: number };
 export type CharacterStats = {
@@ -30,24 +24,12 @@ export type CharacterSummary = Name & {
   source_ids: string[];
   stats: CharacterStats;
 };
-export type Profile = CharacterSummary & {
-  level: number;
-  can_equip_light_cone: boolean;
-  current_preset: string;
-  presets: Preset[];
-};
 export type TeamSlots = [
   string | null,
   string | null,
   string | null,
   string | null,
 ];
-export type Setup = {
-  profiles: Profile[];
-  team_slots: TeamSlots;
-  enemies: Name[];
-  boots_speed_tiers_micros: number[];
-};
 
 export type Action =
   | 'basic'
@@ -281,7 +263,6 @@ export type BattleView = {
   id: number;
   snapshot: BattleSnapshot;
   order: { unit_id: string; remaining_av_micros: number }[];
-  legal_actions: Command[];
   events: BattleEvent[];
   names: Name[];
 };
@@ -291,10 +272,6 @@ export type ReplaySummary = {
   started_at: number;
   finished: boolean;
 };
-
-export type AnalysisRequest =
-  | { kind: 'dpr' }
-  | { kind: 'fastest_victory'; enemy_ids: string[] };
 
 type DamageCredit = { unit_id: string; amount: number };
 export type DamageKind =
@@ -329,52 +306,15 @@ export type DprResult = {
   targets: { max_toughness: number; damage: number; hits: DprHit[] }[];
 };
 
-export type TrainingAnalysis =
-  | {
-      kind: 'dpr';
-      names: Name[];
-      result: DprResult;
-    }
-  | {
-      kind: 'fastest_victory';
-      names: Name[];
-      result: {
-        exact: boolean;
-        evaluated: number;
-        budget: number;
-        victory: { av_micros: number; commands: Command[] } | null;
-      };
-      replay: {
-        frames: { snapshot: BattleSnapshot; event_count: number }[];
-        events: BattleEvent[];
-      } | null;
-    };
+export type PlannedReplay = {
+  frames: { snapshot: BattleSnapshot; event_count: number }[];
+  events: BattleEvent[];
+};
 
-export const training = {
-  setup: () => invoke<Setup>('training_setup'),
-  saveLoadout: (
-    characterId: string,
-    presetName: string,
-    equipment: Equipment,
-  ) =>
-    invoke<Profile>('training_save_loadout', {
-      characterId,
-      presetName,
-      equipment,
-    }),
-  selectLoadout: (characterId: string, presetName: string) =>
-    invoke<Profile>('training_select_loadout', { characterId, presetName }),
-  saveTeam: (slots: TeamSlots) =>
-    invoke<TeamSlots>('training_save_team', { slots }),
-  start: (enemyIds: string[]) =>
-    invoke<BattleView>('training_start', { enemyIds }),
-  analyze: (request: AnalysisRequest) =>
-    invoke<TrainingAnalysis>('training_analyze', { request }),
-  act: (sessionId: number, command: Command) =>
-    invoke<BattleView>('training_act', { sessionId, command }),
-  replays: () => invoke<ReplaySummary[]>('training_replays'),
+export const battleHistory = {
+  list: () => invoke<ReplaySummary[]>('battle_history'),
   replay: (sessionId: number) =>
-    invoke<BattleView>('training_replay', { sessionId }),
+    invoke<BattleView>('battle_replay', { sessionId }),
 };
 
 export function errorCode(error: unknown) {
@@ -385,22 +325,10 @@ export function errorCode(error: unknown) {
 
 export function describeError(error: unknown) {
   switch (errorCode(error)) {
-    case 'invalid_loadout':
-      return '配装未保存。请检查方案名称和训练装备。';
-    case 'invalid_team':
-      return '请检查队伍站位。角色不能重复上阵，开战至少需要一名角色。';
-    case 'invalid_enemies':
-      return '请选择至少一台训练靶机。';
-    case 'random_analysis':
-      return '最少行动值搜索需要确定性战场。多名角色上阵时，请只选择左侧靶机。';
     case 'replay_not_found':
       return '找不到这场战斗的记录。';
     case 'incompatible_version':
       return '当前版本无法读取这份存档或重算回放。';
-    case 'stale_action':
-      return '战斗已推进，请按当前状态重新选择指令。';
-    case 'invalid_action':
-      return '这条指令当前不可用，请重新选择。';
     case 'storage_failed':
       return '无法读取或写入本地存档，请重试。';
     default:

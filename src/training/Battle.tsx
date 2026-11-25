@@ -1,19 +1,10 @@
-import { useId, useRef, useState } from 'react';
-import type { BattleView, Command, Unit } from './client';
-import { actionName, av, outcomeNames, Timeline } from './Timeline';
+import { useId } from 'react';
+import type { BattleView, Unit } from './client';
+import { av, outcomeNames, Timeline } from './Timeline';
 
-type Props = {
-  battle: BattleView;
-  playing: boolean;
-  busy?: boolean;
-  issue?: string;
-  onAct?: (command: Command) => void;
-};
-
-export function BattlePanel({ battle, playing, busy, issue, onAct }: Props) {
-  const { id, snapshot, order, events, legal_actions, names } = battle;
+export function BattlePanel({ battle }: { battle: BattleView }) {
+  const { id, snapshot, order, events, names } = battle;
   const titleId = useId();
-  const decisionHeading = useRef<HTMLHeadingElement>(null);
   const unitName = (id: string) =>
     id === 'summon:aha'
       ? '阿哈'
@@ -30,8 +21,7 @@ export function BattlePanel({ battle, playing, busy, issue, onAct }: Props) {
       <section className="panel battle-status" aria-labelledby={titleId}>
         <div className="section-heading">
           <h2 id={titleId}>
-            {playing ? '训练战斗' : '训练回放'}{' '}
-            <span className="muted numeric">#{id}</span>
+            战斗回放 <span className="muted numeric">#{id}</span>
           </h2>
           <span className={`tag outcome-${snapshot.outcome}`}>
             {outcomeNames[snapshot.outcome]}
@@ -72,42 +62,18 @@ export function BattlePanel({ battle, playing, busy, issue, onAct }: Props) {
         )}
       </section>
 
-      <div className="battle-grid">
-        <section className="panel" aria-label="战场单位">
-          <Roster
-            title="敌方"
-            units={snapshot.units.filter((unit) => !unit.is_ally)}
-            unitName={unitName}
-          />
-          <Roster
-            title="己方"
-            units={snapshot.units.filter((unit) => unit.is_ally)}
-            unitName={unitName}
-          />
-        </section>
-        {playing && onAct && (
-          <section className="panel">
-            <h3 ref={decisionHeading} tabIndex={-1}>
-              行动指令
-            </h3>
-            {legal_actions.length > 0 ? (
-              <ActionForm
-                key={`${id}-${snapshot.decision_index}`}
-                actions={legal_actions}
-                unitName={unitName}
-                busy={busy ?? false}
-                onAct={(command) => {
-                  decisionHeading.current?.focus({ preventScroll: true });
-                  onAct(command);
-                }}
-              />
-            ) : (
-              <p>本场战斗已结束。可以在历史回放中查看每一步。</p>
-            )}
-            {issue && <p role="alert">{issue}</p>}
-          </section>
-        )}
-      </div>
+      <section className="panel" aria-label="战场单位">
+        <Roster
+          title="敌方"
+          units={snapshot.units.filter((unit) => !unit.is_ally)}
+          unitName={unitName}
+        />
+        <Roster
+          title="己方"
+          units={snapshot.units.filter((unit) => unit.is_ally)}
+          unitName={unitName}
+        />
+      </section>
       <Timeline key={id} events={events} unitName={unitName} />
     </div>
   );
@@ -178,85 +144,5 @@ export function Resource({
         {value} / {max}
       </span>
     </div>
-  );
-}
-
-function ActionForm({
-  actions,
-  unitName,
-  busy,
-  onAct,
-}: {
-  actions: Command[];
-  unitName: (id: string) => string;
-  busy: boolean;
-  onAct: (command: Command) => void;
-}) {
-  const keyFor = (command: Command) => `${command.actor_id}:${command.action}`;
-  const options = [
-    ...new Map(actions.map((command) => [keyFor(command), command])).values(),
-  ];
-  const [choice, setChoice] = useState(keyFor(options[0]));
-  const [target, setTarget] = useState('');
-  const commands = actions.filter((item) => keyFor(item) === choice);
-  const selected =
-    commands.length === 1
-      ? commands[0]
-      : commands.find((command) => command.target_id === target);
-  const targetOptions = commands.flatMap((command) =>
-    command.target_id ? [command.target_id] : [],
-  );
-
-  return (
-    <form
-      className="action-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (selected && !busy) onAct(selected);
-      }}
-    >
-      <fieldset disabled={busy}>
-        <legend>选择技能</legend>
-        <div className="action-options">
-          {options.map((command) => (
-            <button
-              type="button"
-              className="choice"
-              key={keyFor(command)}
-              aria-pressed={choice === keyFor(command)}
-              onClick={() => {
-                setChoice(keyFor(command));
-                setTarget('');
-              }}
-            >
-              <strong>{actionName(command.action, command.actor_id)}</strong>
-              <span>{unitName(command.actor_id)}</span>
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      {targetOptions.length > 0 && (
-        <label>
-          选择目标
-          <select
-            disabled={busy}
-            value={targetOptions.length === 1 ? targetOptions[0] : target}
-            onChange={(event) => setTarget(event.target.value)}
-          >
-            {targetOptions.length > 1 && <option value="">请选择目标</option>}
-            {targetOptions.map((id) => (
-              <option key={id} value={id}>
-                {unitName(id)}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      <div className="form-actions">
-        <button type="submit" disabled={!selected || busy}>
-          {busy ? '正在结算…' : '执行指令'}
-        </button>
-      </div>
-    </form>
   );
 }

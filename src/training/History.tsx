@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BattlePanel } from './Battle';
-import { describeError, training } from './client';
+import { describeError, battleHistory } from './client';
 import type { BattleView, ReplaySummary } from './client';
 
 const date = new Intl.DateTimeFormat('zh-CN', {
@@ -8,11 +8,7 @@ const date = new Intl.DateTimeFormat('zh-CN', {
   timeStyle: 'short',
 });
 
-export function History({
-  onResume,
-}: {
-  onResume: (battle: BattleView) => void;
-}) {
+export function History() {
   const [replays, setReplays] = useState<ReplaySummary[] | null>(null);
   const [opened, setOpened] = useState<BattleView>();
   const [opening, setOpening] = useState<number>();
@@ -22,7 +18,7 @@ export function History({
   async function load() {
     setIssue('');
     try {
-      setReplays(await training.replays());
+      setReplays(await battleHistory.list());
     } catch (error) {
       setIssue(describeError(error));
     }
@@ -40,7 +36,7 @@ export function History({
     setOpening(id);
     setIssue('');
     try {
-      setOpened(await training.replay(id));
+      setOpened(await battleHistory.replay(id));
     } catch (error) {
       setIssue(describeError(error));
     } finally {
@@ -63,24 +59,22 @@ export function History({
           ) : (
             <p role="status">正在读取本地回放…</p>
           ))}
-        {replays?.length === 0 && (
-          <p>还没有战斗记录。开始训练后，记录会自动保存在这里。</p>
-        )}
+        {replays?.length === 0 && <p>暂无战斗记录。</p>}
         {replays && replays.length > 0 && (
           <ul className="replay-list">
             {replays.map(({ id, started_at, finished }) => (
               <li key={id}>
                 <div>
-                  <strong>训练 #{id}</strong>
+                  <strong>战斗 #{id}</strong>
                   <span className="muted">
                     {date.format(started_at * 1000)} ·{' '}
-                    {finished ? '已结束' : '未结束'}
+                    {finished ? '已结束' : '保存时未结束'}
                   </span>
                 </div>
                 <button
                   type="button"
                   className="secondary"
-                  aria-label={`打开训练回放 #${id}`}
+                  aria-label={`打开战斗回放 #${id}`}
                   disabled={opening !== undefined}
                   onClick={() => void open(id)}
                 >
@@ -99,14 +93,7 @@ export function History({
           role="region"
           aria-label="回放详情"
         >
-          {opened.snapshot.outcome === 'ongoing' && (
-            <div className="resume-bar">
-              <button type="button" onClick={() => onResume(opened)}>
-                继续这场战斗
-              </button>
-            </div>
-          )}
-          <BattlePanel battle={opened} playing={false} />
+          <BattlePanel battle={opened} />
         </div>
       )}
     </div>

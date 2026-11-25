@@ -1,7 +1,3 @@
-.team-mode:not(:empty) {
-  margin-bottom: 0.75rem;
-}
-
 .team-board form > * + * {
   margin-top: 0.85rem;
 }

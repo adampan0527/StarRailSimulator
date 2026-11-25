@@ -1,8 +1,12 @@
 use std::{path::Path, time::Duration};
 
-use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
+#[cfg(test)]
+use rusqlite::{TransactionBehavior, params};
 use serde::Serialize;
-use star_rail_battle_core::{Outcome, Session};
+#[cfg(test)]
+use star_rail_battle_core::Outcome;
+use star_rail_battle_core::Session;
 
 use super::Error;
 
@@ -16,6 +20,19 @@ pub struct ReplaySummary {
 pub(super) struct ReplayStore(Connection);
 
 impl ReplayStore {
+    pub fn open_read_only(path: &Path) -> Result<Option<Self>, Error> {
+        if !path.try_exists()? {
+            return Ok(None);
+        }
+        let db = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+        db.busy_timeout(Duration::from_secs(3))?;
+        match db.pragma_query_value(None, "user_version", |row| row.get(0))? {
+            1 => Ok(Some(Self(db))),
+            version => Err(Error::ReplayVersion(version)),
+        }
+    }
+
+    #[cfg(test)]
     pub fn open(path: &Path) -> Result<Self, Error> {
         let mut db = Connection::open(path)?;
         db.busy_timeout(Duration::from_secs(3))?;
@@ -39,6 +56,7 @@ impl ReplayStore {
         Ok(Self(db))
     }
 
+    #[cfg(test)]
     pub fn insert(&mut self, session: &Session, outcome: Outcome) -> Result<u32, Error> {
         let tx = self
             .0
@@ -56,6 +74,7 @@ impl ReplayStore {
         read(&self.0, id)
     }
 
+    #[cfg(test)]
     pub fn update<T>(
         &mut self,
         id: u32,

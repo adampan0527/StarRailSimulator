@@ -7,7 +7,6 @@ import type { FormationSide } from '../team/TeamWorkspace';
 
 const tabs = [
   { id: 'match', name: '选队' },
-  { id: 'training', name: '合成训练' },
   { id: 'history', name: '战斗记录' },
 ] as const;
 
@@ -22,7 +21,6 @@ export default function SimulationWorkspace({
   tab,
   onTabChange,
   onEdit,
-  training,
   history,
 }: {
   catalog?: Catalog;
@@ -33,7 +31,6 @@ export default function SimulationWorkspace({
   tab: SimulationTab;
   onTabChange: (tab: SimulationTab) => void;
   onEdit: (side: FormationSide) => void;
-  training: ReactNode;
   history: ReactNode;
 }) {
   return (
@@ -67,7 +64,6 @@ export default function SimulationWorkspace({
           onEdit={onEdit}
         />
       </div>
-      <div hidden={tab !== 'training'}>{training}</div>
       <div hidden={tab !== 'history'}>{history}</div>
     </section>
   );
@@ -198,7 +194,7 @@ function MatchSelection({
         </div>
       </div>
       <p className="muted">
-        正式敌方行动规则待接入。可在「合成训练」中计算最快胜利。
+        正式敌方行动规则待接入，目前可选择和查看双方编队。
       </p>
     </section>
   );

@@ -19,12 +19,8 @@ import {
 import type { EnemyFormation } from '../team/enemyFormationClient';
 import { TeamWorkspace } from '../team/TeamWorkspace';
 import type { FormationSide } from '../team/TeamWorkspace';
-import { BattlePanel } from './Battle';
 import { History } from './History';
-import { TrainingLoadouts, TrainingSetup } from './Setup';
 import type { SimulationTab } from './SimulationWorkspace';
-import { describeError, errorCode, training } from './client';
-import type { BattleView, Command, Profile, Setup, TeamSlots } from './client';
 
 const pages = [
   { id: 'setup', name: '编队' },
@@ -38,7 +34,7 @@ const pages = [
 const EnemyFormations = lazy(() => import('../team/EnemyFormations'));
 const SimulationWorkspace = lazy(() => import('./SimulationWorkspace'));
 
-type Page = (typeof pages)[number]['id'] | 'battle' | 'training-loadout';
+type Page = (typeof pages)[number]['id'];
 
 export function Workbench() {
   const [page, setPage] = useState<Page>('setup');
@@ -46,8 +42,6 @@ export function Workbench() {
   const [simulationTab, setSimulationTab] = useState<SimulationTab>('match');
   const [formations, setFormations] = useState<EnemyFormation[]>();
   const [formationIssue, setFormationIssue] = useState('');
-  const [setup, setSetup] = useState<Setup>();
-  const [initialError, setInitialError] = useState('');
   const [catalog, setCatalog] = useState<Catalog>();
   const [catalogIssue, setCatalogIssue] = useState('');
   const [rosterIssue, setRosterIssue] = useState('');
@@ -55,37 +49,14 @@ export function Workbench() {
   const [accountSelection, setAccountSelection] = useState<AccountSelection>();
   const [accountIssue, setAccountIssue] = useState('');
   const [archiveRevision, setArchiveRevision] = useState(0);
-  const [battle, setBattle] = useState<BattleView>();
-  const [startIssue, setStartIssue] = useState('');
-  const [actionIssue, setActionIssue] = useState('');
-  const [busy, setBusy] = useState(false);
   const main = useRef<HTMLElement>(null);
   const requestedFocus = useRef(false);
-  const loadingTraining = useRef(false);
   const currentRevision = useRef(0);
   const catalogRequest = useRef(0);
 
   const activeAccount = accountSelection?.accounts.find(
     ({ uid }) => uid === accountSelection.active_uid,
   );
-
-  async function load() {
-    if (loadingTraining.current) return;
-    loadingTraining.current = true;
-    setInitialError('');
-    try {
-      setSetup(await training.setup());
-    } catch (error) {
-      setInitialError(describeError(error));
-    } finally {
-      loadingTraining.current = false;
-    }
-  }
-
-  function selectSimulation(tab: SimulationTab) {
-    setSimulationTab(tab);
-    if (tab === 'training' && !setup) void load();
-  }
 
   useEffect(() => {
     void loadAccounts();
@@ -186,22 +157,6 @@ export function Workbench() {
     }
   }
 
-  function updateProfile(profile: Profile) {
-    setSetup(
-      (current) =>
-        current && {
-          ...current,
-          profiles: current.profiles.map((item) =>
-            item.id === profile.id ? profile : item,
-          ),
-        },
-    );
-  }
-
-  function updateTeam(slots: TeamSlots) {
-    setSetup((current) => current && { ...current, team_slots: slots });
-  }
-
   function updateCatalogTeam(team: SavedTeam) {
     if (archiveRevision !== currentRevision.current) return;
     setCatalog((current) => {
@@ -211,40 +166,6 @@ export function Workbench() {
         : [...current.teams, team];
       return { ...current, teams };
     });
-  }
-
-  async function start(enemies: string[]) {
-    setBusy(true);
-    setStartIssue('');
-    try {
-      setBattle(await training.start(enemies));
-      setActionIssue('');
-      navigate('battle');
-    } catch (error) {
-      setStartIssue(describeError(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function act(command: Command) {
-    if (!battle) return;
-    setBusy(true);
-    setActionIssue('');
-    try {
-      setBattle(await training.act(battle.id, command));
-    } catch (error) {
-      setActionIssue(describeError(error));
-      if (errorCode(error) === 'stale_action') {
-        try {
-          setBattle(await training.replay(battle.id));
-        } catch (reloadError) {
-          setActionIssue(describeError(reloadError));
-        }
-      }
-    } finally {
-      setBusy(false);
-    }
   }
 
   return (
@@ -268,14 +189,7 @@ export function Workbench() {
               key={id}
               type="button"
               className="nav-button"
-              aria-current={
-                page === id ||
-                (id === 'simulation' &&
-                  (page === 'battle' || page === 'training-loadout'))
-                  ? 'page'
-                  : undefined
-              }
-              disabled={busy}
+              aria-current={page === id ? 'page' : undefined}
               onClick={() => navigate(id)}
             >
               {name}
@@ -286,10 +200,7 @@ export function Workbench() {
       <main
         ref={main}
         tabIndex={-1}
-        aria-label={
-          pages.find(({ id }) => page === id)?.name ??
-          (page === 'battle' ? '战斗' : '训练配装')
-        }
+        aria-label={pages.find(({ id }) => page === id)?.name}
       >
         <div hidden={page !== 'setup'}>
           <TeamWorkspace
@@ -350,68 +261,18 @@ export function Workbench() {
               formations={formations}
               formationIssue={formationIssue}
               tab={simulationTab}
-              onTabChange={selectSimulation}
+              onTabChange={setSimulationTab}
               onEdit={(side) => {
                 setFormationSide(side);
                 navigate('setup');
               }}
-              training={
-                <section className="panel" aria-label="合成训练">
-                  {setup ? (
-                    <TrainingSetup
-                      setup={setup}
-                      starting={busy}
-                      issue={startIssue}
-                      onTeam={updateTeam}
-                      onStart={(enemies) => void start(enemies)}
-                      onLoadout={() => navigate('training-loadout')}
-                      onResume={
-                        battle?.snapshot.outcome === 'ongoing'
-                          ? () => navigate('battle')
-                          : undefined
-                      }
-                    />
-                  ) : (
-                    simulationTab === 'training' && (
-                      <TrainingStatus
-                        error={initialError}
-                        onRetry={() => void load()}
-                      />
-                    )
-                  )}
-                </section>
-              }
               history={
                 page === 'simulation' &&
-                simulationTab === 'history' && (
-                  <History
-                    onResume={(entry) => {
-                      setBattle(entry);
-                      setActionIssue('');
-                      navigate('battle');
-                    }}
-                  />
-                )
+                simulationTab === 'history' && <History />
               }
             />
           </Suspense>
         </div>
-        {page === 'training-loadout' && (
-          <>
-            <div className="team-mode">
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => navigate('simulation')}
-              >
-                返回战斗模拟
-              </button>
-            </div>
-            {setup && (
-              <TrainingLoadouts setup={setup} onProfile={updateProfile} />
-            )}
-          </>
-        )}
         {(page === 'characters' ||
           page === 'relics' ||
           page === 'light-cones') &&
@@ -468,55 +329,10 @@ export function Workbench() {
             }}
           />
         </div>
-        {page === 'battle' && battle && (
-          <>
-            <div className="team-mode">
-              <button
-                type="button"
-                className="secondary"
-                disabled={busy}
-                onClick={() => navigate('simulation')}
-              >
-                返回战斗模拟
-              </button>
-            </div>
-            <BattlePanel
-              key={battle.id}
-              battle={battle}
-              playing
-              busy={busy}
-              issue={actionIssue}
-              onAct={(command) => void act(command)}
-            />
-          </>
-        )}
       </main>
       <footer>
         <Diagnostics />
       </footer>
     </div>
-  );
-}
-
-function TrainingStatus({
-  error,
-  onRetry,
-}: {
-  error: string;
-  onRetry: () => void;
-}) {
-  return (
-    <section className="field-zone">
-      {error ? (
-        <>
-          <p role="alert">{error}</p>
-          <button type="button" onClick={onRetry}>
-            重试
-          </button>
-        </>
-      ) : (
-        <p role="status">正在读取合成战斗…</p>
-      )}
-    </section>
   );
 }

@@ -8,11 +8,15 @@ import {
   eventTitle,
   outcomeNames,
 } from './Timeline';
-import type { BattleEvent, Command, Name, Profile, Unit } from './client';
-import type { TrainingAnalysis } from './client';
+import type {
+  BattleEvent,
+  CharacterSummary,
+  Command,
+  Name,
+  PlannedReplay,
+  Unit,
+} from './client';
 import './planned.css';
-
-type FastestVictory = Extract<TrainingAnalysis, { kind: 'fastest_victory' }>;
 
 const summaryEvents = new Set([
   'damage',
@@ -28,9 +32,9 @@ export function PlannedBattle({
   profiles,
 }: {
   commands: Command[];
-  replay: NonNullable<FastestVictory['replay']>;
+  replay: PlannedReplay;
   names: Name[];
-  profiles: Profile[];
+  profiles: CharacterSummary[];
 }) {
   const [step, setStep] = useState(0);
   const [continuous, setContinuous] = useState(false);
