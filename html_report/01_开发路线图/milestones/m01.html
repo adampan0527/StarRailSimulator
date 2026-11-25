@@ -1,0 +1,74 @@
+<!doctype html>
+<!-- 由 build.mjs 生成。内容维护请参阅 docs/roadmap.md。 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>M01 · Windows 骨架与验收基线 · StarRailSimulator</title>
+  <link rel="icon" href="../assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles/base.css">
+  <link rel="stylesheet" href="../styles/roadmap.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <header class="site-header" id="top">
+    <div class="shell header-inner">
+      <a class="brand" href="../index.html">
+        <img src="../assets/mark.svg" width="36" height="36" alt="">
+        <span>StarRailSimulator</span>
+      </a>
+      <nav aria-label="汇报导航">
+        <a href="../index.html">路线图</a>
+        <a href="../index.html#board">里程碑</a>
+      </nav>
+    </div>
+  </header>
+  <main class="shell" id="main" tabindex="-1">
+    <nav class="breadcrumbs" aria-label="当前位置">
+      <a href="../index.html#board"><span aria-hidden="true">←</span> 返回里程碑看板</a>
+    </nav>
+    <article class="detail glass">
+      <header class="detail-header">
+        <p class="eyebrow"><span class="mono">M01</span> <span aria-hidden="true">/</span> 里程碑</p>
+        <h1>Windows 骨架与验收基线</h1>
+        <dl class="detail-meta">
+          <div><dt>当前状态</dt><dd><span class="status status--accepted">已验收</span></dd></div>
+          <div><dt>验收依赖</dt><dd>无</dd></div>
+          <div><dt>验收记录</dt><dd><a href="../../../docs/m01-baseline.md">2026-11-15 · 0.1.0 离线验收</a></dd></div>
+        </dl>
+      </header>
+      <section class="prose detail-body" aria-labelledby="criteria">
+        <h2 id="criteria">交付范围与验收</h2>
+        <p>用 Rust + Tauri 建立最小 Windows x64 应用。锁定工具链与依赖，搭好本地检查与测试入口。定义角色形态 ID 和战斗输入边界，用合成夹具验证契约。记录首发支持的 Windows 版本、参考机器、性能样本规模与计时口径。M01 仅验收离线工程底座。</p>
+<h3>验收清单</h3>
+<ul class="checklist">
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>在干净开发检出中按文档安装依赖，完成 Windows x64 构建，并启动窗口执行一次前端到 Rust 的调用。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>格式、lint、类型检查与已有测试可按文档运行。未接版本库或 CI 时保留本地执行记录；接入后让 Windows CI 执行相同检查。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>交付并验证带最小样例的共享契约，写清角色形态 ID、配置快照、合法指令、规则与数据版本字段。M02 和 M03 分别在接入时使用同一份样例；修改契约时同步更新两个调用方。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>固定包含四个角色形态和至少两个可区分敌方目标的离线合成样例。登记 M05–M07 使用的参考机器、样本定义和计时口径，并记录 M07 的验收阈值。</span></li>
+</ul>
+<p><strong>验收证据：</strong> 构建与启动记录、锁文件、共享契约、四人双目标合成样例及其校验值、基准约定。</p>
+<h3>进展记录</h3>
+<ul>
+<li>2026-11-15：开始实现 M01。建立 Rust + Tauri 桌面壳与前端连接诊断，锁定 Rust、Node.js 和 npm，生成 <a href="../../../Cargo.lock">Cargo.lock</a> 与 <a href="../../../package-lock.json">package-lock.json</a>，提供 <a href="../../../README.md">开发命令</a> 和 Windows CI 配置。当前目录未接入 Git，CI 尚未运行。</li>
+<li>2026-11-15：建立 <a href="../../../docs/battle-contract.md">M02/M03 共享契约</a> 和四人双目标合成样例；结构验证通过。确定参考机和 M05–M07 的测量方法。</li>
+<li>2026-11-15：从前端锁文件离线重装成功；格式、lint、类型检查、4 项测试、前端生产构建和 Rust 格式检查通过。首次 Clippy、Rust 测试和 Windows x64 Release 构建因缺少 MSVC <code>link.exe</code> 停在依赖编译阶段。</li>
+<li>2026-11-15：安装 Microsoft Build Tools 2022 的 x64 MSVC 与 Windows 11 SDK 后，在不含依赖和构建产物的源码副本按锁文件重跑检查，Clippy、Rust 测试命令和 Release 构建通过。在真实窗口点击「检测连接」，看到 Rust 返回的版本 <code>0.1.0</code>。Windows 构建阻碍已解除。</li>
+<li>2026-11-15：现有构建证据和 4 项自动测试满足 Windows 与契约要求；复核合成夹具确认四角色、两个唯一目标和固定种子，并登记样本校验值与性能约定。离线工程底座的四项条件验收通过。详见 <a href="../../../docs/m01-baseline.md">M01 验收记录</a>。</li>
+</ul>
+      </section>
+    </article>
+    <nav class="detail-pagination" aria-label="相邻里程碑">
+      <a class="page-link page-link--next" href="./m02.html">
+    <span>下一里程碑 · M02</span>
+    <strong>可离线验证的 Rust 战斗核心</strong>
+  </a>
+    </nav>
+  </main>
+  <footer class="shell site-footer">
+    <span>StarRailSimulator <span aria-hidden="true">/</span> 开发汇报 01</span>
+    <a href="#top">回到顶部 <span aria-hidden="true">↑</span></a>
+  </footer>
+</body>
+</html>

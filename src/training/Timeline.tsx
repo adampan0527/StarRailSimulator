@@ -99,7 +99,7 @@ export function av(micros: number) {
   return number.format(micros / 1_000_000);
 }
 
-function eventTitle({ kind, source_id }: BattleEvent): string {
+export function eventTitle({ kind, source_id }: BattleEvent): string {
   switch (kind.event) {
     case 'wave_started':
       return '战斗开始';
@@ -265,7 +265,7 @@ function eventTitle({ kind, source_id }: BattleEvent): string {
   }
 }
 
-function eventDetail({ kind }: BattleEvent) {
+export function eventDetail({ kind }: BattleEvent) {
   switch (kind.event) {
     case 'aventurine_surf_elation':
       return kind.detail.heat > 0

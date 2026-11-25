@@ -78,6 +78,8 @@ pub struct ProfileView {
 pub struct Name {
     pub id: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub character_id: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -115,7 +117,20 @@ pub enum TrainingAnalysis {
     FastestVictory {
         result: VictorySearch,
         names: Vec<Name>,
+        replay: Option<PlannedReplay>,
     },
+}
+
+#[derive(Serialize)]
+pub struct PlannedReplay {
+    pub frames: Vec<PlannedFrame>,
+    pub events: Vec<Event>,
+}
+
+#[derive(Serialize)]
+pub struct PlannedFrame {
+    pub snapshot: Snapshot,
+    pub event_count: usize,
 }
 
 pub struct AnalysisInput {
@@ -142,13 +157,40 @@ impl AnalysisInput {
                         BattleError::UnsupportedData(_) => Error::RandomAnalysis,
                         error => error.into(),
                     })?;
+                let replay = result
+                    .victory
+                    .as_ref()
+                    .map(|victory| planned_replay(&plan, &victory.commands))
+                    .transpose()?;
                 Ok(TrainingAnalysis::FastestVictory {
                     result,
                     names: self.names,
+                    replay,
                 })
             }
         }
     }
+}
+
+fn planned_replay(plan: &PreparedBattle, commands: &[Command]) -> Result<PlannedReplay, Error> {
+    let mut battle = Battle::start(plan, LogMode::Detailed);
+    let mut frames = Vec::with_capacity(commands.len() + 1);
+    // The opening state may contain setup events. The first settlement starts with step one.
+    frames.push(PlannedFrame {
+        snapshot: battle.snapshot(),
+        event_count: battle.events().len(),
+    });
+    for command in commands {
+        battle.apply(command)?;
+        frames.push(PlannedFrame {
+            snapshot: battle.snapshot(),
+            event_count: battle.events().len(),
+        });
+    }
+    Ok(PlannedReplay {
+        frames,
+        events: battle.events().to_vec(),
+    })
 }
 
 pub struct Workbench {
@@ -210,6 +252,7 @@ impl Workbench {
                 .map(|enemy| Name {
                     id: enemy.unit_id.clone(),
                     name: enemy_name(&enemy.enemy_id).into(),
+                    character_id: None,
                 })
                 .collect(),
             boots_speed_tiers_micros: SPEED_TIERS,
@@ -419,6 +462,7 @@ fn ally_names<'a>(session: &'a Session, catalog: &'a Catalog) -> impl Iterator<I
             || ally.character_form_id.clone(),
             |character| character.name.clone(),
         ),
+        character_id: Some(ally.character_form_id.clone()),
     })
 }
 
@@ -427,6 +471,7 @@ fn battle_names(session: &Session, catalog: &Catalog) -> Vec<Name> {
         .chain(session.input.waves.iter().flatten().map(|enemy| Name {
             id: enemy.unit_id.clone(),
             name: enemy_name(&enemy.enemy_id).into(),
+            character_id: None,
         }))
         .collect()
 }

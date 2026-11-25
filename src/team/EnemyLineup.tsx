@@ -2,18 +2,17 @@ import { useId, useRef, useState } from 'react';
 import { CombatTraitIcon } from '../characters/CombatTrait';
 import { EnemyArtwork, EnemyAvatar } from './EnemyArt';
 import { EnemyPicker } from './EnemyPicker';
+import { enemies } from './enemyCatalog';
+import type { EnemySlot, EnemySlots } from './enemyFormationClient';
 import preview from './enemy-preview.json';
 
-type EnemySlot = { enemy: (typeof preview.enemies)[number]; level: number };
-
-const MAX_ENEMIES = 5;
 const DEFAULT_LEVEL = 80;
 const formatStat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
-const enemies = new Map(preview.enemies.map((enemy) => [enemy.id, enemy]));
 
 function statText(series: number | null, levelIndex: number) {
-  const value = series === null ? null : preview.statSeries[series][levelIndex];
-  return value === null ? '—' : formatStat.format(value);
+  const value =
+    series === null ? undefined : preview.statSeries[series][levelIndex];
+  return value === null || value === undefined ? '—' : formatStat.format(value);
 }
 
 function EnemySlotCard({
@@ -22,17 +21,19 @@ function EnemySlotCard({
   onPick,
   onLevelChange,
   onRemove,
+  disabled,
 }: {
   number: number;
   slot: EnemySlot | null;
   onPick: () => void;
   onLevelChange: (level: number) => void;
   onRemove: () => void;
+  disabled: boolean;
 }) {
   const pickButton = useRef<HTMLButtonElement>(null);
   const statsId = useId();
-  const enemy = slot?.enemy;
-  const name = enemy?.name ?? '空位';
+  const enemy = slot && enemies.get(slot.enemy_id);
+  const name = enemy?.name ?? (slot ? `敌人 ${slot.enemy_id}` : '空位');
   const levelIndex = slot ? preview.levels.indexOf(slot.level) : -1;
 
   return (
@@ -44,6 +45,7 @@ function EnemySlotCard({
         aria-label={`敌方站位 ${number}：${name}`}
         aria-describedby={enemy ? statsId : undefined}
         aria-haspopup="dialog"
+        disabled={disabled}
         onClick={onPick}
       >
         <span className="slot-number numeric">{number}</span>
@@ -90,6 +92,7 @@ function EnemySlotCard({
             <select
               aria-label={`敌方站位 ${number} 等级`}
               value={slot.level}
+              disabled={disabled}
               onChange={(event) => onLevelChange(Number(event.target.value))}
             >
               {preview.levels.map((value) => (
@@ -101,6 +104,7 @@ function EnemySlotCard({
             <button
               type="button"
               className="secondary"
+              disabled={disabled}
               aria-label={`移除敌方站位 ${number}`}
               onClick={() => {
                 pickButton.current?.focus();
@@ -111,7 +115,7 @@ function EnemySlotCard({
             </button>
           </div>
           <div className="enemy-slot-art">
-            <EnemyArtwork file={slot.enemy.artwork} name={slot.enemy.name} />
+            <EnemyArtwork file={enemy?.artwork ?? null} name={name} />
           </div>
         </>
       )}
@@ -119,10 +123,15 @@ function EnemySlotCard({
   );
 }
 
-export default function EnemyLineup() {
-  const [lineup, setLineup] = useState<(EnemySlot | null)[]>(() =>
-    Array.from({ length: MAX_ENEMIES }, () => null),
-  );
+export default function EnemyLineup({
+  lineup,
+  onChange,
+  disabled,
+}: {
+  lineup: EnemySlots;
+  onChange: (lineup: EnemySlots) => void;
+  disabled: boolean;
+}) {
   const [picking, setPicking] = useState<number>();
   const count = lineup.filter((slot) => slot !== null).length;
 
@@ -130,9 +139,9 @@ export default function EnemyLineup() {
     position: number,
     update: (slot: EnemySlot | null) => EnemySlot | null,
   ) {
-    setLineup((current) =>
-      current.map((slot, index) => (index === position ? update(slot) : slot)),
-    );
+    const next: EnemySlots = [...lineup];
+    next[position] = update(next[position]);
+    onChange(next);
   }
 
   return (
@@ -143,7 +152,7 @@ export default function EnemyLineup() {
       <div className="section-heading">
         <h3 id="team-enemy-title">敌方</h3>
         <span className="tag numeric">
-          {count} / {MAX_ENEMIES}
+          {count} / {lineup.length}
         </span>
       </div>
       <ol className="enemy-lineup" aria-label="敌方站位">
@@ -152,6 +161,7 @@ export default function EnemyLineup() {
             key={position}
             number={position + 1}
             slot={slot}
+            disabled={disabled}
             onPick={() => setPicking(position)}
             onLevelChange={(level) =>
               updateSlot(
@@ -166,12 +176,12 @@ export default function EnemyLineup() {
       {picking !== undefined && (
         <EnemyPicker
           position={picking}
-          selected={lineup[picking]?.enemy.id}
+          selected={lineup[picking]?.enemy_id}
           onSelect={(id) => {
             const enemy = enemies.get(id);
             if (enemy) {
               updateSlot(picking, (current) => ({
-                enemy,
+                enemy_id: enemy.id,
                 level: current?.level ?? DEFAULT_LEVEL,
               }));
             }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { CharacterPage } from '../characters/CharacterPage';
 import { LightConePage } from '../characters/LightConePage';
 import { RelicPage } from '../characters/RelicPage';
@@ -12,27 +12,40 @@ import {
   setAccountScope,
 } from '../relic-export/accounts';
 import type { AccountSelection } from '../relic-export/accounts';
+import {
+  enemyFormationError,
+  enemyFormations,
+} from '../team/enemyFormationClient';
+import type { EnemyFormation } from '../team/enemyFormationClient';
 import { TeamWorkspace } from '../team/TeamWorkspace';
+import type { FormationSide } from '../team/TeamWorkspace';
 import { BattlePanel } from './Battle';
 import { History } from './History';
 import { TrainingLoadouts, TrainingSetup } from './Setup';
+import type { SimulationTab } from './SimulationWorkspace';
 import { describeError, errorCode, training } from './client';
 import type { BattleView, Command, Profile, Setup, TeamSlots } from './client';
 
 const pages = [
-  { id: 'setup', name: '组队' },
+  { id: 'setup', name: '编队' },
+  { id: 'simulation', name: '战斗模拟' },
   { id: 'characters', name: '角色' },
   { id: 'relics', name: '遗器' },
-  { id: 'relic-export', name: '账号导入' },
   { id: 'light-cones', name: '光锥库' },
-  { id: 'history', name: '历史回放' },
+  { id: 'relic-export', name: '账号导入' },
 ] as const;
+
+const EnemyFormations = lazy(() => import('../team/EnemyFormations'));
+const SimulationWorkspace = lazy(() => import('./SimulationWorkspace'));
 
 type Page = (typeof pages)[number]['id'] | 'battle' | 'training-loadout';
 
 export function Workbench() {
   const [page, setPage] = useState<Page>('setup');
-  const [trainingMode, setTrainingMode] = useState(false);
+  const [formationSide, setFormationSide] = useState<FormationSide>('ally');
+  const [simulationTab, setSimulationTab] = useState<SimulationTab>('match');
+  const [formations, setFormations] = useState<EnemyFormation[]>();
+  const [formationIssue, setFormationIssue] = useState('');
   const [setup, setSetup] = useState<Setup>();
   const [initialError, setInitialError] = useState('');
   const [catalog, setCatalog] = useState<Catalog>();
@@ -69,14 +82,33 @@ export function Workbench() {
     }
   }
 
-  function selectBattlefield(isTraining: boolean) {
-    setTrainingMode(isTraining);
-    if (isTraining && !setup) void load();
+  function selectSimulation(tab: SimulationTab) {
+    setSimulationTab(tab);
+    if (tab === 'training' && !setup) void load();
   }
 
   useEffect(() => {
     void loadAccounts();
+    void loadEnemyFormations();
   }, []);
+
+  async function loadEnemyFormations() {
+    setFormationIssue('');
+    try {
+      setFormations(await enemyFormations.list());
+    } catch (error) {
+      setFormationIssue(enemyFormationError(error));
+    }
+  }
+
+  function updateEnemyFormation(formation: EnemyFormation) {
+    setFormations((current) => {
+      const saved = current ?? [];
+      return saved.some(({ id }) => id === formation.id)
+        ? saved.map((item) => (item.id === formation.id ? formation : item))
+        : [...saved, formation];
+    });
+  }
 
   async function loadAccounts() {
     setAccountIssue('');
@@ -238,7 +270,7 @@ export function Workbench() {
               className="nav-button"
               aria-current={
                 page === id ||
-                (id === 'setup' &&
+                (id === 'simulation' &&
                   (page === 'battle' || page === 'training-loadout'))
                   ? 'page'
                   : undefined
@@ -261,8 +293,8 @@ export function Workbench() {
       >
         <div hidden={page !== 'setup'}>
           <TeamWorkspace
-            key={archiveRevision}
             catalog={catalog}
+            accountRevision={archiveRevision}
             catalogStatus={
               catalogBusy ? (
                 <p role="status">正在读取角色库…</p>
@@ -282,34 +314,87 @@ export function Workbench() {
             }
             onSaved={updateCatalogTeam}
             rosterIssue={rosterIssue}
-            training={trainingMode}
-            onModeChange={selectBattlefield}
-            busy={busy}
-            trainingContent={
-              setup ? (
-                <TrainingSetup
-                  setup={setup}
-                  starting={busy}
-                  issue={startIssue}
-                  onTeam={updateTeam}
-                  onStart={(enemies) => void start(enemies)}
-                  onLoadout={() => navigate('training-loadout')}
-                  onResume={
-                    battle?.snapshot.outcome === 'ongoing'
-                      ? () => navigate('battle')
-                      : undefined
-                  }
-                />
-              ) : (
-                trainingMode && (
-                  <TrainingStatus
-                    error={initialError}
-                    onRetry={() => void load()}
+            side={formationSide}
+            onSideChange={setFormationSide}
+            enemyContent={
+              formations ? (
+                <Suspense fallback={<p role="status">正在打开敌方编队…</p>}>
+                  <EnemyFormations
+                    formations={formations}
+                    onSaved={updateEnemyFormation}
                   />
-                )
+                </Suspense>
+              ) : formationIssue ? (
+                <>
+                  <p role="alert">{formationIssue}</p>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => void loadEnemyFormations()}
+                  >
+                    重试
+                  </button>
+                </>
+              ) : (
+                <p role="status">正在读取敌方编队…</p>
               )
             }
           />
+        </div>
+        <div hidden={page !== 'simulation'}>
+          <Suspense fallback={<p role="status">正在打开战斗模拟…</p>}>
+            <SimulationWorkspace
+              catalog={catalog}
+              catalogLoading={catalogBusy}
+              accountRevision={archiveRevision}
+              formations={formations}
+              formationIssue={formationIssue}
+              tab={simulationTab}
+              onTabChange={selectSimulation}
+              onEdit={(side) => {
+                setFormationSide(side);
+                navigate('setup');
+              }}
+              training={
+                <section className="panel" aria-label="合成训练">
+                  {setup ? (
+                    <TrainingSetup
+                      setup={setup}
+                      starting={busy}
+                      issue={startIssue}
+                      onTeam={updateTeam}
+                      onStart={(enemies) => void start(enemies)}
+                      onLoadout={() => navigate('training-loadout')}
+                      onResume={
+                        battle?.snapshot.outcome === 'ongoing'
+                          ? () => navigate('battle')
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    simulationTab === 'training' && (
+                      <TrainingStatus
+                        error={initialError}
+                        onRetry={() => void load()}
+                      />
+                    )
+                  )}
+                </section>
+              }
+              history={
+                page === 'simulation' &&
+                simulationTab === 'history' && (
+                  <History
+                    onResume={(entry) => {
+                      setBattle(entry);
+                      setActionIssue('');
+                      navigate('battle');
+                    }}
+                  />
+                )
+              }
+            />
+          </Suspense>
         </div>
         {page === 'training-loadout' && (
           <>
@@ -317,9 +402,9 @@ export function Workbench() {
               <button
                 type="button"
                 className="secondary"
-                onClick={() => navigate('setup')}
+                onClick={() => navigate('simulation')}
               >
-                返回组队
+                返回战斗模拟
               </button>
             </div>
             {setup && (
@@ -390,9 +475,9 @@ export function Workbench() {
                 type="button"
                 className="secondary"
                 disabled={busy}
-                onClick={() => navigate('setup')}
+                onClick={() => navigate('simulation')}
               >
-                返回组队
+                返回战斗模拟
               </button>
             </div>
             <BattlePanel
@@ -404,16 +489,6 @@ export function Workbench() {
               onAct={(command) => void act(command)}
             />
           </>
-        )}
-        {page === 'history' && (
-          <History
-            onResume={(entry) => {
-              setBattle(entry);
-              setActionIssue('');
-              selectBattlefield(true);
-              navigate('battle');
-            }}
-          />
         )}
       </main>
       <footer>

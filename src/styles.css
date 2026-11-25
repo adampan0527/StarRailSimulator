@@ -104,11 +104,49 @@ body {
 }
 
 .app-header nav {
-  gap: 0.25rem;
-  padding: 0.25rem;
+  gap: 0.2rem;
+}
+
+.workspace-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.simulation-workspace {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.simulation-match {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+
+.simulation-match label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.simulation-match select {
+  width: 100%;
+}
+
+.simulation-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.simulation-members li {
+  padding: 0.15rem 0.5rem;
   border: 1px solid var(--line);
-  border-radius: 0.875rem;
-  background: var(--glass);
+  border-radius: 0.45rem;
+  background: var(--surface);
 }
 
 h1,

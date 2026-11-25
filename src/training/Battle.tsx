@@ -161,7 +161,7 @@ function Roster({
   );
 }
 
-function Resource({
+export function Resource({
   name,
   value,
   max,

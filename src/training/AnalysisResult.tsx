@@ -1,8 +1,15 @@
-import { actionNames, av } from './Timeline';
+import { av } from './Timeline';
 import { DprResults } from './Dpr';
-import type { TrainingAnalysis } from './client';
+import { PlannedBattle } from './PlannedBattle';
+import type { Profile, TrainingAnalysis } from './client';
 
-export function AnalysisResult({ analysis }: { analysis: TrainingAnalysis }) {
+export function AnalysisResult({
+  analysis,
+  profiles,
+}: {
+  analysis: TrainingAnalysis;
+  profiles: Profile[];
+}) {
   const unitName = (id: string) =>
     analysis.names.find((unit) => unit.id === id)?.name ?? id;
   if (analysis.kind === 'dpr') {
@@ -22,17 +29,13 @@ export function AnalysisResult({ analysis }: { analysis: TrainingAnalysis }) {
         {' · 已评估 '}
         {evaluated} / {budget} 条指令
       </p>
-      {victory && (
-        <ol aria-label="通关指令">
-          {victory.commands.map(
-            ({ decision_index, actor_id, action, target_id }) => (
-              <li key={decision_index}>
-                {unitName(actor_id)} · {actionNames[action]}
-                {target_id && ` → ${unitName(target_id)}`}
-              </li>
-            ),
-          )}
-        </ol>
+      {victory && analysis.replay && (
+        <PlannedBattle
+          commands={victory.commands}
+          replay={analysis.replay}
+          names={analysis.names}
+          profiles={profiles}
+        />
       )}
     </div>
   );

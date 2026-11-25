@@ -29,7 +29,7 @@ export function TrainingSetup({
   onResume?: () => void;
 }) {
   const [enemies, setEnemies] = useState(() =>
-    setup.enemies.map(({ id }) => id),
+    setup.enemies.slice(0, 1).map(({ id }) => id),
   );
   const [slots, setSlots] = useState(setup.team_slots);
   const [saving, setSaving] = useState(false);
@@ -135,44 +135,50 @@ export function TrainingSetup({
         <button
           type="button"
           disabled={!ready || locked}
-          onClick={() => onStart(enemies)}
-        >
-          {starting ? '正在开战…' : '开始战斗'}
-        </button>
-        {onResume && (
-          <button
-            type="button"
-            className="secondary"
-            disabled={locked}
-            onClick={onResume}
-          >
-            继续战斗
-          </button>
-        )}
-        <button
-          type="button"
-          className="secondary"
-          disabled={!teamReady || locked}
-          onClick={() => void analyze({ kind: 'dpr' })}
-          title="使用固定靶场计算前三轮伤害"
-        >
-          {running === 'dpr' ? '正在计算…' : '计算 DPR'}
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          disabled={!ready || locked}
           onClick={() =>
             void analyze({ kind: 'fastest_victory', enemy_ids: enemies })
           }
         >
-          {running === 'fastest_victory' ? '正在搜索…' : '计算最优解'}
+          {running === 'fastest_victory' ? '正在搜索…' : '计算最快胜利'}
         </button>
       </div>
+      <details>
+        <summary>旧版手动训练</summary>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="secondary"
+            disabled={!ready || locked}
+            onClick={() => onStart(enemies)}
+          >
+            {starting ? '正在开战…' : '开始手动训练'}
+          </button>
+          {onResume && (
+            <button
+              type="button"
+              className="secondary"
+              disabled={locked}
+              onClick={onResume}
+            >
+              继续战斗
+            </button>
+          )}
+          <button
+            type="button"
+            className="secondary"
+            disabled={!teamReady || locked}
+            onClick={() => void analyze({ kind: 'dpr' })}
+          >
+            {running === 'dpr' ? '正在计算…' : '计算合成训练 DPR'}
+          </button>
+        </div>
+      </details>
       {analysis?.kind === 'fastest_victory' && (
-        <AnalysisResult analysis={analysis} />
+        <AnalysisResult analysis={analysis} profiles={setup.profiles} />
       )}
-      {analysis?.kind === 'dpr' && <AnalysisResult analysis={analysis} />}
+      {analysis?.kind === 'dpr' && (
+        <AnalysisResult analysis={analysis} profiles={setup.profiles} />
+      )}
       {(saveIssue || issue) && <p role="alert">{saveIssue || issue}</p>}
       {analysisIssue && <p role="alert">{analysisIssue}</p>}
     </>

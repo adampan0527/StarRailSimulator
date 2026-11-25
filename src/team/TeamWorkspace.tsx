@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { catalogError, characters } from '../characters/client';
 import type {
@@ -16,52 +16,53 @@ type DprCheck =
   | { kind: 'error'; message: string };
 
 const emptyTeam: Draft = { name: '', slots: [null, null, null, null] };
-const EnemyLineup = lazy(() => import('./EnemyLineup'));
+
+export type FormationSide = 'ally' | 'enemy';
 
 export function TeamWorkspace({
   catalog,
+  accountRevision,
   catalogStatus,
   onSaved,
   rosterIssue,
-  trainingContent,
-  training,
-  onModeChange,
-  busy,
+  enemyContent,
+  side,
+  onSideChange,
 }: {
   catalog?: Catalog;
+  accountRevision: number;
   catalogStatus: ReactNode;
   onSaved: (team: SavedTeam) => void;
   rosterIssue: string;
-  trainingContent: ReactNode;
-  training: boolean;
-  onModeChange: (training: boolean) => void;
-  busy: boolean;
+  enemyContent: ReactNode;
+  side: FormationSide;
+  onSideChange: (side: FormationSide) => void;
 }) {
   return (
     <section className="panel team-board" aria-labelledby="team-title">
-      <div className="section-heading">
-        <h2 id="team-title">配队</h2>
-        <label className="enemy-level">
-          战场
-          <select
-            className="team-select"
-            value={training ? 'training' : 'custom'}
-            disabled={busy}
-            onChange={(event) =>
-              onModeChange(event.target.value === 'training')
-            }
-          >
-            <option value="custom">自选敌方（4.7.0）</option>
-            <option value="training">合成训练</option>
-          </select>
-        </label>
+      <h2 id="team-title">编队</h2>
+      <div className="workspace-tabs" role="group" aria-label="配置阵营">
+        <button
+          type="button"
+          className="choice"
+          aria-pressed={side === 'ally'}
+          onClick={() => onSideChange('ally')}
+        >
+          己方
+        </button>
+        <button
+          type="button"
+          className="choice"
+          aria-pressed={side === 'enemy'}
+          onClick={() => onSideChange('enemy')}
+        >
+          敌方
+        </button>
       </div>
-      <div className="team-field" hidden={training}>
-        <Suspense fallback={<p role="status">正在读取敌方目录…</p>}>
-          <EnemyLineup />
-        </Suspense>
+      <div className="team-field" hidden={side !== 'ally'}>
         {catalog ? (
           <NamedTeam
+            key={accountRevision}
             catalog={catalog}
             onSaved={onSaved}
             rosterIssue={rosterIssue}
@@ -70,8 +71,8 @@ export function TeamWorkspace({
           catalogStatus
         )}
       </div>
-      <div className="team-field" hidden={!training}>
-        {trainingContent}
+      <div className="team-field" hidden={side !== 'enemy'}>
+        {enemyContent}
       </div>
     </section>
   );
@@ -216,10 +217,7 @@ function NamedTeam({
         </span>
       </div>
       {(issue || rosterIssue) && <p role="alert">{issue || rosterIssue}</p>}
-      <div className="form-actions" aria-describedby="team-compute-status">
-        <button type="button" className="secondary" disabled>
-          开始战斗
-        </button>
+      <div className="form-actions">
         <button
           type="button"
           disabled={!canCalculate || locked}
@@ -227,13 +225,8 @@ function NamedTeam({
         >
           {dpr?.kind === 'checking' ? '正在计算…' : '计算 DPR'}
         </button>
-        <button type="button" className="secondary" disabled>
-          计算最优解
-        </button>
+        <span className="muted">固定靶场</span>
       </div>
-      <p id="team-compute-status" className="muted">
-        DPR 使用固定靶场。开始战斗和计算最优解等待正式战斗规则接入。
-      </p>
       {dpr?.kind === 'checked' &&
         (dpr.value.result ? (
           <>

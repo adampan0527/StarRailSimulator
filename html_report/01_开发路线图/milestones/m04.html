@@ -1,0 +1,141 @@
+<!doctype html>
+<!-- 由 build.mjs 生成。内容维护请参阅 docs/roadmap.md。 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>M04 · 从配装到战斗回放的桌面原型 · StarRailSimulator</title>
+  <link rel="icon" href="../assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles/base.css">
+  <link rel="stylesheet" href="../styles/roadmap.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <header class="site-header" id="top">
+    <div class="shell header-inner">
+      <a class="brand" href="../index.html">
+        <img src="../assets/mark.svg" width="36" height="36" alt="">
+        <span>StarRailSimulator</span>
+      </a>
+      <nav aria-label="汇报导航">
+        <a href="../index.html">路线图</a>
+        <a href="../index.html#board">里程碑</a>
+      </nav>
+    </div>
+  </header>
+  <main class="shell" id="main" tabindex="-1">
+    <nav class="breadcrumbs" aria-label="当前位置">
+      <a href="../index.html#board"><span aria-hidden="true">←</span> 返回里程碑看板</a>
+    </nav>
+    <article class="detail glass">
+      <header class="detail-header">
+        <p class="eyebrow"><span class="mono">M04</span> <span aria-hidden="true">/</span> 里程碑</p>
+        <h1>从配装到战斗回放的桌面原型</h1>
+        <dl class="detail-meta">
+          <div><dt>当前状态</dt><dd><span class="status status--ready">待验收</span></dd></div>
+          <div><dt>验收依赖</dt><dd><a href="./m02.html">M02</a>、<a href="./m03.html">M03</a></dd></div>
+          <div><dt>验收记录</dt><dd><a href="../../../docs/m04-desktop.md">2026-11-17 · 桌面实现与验证</a></dd></div>
+        </dl>
+      </header>
+      <section class="prose detail-body" aria-labelledby="criteria">
+        <h2 id="criteria">交付范围与验收</h2>
+        <p>把档案与核心接入桌面应用。用户可以编辑配置、组队、选敌、逐回合操作、查看结果和回放。</p>
+<h3>验收清单</h3>
+<ul class="checklist">
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>新用户无需修改文件，即可保存配装、选择目标、使用普攻和战技、插入终结技并完成 M02 的合成战斗。界面显示行动顺序、生命、韧性、能量和战技点。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>重启应用后能打开旧回放并定位关键事件；切换星魂或速度遗器后，以新会话展示可预期的差异，旧回放结果不变。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>从正式服「遗器」页录入库存，在「角色」保存星魂和穿戴，再从「组队」点击四个固定站位选择角色。属性和命途可组合筛选，保存并重启后空位与穿戴状态一致。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>使用已生成数据构建 Windows Release 后，空存档首次进入「角色」即可加载内置的正式服目录，无需手动导入。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>角色页可组合筛选遗器部位、套装、主词条和副词条。光锥弹窗的自选与光锥库标签均可按命途筛选，保存后重开保留光锥实例与叠影。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>角色页使用遗器图标卡片选择穿戴。四组筛选支持弹窗多选，打开时默认筛选所点槽位。当前穿戴和其他角色已穿戴的实例有状态标记，应用筛选后可继续选择遗器。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>「穿戴遗器」直接展示已装备遗器的本地图标、强化等级、主词条、副词条数值和可用的副词条强化次数。卡片和空位均可打开对应部位的选择弹窗。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>光锥录入、库存与装备选择展示本地图片、星星、命途和名称。五星使用金色卡片，四星使用紫色卡片，三星使用蓝色卡片。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>持有光锥在库存页和装备选择中按星级、实例等级、首次上线日期依次降序，同批按英文名 A–Z。光锥录入与自选光锥按首次上线版本、星级、上线批次依次降序，同批按英文名 A–Z。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>「角色」页卡片展示头像、名称、属性图标和命途图标，可组合使用名称搜索、属性筛选和命途筛选。角色列表和组队选人与光锥录入采用相同排序。打开卡片可查看对应形态的立绘并配置角色，返回后恢复筛选和卡片位置。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>主页从全局角色库选人并读取当前配装面板，可创建、命名、保存和切换多套配队，原已保存配队可继续使用。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>按名称、怪物 ID 或类别查找 4.7.0 可独立出场的敌人，逐站位设置等级并查看只读属性。</span></li>
+<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>在「编队」分别管理己方和敌方。重启 Windows 应用后复验多套敌方编队的站位、等级和战斗模拟选队名单。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>自选敌方提供五个可留空的固定站位。敌方卡片显示头像、名称、弱点及生命值、防御力和速度。宽窗口五个站位同排，窄窗口自动换行。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>使用 4.7 正式服账号和本机导出器，从「遗器导出」接收已穿戴与未穿戴遗器，复制文件链接并核对导出的库存和词条精度。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>从「遗器」页导入已保存的 JSON，显示实际库存。重复导入同一份快照不会重复新增实例。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>遗器导入保留游戏穿戴、词条强化次数和未解锁词条预览。已有库存可通过重新导入补齐信息，预览词条解锁前不计入属性。</span></li>
+<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>使用 4.7 正式服账号，从「获取账号信息」直接接收已有快照，并验证首次使用时直接启动内置 Archiver、无需选择程序、提示重新登录后接收完整快照。核对角色养成、光锥、遗器、穿戴关系和附加账号字段。</span></li>
+<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>使用两个正式服 UID 验收首次导入、重复导入、切换和备注恢复。切换后角色配置、光锥、遗器和配队应各自对应所属账号。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>遗器卡片在副词条名称前展示离线图标，在数值右侧用彩色数字圆标展示已记录的 0–5 次强化。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>遗器卡片副词条单行排列，数值最多显示三位小数，相邻强化圆标之间留有间距。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>「遗器」页只展示五星遗器，每件一张带本地图标的卡片。卡片隐藏实例编号，可点击打开对应的编辑表单。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>五星遗器卡片展示副词条数值，库存支持翻页和跳页。主词条、副词条、套装与部位均可多选，四组取交集，副词条匹配门槛最多为已选项数。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>遗器库存和角色选装弹窗高亮结果卡片中命中筛选的已解锁副词条。清除筛选后恢复普通样式。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>「遗器」页的四种筛选各有多选弹窗，主词条、副词条和套装选项有离线图标，部位可按外圈、内圈整组或按单个部位勾选。主词条和副词条按固定优先级排列。</span></li>
+<li><span class="check-mark check-mark--done" aria-hidden="true">✓</span><span><span class="sr-only">已通过：</span>「遗器」页套装筛选按首次上线版本倒序。同版本按套装 ID 升序。结果卡片先按强化等级降序，同等级沿用套装筛选顺序，排序覆盖所有页。</span></li>
+<li><span class="check-mark" aria-hidden="true"></span><span><span class="sr-only">未验收：</span>按 <code>design.md</code> 审查配装页与战斗页；在 100% 和 150% Windows 显示缩放下检查布局、字体和关键路径，键盘可操作，加载、空白和失败状态可理解。</span></li>
+</ul>
+<p><strong>验收证据：</strong> <a href="../../../docs/m04-desktop.md#桌面端到端证据">桌面端到端记录与截图</a>、<a href="../../../docs/m04-evidence/desktop-workflow.mp4">操作录屏</a>、<a href="../../../src-tauri/src/workbench_tests.rs">应用层集成测试</a>、<a href="../../../docs/m04-desktop.md#角色库存与站位复验">角色目录加载复验</a>。Windows 原生 100% 已验证键盘定位回放和写入失败后重试。WebView 150% 等效视口检查通过，Windows 原生 150% 验收待补。</p>
+<h3>进展记录</h3>
+<ul>
+<li>2026-11-25 拆分「编队」和「战斗模拟」。己方保留正式服配队与固定靶场 DPR，敌方新增本机命名编队存档，战前列出双方成员和敌方等级。保留合成训练和旧回放入口。正式编队开战与 Windows 原生缩放待验收。<a href="../../../docs/battle-simulation-plan.md">开发计划</a> · <a href="../../../src-tauri/src/enemy_formations.rs">敌方编队存档回归</a></li>
+<li>2026-11-16 接入训练配装、队伍站位、选敌、逐步战斗和 SQLite 回放。应用层覆盖新旧会话隔离、跨重开复现和写入失败重试。原生 WebView 跑通完整合成战斗，在新进程定位旧回放并核对 64 条事件。状态为「待验收」。<a href="../../../docs/m04-desktop.md">验证记录</a></li>
+<li>2026-11-16 在 Windows 原生 100% 缩放下补验键盘打开旧回放、定位终结技，以及 QA 存档写入失败提示、草稿保留和重试保存。当前显示器为 96 DPI，原生 150% 项仍开放。<a href="../../../docs/m04-desktop.md#桌面端到端证据">复验记录</a></li>
+<li>2026-11-16 拆出遗器库存和角色档案页。组队页上方显示敌方，下方固定四个同排站位。Windows WebView2 实测导入、穿戴独占、组合筛选、键盘弹窗、重启恢复和训练开战。原生 150% 缩放验收待补。<a href="../../../docs/m04-desktop.md#角色库存与站位复验">复验记录</a></li>
+<li>2026-11-16 放大组队和选人卡片，加入本地角色头像和两列属性。Windows WebView2 验证 94 个角色头像离线加载，360 CSS px 窗口下四个站位保持同排。<a href="../../../docs/m04-desktop.md#角色卡片">角色卡片复验</a></li>
+<li>2026-11-16 扩充角色面板为两列 13 项，合并已保存配装的静态数值，并按角色属性显示对应伤害加成。<a href="../../../crates/profiles/tests/archive.rs">属性测试</a> · <a href="../../../docs/m04-desktop.md#角色卡片">计算范围</a></li>
+<li>2026-11-16 简化站位选人弹窗，卡片展示角色身份和上阵状态，组队站位与角色档案继续展示 13 项属性。<a href="../../../docs/m04-desktop.md#角色卡片">卡片说明</a></li>
+<li>2026-11-16 修复 Release 首次打开角色页时缺少目录的问题。Release 空存档测试加载 94 个形态，Windows 实测点击「角色」直接显示 4.7.0 名单。<a href="../../../docs/m04-desktop.md#角色库存与站位复验">复验记录</a></li>
+<li>2026-11-16 接入遗器筛选弹窗、自定义光锥和持有光锥库。角色档案显示行迹加成与形态统计说明。Windows Release 已启动复验，模拟 IPC 和存档回归通过。<a href="../../../docs/m04-desktop.md#光锥库与遗器筛选">验证记录</a></li>
+<li>2026-11-16 角色页光锥选择合并为双标签弹窗。模拟 IPC 验证两页命途筛选、键盘切换、焦点恢复和两种光锥的保存。<a href="../../../docs/m04-desktop.md#光锥库与遗器筛选">验证记录</a></li>
+<li>2026-11-16 将角色页拆为卡片列表和配置页。Windows WebView2 验证 94 张离线头像、同名形态的独立配装、键盘进入及返回定位。704 和 360 CSS px 模拟视口无横向溢出。<a href="../../../docs/m04-desktop.md#角色卡片">验证记录</a></li>
+<li>2026-11-16 角色列表计数改用「角色」，按首次上线倒序，同批次按英文名 A–Z。Windows WebView2 核对首尾批次、同批联动角色和三月七的搜索排序。<a href="../../../docs/m04-desktop.md#角色卡片">验证记录</a></li>
+<li>2026-11-16 统一角色、组队和光锥界面的属性与命途图标，角色页新增两组图标筛选。Windows Release WebView2 离线验证 16 种图标、组合筛选、键盘操作和返回定位。<a href="../../../docs/m04-desktop.md#属性与命途图标">验证记录</a></li>
+<li>2026-11-16 为光锥库和角色装备选择加入光锥卡片。Edge 模拟 IPC 验证离线加载 172 张图、星数和底色、录入编辑、键盘操作及两种装备来源。Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#光锥库与遗器筛选">验证记录</a></li>
+<li>2026-11-16 光锥列表改为按上线日期倒序、同批英文名 A–Z。对账覆盖 172 张光锥，Edge 模拟 IPC 验证录入、库存、两个装备标签和筛选顺序。<a href="../../../docs/m04-desktop.md#光锥库与遗器筛选">验证记录</a></li>
+<li>2026-11-16 在角色配置页加入离线立绘，角色与光锥列表同版本优先显示高星级。Edge 模拟 IPC 核对 99 张立绘、头像回退、三种视口布局及列表顺序。Rust 工作区和前端检查通过。<a href="../../../docs/m04-desktop.md#角色卡片">验证记录</a></li>
+<li>2026-11-17 三星光锥卡片改用蓝色背景。Edge 核对录入、库存和装备选择在浅色与深色主题下的底色。<a href="../../../docs/m04-desktop.md#光锥库与遗器筛选">验证记录</a></li>
+<li>2026-11-17 主页统一为命名配队，站位引用角色库的形态 ID，沿用旧配队存档。合成战斗入口移至「训练战斗」。Rust 应用层验证旧配队、多队和稀疏站位的重开恢复。Edge 模拟 IPC 验证 94 个角色可选、保存重试、配队切换和面板刷新，360、704 和 1056 CSS px 下布局通过。主页的敌方及计算入口等待正式战斗数据。<a href="../../../docs/m04-desktop.md#合成数据计算">桌面验证</a> · <a href="../../../src-tauri/src/character_archive_tests.rs">存档回归</a></li>
+<li>2026-11-17 「已保存配队」菜单改用工作台配色，显示当前配队和勾选标记。Edge 深浅色验证通过，覆盖键盘选队、Escape、点击外部关闭，以及 360 CSS px 下长名称换行和草稿切换。</li>
+<li>2026-11-17 配队标题、选择器和「新建配队」改为紧凑同排布局。Edge 在 360、523、704 和 1056 CSS px 下核对同行与横向溢出，复验键盘选择和草稿切换。</li>
+<li>2026-11-17 合并组队与训练入口。首批八个 4.7.0 怪物的属性和弱点由固定版本数据提供。Edge 模拟 IPC 核对选敌、切换等级、保留草稿、开战和恢复。正式关卡和角色规则待接入。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">数据范围与验证</a></li>
+<li>2026-11-17 扩展到全部 2,781 条 4.7.0 敌方配置，逐 ID 对账。Edge 离线验证搜索、类别筛选、分页、立绘解码和缺图回退。内置头像覆盖 2,726 条配置，专属立绘覆盖 2,679 条。Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">敌方目录与验证</a></li>
+<li>2026-11-17 根据关卡、图鉴与召唤归属筛出 383 种可独立配置的敌人。选敌按名称归并同名难度档，等级改为各站位独立配置。Edge 离线复验重复卡归并、银枝雕像排除、逐站位改级和窄窗键盘操作，Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">组队与敌方阵容</a></li>
+<li>2026-11-17 自选敌方改为五个固定站位卡片。Chromium 模拟 IPC 核对头像、弱点、等级属性、空位保留和键盘焦点，并验证三种视口宽度的换行布局。重建 Windows x64 Release 后，在实际 WebView2 中复验五个空位和选敌后的卡片显示。<a href="../../../docs/m04-desktop.md#组队与敌方阵容">组队与敌方阵容</a></li>
+<li>2026-11-17 增加独立的「遗器导出」页，接收本机导出器的完整库存并生成可复制的 JSON 文件链接。Windows Release WebView2 已用合成库存验证取消、重试、格式拒绝与实际落盘。正式服账号联调待验收。<a href="../../../docs/m04-desktop.md#遗器导出">验证记录</a></li>
+<li>2026-11-17 改进遗器导出的连接错误提示，增加已有库存 JSON 的文件入口。Windows Release WebView2 已验证未连接、连接后断开及无实时服务时的文件导出。<a href="../../../docs/m04-desktop.md#遗器导出">验证记录</a></li>
+<li>2026-11-17 修复 Archiver 第 4 版遗器套装 ID 的解析。Windows x64 Release 从本机 Archiver 实时接收 1146 件 4.7 账号遗器，核对已穿戴与未穿戴遗器的全部导出字段，并验证复制链接。遗器导出验收项完成。<a href="../../../docs/m04-desktop.md#遗器导出">验证记录</a></li>
+<li>2026-11-17 「选择导出 JSON」支持重新打开模拟器保存的遗器快照。Windows x64 Release 使用原生文件选择器重新读取 1146 件遗器并保存，原文件和新文件的 SHA-256 一致。<a href="../../../docs/m04-desktop.md#遗器导出">验证记录</a></li>
+<li>2026-11-17 「遗器」页接入本地 JSON 批量导入。Windows x64 Release 导入并显示 1146 件遗器，SQLite 读回验证来源实例及速度精度。工作区回归覆盖旧存档迁移和重复导入。<a href="../../../docs/m04-desktop.md#遗器导出">验证记录</a></li>
+<li>2026-11-18 「遗器」页改为五星图标卡片。Edge 离线验证 773 件五星遗器的图标与窄窗布局。Windows x64 Release 复验库存显示与点击编辑。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
+<li>2026-11-18 「遗器」页增加副词条数值、每页 24 件及四组多选筛选。Edge 核对实际库存的全部 33 页、筛选交集、页码回退和窄窗布局。Windows x64 Release 复验卡片、筛选和翻页。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
+<li>2026-11-18 「遗器」页的四组筛选改为多选弹窗。Edge 离线验证词条和套装图标、部位分组勾选、取消与应用、键盘焦点及窄窗布局。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
+<li>2026-11-18 为遗器主词条和副词条设置固定筛选顺序。Edge 核对 19 个主词条和 12 个副词条的完整显示顺序，Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
+<li>2026-11-19 遗器套装筛选按首次上线版本倒序，卡片先按强化等级降序，再按套装顺序。对账覆盖 4.7.0 的 64 套遗器。Edge 模拟 IPC 核对全部套装选项及 192 件卡片的分页、筛选和清除筛选。前端检查、Windows x64 Release 构建和启动检查通过。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
+<li>2026-11-19 角色配装的遗器选择改用库存同款图标卡片与多选弹窗。Edge 模拟 IPC 验证了跨部位组合筛选、焦点恢复、穿戴与卸下，以及筛选时保留配装草稿。Windows x64 Release 构建通过。<a href="../../../docs/m04-desktop.md#光锥库与遗器筛选">验证记录</a></li>
+<li>2026-11-19 遗器导入保留游戏穿戴角色、副词条强化次数和第 4 条预览。独立存档导入 1146 件 4.7 遗器，恢复 169 件穿戴，核对 384 件五星第 4 条预览。Rust 回归验证旧库补齐、重复导入与手动配装，Edge 模拟 IPC 检查两处遗器卡片与窄窗布局。<a href="../../../docs/m04-desktop.md#导入穿戴与副词条">验证记录</a></li>
+<li>2026-11-19 遗器卡片加入副词条图标与 0–5 次强化圆标。Edge 模拟 IPC 检查库存与角色遗器选择弹窗，核对浅深色主题和三种窗口宽度。前端检查与生产构建通过。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
+<li>2026-11-19 角色配置的「穿戴遗器」改用图标和词条卡片。Edge 模拟 IPC 验证三种窗口宽度、词条强化次数、空位、穿戴与卸下，以及弹窗关闭后的焦点恢复。<a href="../../../docs/m04-desktop.md#光锥库与遗器筛选">验证记录</a></li>
+<li>2026-11-19 加宽遗器卡片的最小列宽，副词条数值显示至多三位小数，并缩小强化圆标。Edge 模拟 IPC 覆盖十二种副词条，在五种宽度的浅深色库存中核对单行显示和圆标间距，并复验角色配装与选择弹窗。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
+<li>2026-11-19 接入 Reliquary Archiver 启动、完整账号快照和角色装备导入。Windows WebView2 使用模拟导出器验证原生选择器、实时接收和文件导入。Rust 回归覆盖存档迁移、重复导入、强化更新、保留手动配置和事务回滚。正式服账号联调待验收。<a href="../../../docs/m04-desktop.md#archiver-账号导入">接入与验证</a></li>
+<li>2026-11-24 库存页与装备弹窗的持有光锥改为优先显示高星级、高等级和较新实装的实例。排序回归覆盖跨版本、同星级不同等级、同星同级不同批次和同款实例。<a href="../../../tests/light-cone-order.test.mjs">排序回归测试</a></li>
+<li>2026-11-24 实现按 UID 新建和更新账号，默认以 UID 显示，支持自定义备注和切换。Rust 回归和模拟 Tauri 界面流程通过，正式服双 UID 验收待补。<a href="../../../docs/m04-desktop.md#多账号切换">实现与验证记录</a></li>
+<li>2026-11-24 遗器库存与角色选装弹窗显示命中的副词条。Edge 模拟 IPC 通过浅深主题、部分匹配和筛选状态切换复验。<a href="../../../docs/m04-desktop.md#遗器库存卡片">验证记录</a></li>
+<li>2026-11-24 将实时导入合并为「获取账号信息」。Edge 模拟环境验证已有快照直接预览、自动启动后的连接重试、重新登录提示、取消和文件入口。正式服登录联调待验收。<a href="../../../docs/m04-desktop.md#archiver-账号导入">验证记录</a></li>
+<li>2026-11-24 Windows x64 Release 内置 Archiver，默认获取账号时直接启动，并将程序选择器移至「更换 Archiver」。Edge 模拟验证两条入口，Rust 回归验证内置程序释放、修复及自定义路径读取。正式服登录联调待验收。<a href="../../../docs/m04-desktop.md#archiver-账号导入">验证记录</a></li>
+</ul>
+      </section>
+    </article>
+    <nav class="detail-pagination" aria-label="相邻里程碑">
+      <a class="page-link page-link--previous" href="./m03.html">
+    <span>上一里程碑 · M03</span>
+    <strong>可保存和复用的全局角色档案</strong>
+  </a>
+      <a class="page-link page-link--next" href="./m05.html">
+    <span>下一里程碑 · M05</span>
+    <strong>可复现的打法搜索</strong>
+  </a>
+    </nav>
+  </main>
+  <footer class="shell site-footer">
+    <span>StarRailSimulator <span aria-hidden="true">/</span> 开发汇报 01</span>
+    <a href="#top">回到顶部 <span aria-hidden="true">↑</span></a>
+  </footer>
+</body>
+</html>

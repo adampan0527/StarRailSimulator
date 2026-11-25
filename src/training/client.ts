@@ -6,7 +6,7 @@ export type Equipment = {
 };
 
 export type Preset = { name: string; equipment: Equipment };
-export type Name = { id: string; name: string };
+export type Name = { id: string; name: string; character_id?: string };
 export type ScaledStat = { base: number; total: number };
 export type CharacterStats = {
   hp: ScaledStat | null;
@@ -265,18 +265,21 @@ export type BattleEvent = {
   kind: EventKind;
 };
 
+export type BattleSnapshot = {
+  outcome: Outcome;
+  av_micros: number;
+  wave_index: number;
+  decision_index: number;
+  ordinary_actor_id: string | null;
+  skill_points: number;
+  skill_point_cap?: number;
+  enemy_hp_lost: number;
+  units: Unit[];
+};
+
 export type BattleView = {
   id: number;
-  snapshot: {
-    outcome: Outcome;
-    av_micros: number;
-    decision_index: number;
-    ordinary_actor_id: string | null;
-    skill_points: number;
-    skill_point_cap?: number;
-    enemy_hp_lost: number;
-    units: Unit[];
-  };
+  snapshot: BattleSnapshot;
   order: { unit_id: string; remaining_av_micros: number }[];
   legal_actions: Command[];
   events: BattleEvent[];
@@ -341,6 +344,10 @@ export type TrainingAnalysis =
         budget: number;
         victory: { av_micros: number; commands: Command[] } | null;
       };
+      replay: {
+        frames: { snapshot: BattleSnapshot; event_count: number }[];
+        events: BattleEvent[];
+      } | null;
     };
 
 export const training = {

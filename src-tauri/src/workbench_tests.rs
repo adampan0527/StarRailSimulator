@@ -22,12 +22,14 @@ fn training_analysis_uses_frozen_inputs_and_produces_replayable_commands() {
     let frozen = app.analysis_input(request()).unwrap();
     app.save_team(Default::default()).unwrap();
     assert!(app.analysis_input(request()).is_err());
-    let TrainingAnalysis::FastestVictory { result, .. } = frozen.run().unwrap() else {
+    let TrainingAnalysis::FastestVictory { result, replay, .. } = frozen.run().unwrap() else {
         panic!("expected fastest victory");
     };
     assert!(result.exact);
     assert!(app.replays().unwrap().is_empty());
     let solution = result.victory.unwrap();
+    let planned = replay.unwrap();
+    assert_eq!(planned.frames.len(), solution.commands.len() + 1);
 
     let template = app.setup().unwrap();
     app.save_team(std::array::from_fn(|index| {
@@ -35,9 +37,14 @@ fn training_analysis_uses_frozen_inputs_and_produces_replayable_commands() {
     }))
     .unwrap();
     let mut battle = app.start(&left).unwrap();
-    for action in solution.commands {
+    assert_eq!(battle.snapshot, planned.frames[0].snapshot);
+    assert_eq!(battle.events.len(), planned.frames[0].event_count);
+    for (index, action) in solution.commands.into_iter().enumerate() {
         battle = app.act(battle.id, &action).unwrap();
+        assert_eq!(battle.snapshot, planned.frames[index + 1].snapshot);
+        assert_eq!(battle.events.len(), planned.frames[index + 1].event_count);
     }
+    assert_eq!(battle.events, planned.events);
     assert_eq!(battle.snapshot.outcome, Outcome::Victory);
     assert_eq!(battle.snapshot.av_micros, solution.av_micros);
 }

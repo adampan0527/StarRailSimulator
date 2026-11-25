@@ -10,6 +10,7 @@ mod desktop_characters;
 mod desktop_relic_export;
 mod desktop_status;
 mod desktop_workbench;
+mod enemy_formations;
 mod workbench;
 #[cfg(test)]
 mod workbench_tests;
@@ -58,6 +59,8 @@ fn main() -> ExitCode {
             desktop_workbench::training_act,
             desktop_workbench::training_replays,
             desktop_workbench::training_replay,
+            enemy_formations::enemy_formations,
+            enemy_formations::enemy_formation_save,
         ])
         .run(tauri::generate_context!());
 
