@@ -93,11 +93,26 @@ impl Battle<'_> {
         if self.hp(target).0 == 0
             || dot.turns == 0
             || dot.max_stacks == 0
+            || self.target_dot_immune(target, dot.element)
             || !self.roll_effect(source, target, chance_bp)
         {
             return false;
         }
         self.inflict_skill_dot(source, target, dot, false, separate)
+    }
+
+    fn target_dot_immune(&self, target: usize, element: Element) -> bool {
+        let super::Kit::OfficialEnemy(kit) = &self.plan.units[target].kit else {
+            return false;
+        };
+        let key = match element {
+            Element::Physical => "STAT_DOT_Bleed",
+            Element::Fire => "STAT_DOT_Burn",
+            Element::Thunder => "STAT_DOT_Electric",
+            Element::Wind => "STAT_DOT_Poison",
+            _ => return false,
+        };
+        kit.debuff_resist_for(key) >= 10_000
     }
 
     pub(super) fn inflict_skill_dot_with_vulnerability(

@@ -5,13 +5,17 @@ use crate::{
     fixture::{self, AllyKit, Element, EnemyKit, Stats},
 };
 
-use super::official::{self, CombatType, OfficialCharacter, OfficialKit};
+use super::{
+    enemy::{self, OfficialEnemy, OfficialEnemyKit},
+    official::{self, CombatType, OfficialCharacter, OfficialKit},
+};
 
 #[derive(Clone)]
 pub(super) enum Kit {
     Ally(&'static AllyKit),
     Official(Arc<OfficialKit>),
     Enemy(&'static EnemyKit),
+    OfficialEnemy(Arc<OfficialEnemyKit>),
     Memosprite { owner: usize },
     Dummy { max_toughness: u16 },
 }
@@ -21,14 +25,21 @@ impl Kit {
         match self {
             Self::Ally(kit) => kit.max_energy_milli,
             Self::Official(kit) => kit.max_energy_milli,
-            Self::Enemy(_) | Self::Dummy { .. } | Self::Memosprite { .. } => 0,
+            Self::Enemy(_)
+            | Self::OfficialEnemy(_)
+            | Self::Dummy { .. }
+            | Self::Memosprite { .. } => 0,
         }
     }
 
     pub fn skill_point_cap_bonus(&self) -> u8 {
         match self {
             Self::Official(kit) => kit.mechanics.skill_point_cap_bonus(),
-            Self::Ally(_) | Self::Enemy(_) | Self::Dummy { .. } | Self::Memosprite { .. } => 0,
+            Self::Ally(_)
+            | Self::Enemy(_)
+            | Self::OfficialEnemy(_)
+            | Self::Dummy { .. }
+            | Self::Memosprite { .. } => 0,
         }
     }
 
@@ -36,6 +47,7 @@ impl Kit {
         match self {
             Self::Ally(_) | Self::Official(_) | Self::Memosprite { .. } => 0,
             Self::Enemy(kit) => kit.max_toughness,
+            Self::OfficialEnemy(kit) => kit.max_toughness,
             Self::Dummy { max_toughness } => *max_toughness,
         }
     }
@@ -44,7 +56,15 @@ impl Kit {
         match self {
             Self::Ally(_) | Self::Official(_) | Self::Memosprite { .. } => false,
             Self::Enemy(kit) => kit.weakness[element.index()],
+            Self::OfficialEnemy(kit) => kit.weakness[element.index()],
             Self::Dummy { .. } => true,
+        }
+    }
+
+    pub fn initial_delay_ratio_bp(&self) -> u32 {
+        match self {
+            Self::OfficialEnemy(kit) => kit.initial_delay_ratio_bp,
+            _ => 10_000,
         }
     }
 }
@@ -126,6 +146,108 @@ impl PreparedBattle {
             starting_skill_points,
         };
         plan.with_dummies(&super::STANDARD_DPR_SCENARIO.toughness)
+    }
+
+    /// Creates an encounter pairing official 4.7.0 characters with verified official enemies.
+    pub fn official_encounter(
+        team: &[OfficialCharacter],
+        waves: &[Vec<OfficialEnemy>],
+        seed: u32,
+        starting_skill_points: u8,
+    ) -> Result<Self, BattleError> {
+        if !(1..=4).contains(&team.len())
+            || !(1..=8).contains(&waves.len())
+            || waves.iter().any(|wave| !(1..=5).contains(&wave.len()))
+        {
+            return Err(BattleError::InvalidInput(
+                "official encounter team size or wave size/count".into(),
+            ));
+        }
+        let mut ids = BTreeSet::new();
+        let mut forms = BTreeSet::new();
+        let mut units = Vec::with_capacity(team.len() + waves.iter().map(Vec::len).sum::<usize>());
+        for character in team {
+            if !valid_id(&character.unit_id)
+                || !ids.insert(character.unit_id.clone())
+                || !forms.insert(character.form_id.clone())
+            {
+                return Err(BattleError::InvalidInput(
+                    "duplicate or invalid official encounter ally".into(),
+                ));
+            }
+            let stats = character.resolved_stats()?;
+            let kit = official::build(character)?;
+            let starting_energy_milli = kit.max_energy_milli / 2;
+            units.push(UnitPlan {
+                id: character.unit_id.clone(),
+                official_form: Some(character.form_id.clone()),
+                combat_type: Some(character.combat_type),
+                has_control_resistance: false,
+                elation_bp: character.stats.elation_bp,
+                kit: Kit::Official(Arc::new(kit)),
+                stats,
+                starting_energy_milli,
+            });
+        }
+        let skill_point_cap = fixture::SKILL_POINT_CAP
+            + units
+                .iter()
+                .map(|unit| unit.kit.skill_point_cap_bonus())
+                .sum::<u8>();
+        if starting_skill_points > skill_point_cap {
+            return Err(BattleError::InvalidInput(
+                "official encounter starting skill points".into(),
+            ));
+        }
+        let mut wave_ends = Vec::with_capacity(waves.len());
+        for wave in waves {
+            for enemy_input in wave {
+                if !valid_id(&enemy_input.unit_id) || !ids.insert(enemy_input.unit_id.clone()) {
+                    return Err(BattleError::InvalidInput(format!(
+                        "invalid or duplicate enemy unit ID: {}",
+                        enemy_input.unit_id
+                    )));
+                }
+                let (kit, stats) = enemy::build_official_enemy(enemy_input)?;
+                units.push(UnitPlan {
+                    id: enemy_input.unit_id.clone(),
+                    official_form: None,
+                    combat_type: None,
+                    has_control_resistance: false,
+                    elation_bp: 0,
+                    kit: Kit::OfficialEnemy(Arc::new(kit)),
+                    stats,
+                    starting_energy_milli: 0,
+                });
+            }
+            wave_ends.push(units.len());
+        }
+        for owner in 0..team.len() {
+            let master = &units[owner];
+            let Kit::Official(kit) = &master.kit else {
+                continue;
+            };
+            let Some(profile) = kit.mechanics.memosprite_profile(master.stats) else {
+                continue;
+            };
+            units.push(UnitPlan {
+                id: format!("{}:{}", master.id, profile.name),
+                official_form: None,
+                combat_type: master.combat_type,
+                has_control_resistance: false,
+                elation_bp: master.elation_bp,
+                kit: Kit::Memosprite { owner },
+                stats: profile.stats,
+                starting_energy_milli: 0,
+            });
+        }
+        Ok(Self {
+            units,
+            ally_count: team.len(),
+            wave_ends,
+            seed,
+            starting_skill_points,
+        })
     }
 
     pub fn new(input: &InitialInput) -> Result<Self, BattleError> {

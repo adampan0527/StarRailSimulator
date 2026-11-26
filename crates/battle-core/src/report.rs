@@ -76,10 +76,13 @@ pub enum StatusKind {
     RestrictedWeakness,
     InfiniteFury,
     BalefireBind,
+    Barrier,
+    Reverberation,
+    StrongReverberation,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::BalefireBind.index() + 1;
+    pub(crate) const COUNT: usize = Self::StrongReverberation.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -140,6 +143,9 @@ impl StatusKind {
             Self::RestrictedWeakness => 53,
             Self::InfiniteFury => 54,
             Self::BalefireBind => 55,
+            Self::Barrier => 56,
+            Self::Reverberation => 57,
+            Self::StrongReverberation => 58,
         }
     }
 }

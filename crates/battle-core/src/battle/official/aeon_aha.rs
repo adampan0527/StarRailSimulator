@@ -317,7 +317,10 @@ impl Mechanics for AeonAha {
         }
         let rule = self.elation_debt().expect("Aeon Aha has Elation Debt");
         for target in battle.enemies() {
-            if matches!(battle.plan.units[target].kit, super::super::Kit::Enemy(_)) {
+            if matches!(
+                battle.plan.units[target].kit,
+                super::super::Kit::Enemy(_) | super::super::Kit::OfficialEnemy(_)
+            ) {
                 battle.apply_elation_debt(actor, target, rule, 0);
             }
         }

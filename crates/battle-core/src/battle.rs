@@ -1,6 +1,7 @@
 mod analysis;
 mod combat_status;
 mod elation;
+mod enemy;
 mod extra_turn;
 mod official;
 mod periodic;
@@ -25,6 +26,7 @@ pub use analysis::{
 };
 use combat_status::{BreakDot, Debuff, DebuffKind, Entanglement, HealOverTime};
 use elation::{AHA_ACTION_ORDER_ID, AhaState};
+pub use enemy::{OfficialEnemy, OfficialEnemyStats, official_enemy_stats, supports_official_enemy};
 use extra_turn::ExtraTurns;
 use official::{
     AcheronState, AventurineState, BailuState, BlackSwanTarget, DrRatioState, FeixiaoState,
@@ -226,6 +228,7 @@ struct UnitState {
     pending_penetration: Option<(u32, u32)>,
     active_penetration_bp: u32,
     penetration_ready_after_turn: u32,
+    enemy_state: enemy::EnemyRuntimeState,
 }
 
 impl UnitState {
@@ -303,7 +306,11 @@ impl<'a> Battle<'a> {
                     toughness: unit.kit.max_toughness(),
                     extra_toughness: None,
                     toughness_reduction_remainder: 0,
-                    gauge_quanta: GAUGE_FULL,
+                    gauge_quanta: u64::try_from(
+                        u128::from(GAUGE_FULL) * u128::from(unit.kit.initial_delay_ratio_bp())
+                            / 10_000,
+                    )
+                    .unwrap_or(GAUGE_FULL),
                     summon_turn: None,
                     countdown: None,
                     memosprite_max_hp: None,
@@ -418,6 +425,10 @@ impl<'a> Battle<'a> {
                     pending_penetration: None,
                     active_penetration_bp: 0,
                     penetration_ready_after_turn: 0,
+                    enemy_state: match &unit.kit {
+                        Kit::OfficialEnemy(kit) => kit.init_runtime_state(),
+                        _ => enemy::EnemyRuntimeState::default(),
+                    },
                 })
                 .collect(),
             outcome: Outcome::Ongoing,
@@ -852,7 +863,7 @@ impl<'a> Battle<'a> {
                 .map(official::OfficialAbility::resolve)
                 .or_else(|| kit.ability(action))
                 .ok_or(BattleError::IllegalTiming)?,
-            Kit::Enemy(_) | Kit::Dummy { .. } | Kit::Memosprite { .. } => {
+            Kit::Enemy(_) | Kit::OfficialEnemy(_) | Kit::Dummy { .. } | Kit::Memosprite { .. } => {
                 return Err(BattleError::InvalidActor);
             }
         };
@@ -1421,8 +1432,16 @@ impl<'a> Battle<'a> {
             match kit {
                 Kit::Ally(_) | Kit::Official(_) => {
                     self.tick_heals_over_time(actor);
+                    self.dot_timing = DotTiming::TurnStart(actor);
+                    self.tick_skill_dots(actor);
+                    self.finish_dot_batch(DotTiming::TurnStart(actor));
+                    self.dot_timing = DotTiming::Other;
+                    if self.units[actor].hp == 0 {
+                        self.resolve_wave_or_end();
+                        continue;
+                    }
                     self.notify_ally_turn_opening(actor, false);
-                    if self.thaw(actor) {
+                    if self.thaw(actor) || self.consume_strong_reverberation(actor) {
                         self.finish_turn(actor);
                         self.resolve_wave_or_end();
                         continue;
@@ -1435,7 +1454,7 @@ impl<'a> Battle<'a> {
                     self.ordinary_actor = Some(actor);
                 }
                 Kit::Memosprite { .. } => unreachable!("memosprites use their owner's summon slot"),
-                Kit::Enemy(_) | Kit::Dummy { .. } => {
+                Kit::Enemy(_) | Kit::OfficialEnemy(_) | Kit::Dummy { .. } => {
                     self.enemy_turn = Some(actor);
                     self.resolve_enemy_turn(actor);
                     self.enemy_turn = None;
@@ -1496,9 +1515,17 @@ impl<'a> Battle<'a> {
                     mechanics.on_enemy_turn_start(self, owner, actor);
                 }
             }
-            if let Kit::Enemy(enemy) = kit {
-                self.resolve_enemy(actor, enemy);
-                acted = true;
+            match kit {
+                Kit::Enemy(enemy) => {
+                    self.resolve_enemy(actor, enemy);
+                    acted = true;
+                }
+                Kit::OfficialEnemy(enemy) => {
+                    let enemy = Arc::clone(enemy);
+                    self.resolve_official_enemy(actor, &enemy);
+                    acted = true;
+                }
+                _ => {}
             }
             self.finish_debuff_action(actor, parent_debuff_targets);
         }

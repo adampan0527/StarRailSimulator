@@ -10,7 +10,8 @@ use crate::{
 use super::{
     Battle, DummyDamage, ExtraToughness, Kit, Status,
     combat_status::DebuffKind,
-    periodic::{DotEvent, DotScale, DotTiming},
+    enemy::{EnemyDebuffKind, EnemyDotScale, EnemyOnHit, EnemySkillAction, OfficialEnemyKit},
+    periodic::{DotEvent, DotScale, DotTiming, SkillDot},
     support::{OffenseBuffs, OffenseContext, percentage_of},
 };
 
@@ -1801,6 +1802,465 @@ impl Battle<'_> {
         }
     }
 
+    pub(super) fn resolve_official_enemy(&mut self, actor: usize, kit: &OfficialEnemyKit) {
+        let Some(skill_index) = kit.select_next_skill(&mut self.units[actor].enemy_state) else {
+            return;
+        };
+        let Some(skill) = kit.skills.get(skill_index) else {
+            return;
+        };
+        match skill.action {
+            EnemySkillAction::SingleAttack {
+                element,
+                multiplier_bp,
+                sp_hit_milli,
+                on_hit,
+            } => {
+                if let Some(target) = self.select_official_enemy_target(actor) {
+                    self.resolve_official_enemy_single_hit(
+                        actor,
+                        target,
+                        element,
+                        multiplier_bp,
+                        sp_hit_milli,
+                        on_hit,
+                    );
+                }
+            }
+            EnemySkillAction::SelfBarrierAndSingleAttack {
+                element,
+                multiplier_bp,
+                sp_hit_milli,
+            } => {
+                if !self.units[actor].enemy_state.barrier_active {
+                    self.units[actor].enemy_state.barrier_active = true;
+                    self.emit(
+                        EventKind::StatusApplied(StatusKind::Barrier),
+                        Some(actor),
+                        Some(actor),
+                    );
+                }
+                if let Some(target) = self.select_official_enemy_target(actor) {
+                    self.resolve_official_enemy_single_hit(
+                        actor,
+                        target,
+                        element,
+                        multiplier_bp,
+                        sp_hit_milli,
+                        None,
+                    );
+                }
+            }
+            EnemySkillAction::BlastAttack {
+                element,
+                main_multiplier_bp,
+                adjacent_multiplier_bp,
+                sp_hit_milli,
+                on_hit,
+            } => {
+                if let Some(primary) = self.select_official_enemy_target(actor) {
+                    let mut targets = vec![(primary, main_multiplier_bp)];
+                    if primary < self.plan.ally_count {
+                        if let Some(left) = primary.checked_sub(1)
+                            && self.can_enemy_target(left)
+                        {
+                            targets.push((left, adjacent_multiplier_bp));
+                        }
+                        let right = primary + 1;
+                        if right < self.plan.ally_count && self.can_enemy_target(right) {
+                            targets.push((right, adjacent_multiplier_bp));
+                        }
+                    }
+                    self.resolve_official_enemy_multi_hit(
+                        actor,
+                        primary,
+                        &targets,
+                        element,
+                        sp_hit_milli,
+                        on_hit,
+                    );
+                }
+            }
+            EnemySkillAction::AllAttack {
+                element,
+                multiplier_bp,
+                sp_hit_milli,
+                on_hit,
+            } => {
+                let targets: Vec<_> = self
+                    .party_units()
+                    .filter(|&unit| self.can_enemy_target(unit))
+                    .map(|unit| (unit, multiplier_bp))
+                    .collect();
+                if let Some(&(primary, _)) = targets.first() {
+                    self.resolve_official_enemy_multi_hit(
+                        actor,
+                        primary,
+                        &targets,
+                        element,
+                        sp_hit_milli,
+                        on_hit,
+                    );
+                }
+            }
+            EnemySkillAction::BounceAttack {
+                element,
+                primary_multiplier_bp,
+                primary_sp_hit_milli,
+                bounce_count,
+                bounce_multiplier_bp,
+                bounce_sp_hit_milli,
+            } => {
+                if let Some(primary) = self.select_official_enemy_target(actor) {
+                    self.resolve_official_enemy_bounce(
+                        actor,
+                        primary,
+                        element,
+                        primary_multiplier_bp,
+                        primary_sp_hit_milli,
+                        bounce_count,
+                        bounce_multiplier_bp,
+                        bounce_sp_hit_milli,
+                    );
+                }
+            }
+            EnemySkillAction::HealAllEnemies { max_hp_ratio_bp } => {
+                self.notify_active_ability(actor);
+                let enemies: Vec<_> = self
+                    .enemies()
+                    .filter(|&unit| self.units[unit].hp > 0)
+                    .collect();
+                for ally_enemy in enemies {
+                    let amount = percentage_of(self.effective_max_hp(ally_enemy), max_hp_ratio_bp);
+                    self.heal_unit(actor, ally_enemy, amount);
+                }
+                self.finish_enemy_action();
+                self.resolve_follow_ups();
+            }
+        }
+    }
+
+    fn select_official_enemy_target(&mut self, actor: usize) -> Option<usize> {
+        let taunt = self.allies().find(|&owner| {
+            self.is_targetable(owner)
+                && self
+                    .mechanics(owner)
+                    .is_some_and(|rules| rules.taunts_enemy(self, owner, actor))
+        });
+        if taunt.is_some() {
+            return taunt;
+        }
+        if let Some(locked) = self.units[actor].enemy_state.locked_target
+            && self.can_enemy_target(locked)
+        {
+            return Some(locked);
+        }
+        self.random_enemy_target()
+    }
+
+    fn resolve_official_enemy_single_hit(
+        &mut self,
+        actor: usize,
+        target: usize,
+        element: Element,
+        multiplier_bp: u32,
+        sp_hit_milli: u32,
+        on_hit: Option<EnemyOnHit>,
+    ) {
+        let was_shielded = self.shield_amount(target) > 0;
+        if let Some(rules) = self.mechanics(target) {
+            rules.on_enemy_targeted(self, target);
+        }
+        self.notify_active_ability(actor);
+        self.begin_attack();
+        self.emit(EventKind::EnemyAttack, Some(actor), Some(target));
+        self.enemy_action = Some(actor);
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.before_enemy_attack_seen(self, owner, target);
+            }
+        }
+        self.strike(
+            actor,
+            target,
+            DamageKind::Direct,
+            Hit {
+                element,
+                multiplier_bp,
+                toughness: 0,
+                origin: None,
+                scale: DamageScale::Attack,
+            },
+        );
+        self.apply_enemy_post_hit_effects(actor, target, on_hit);
+        self.finish_enemy_action();
+        let energy_recipient = self.memosprite_owner(target).unwrap_or(target);
+        if self.units[energy_recipient].hp > 0 && sp_hit_milli > 0 {
+            self.gain_energy(actor, energy_recipient, sp_hit_milli);
+        }
+        if self.units[target].hp > 0
+            && let Some(mechanics) = self.mechanics(target)
+        {
+            mechanics.after_enemy_attack(self, target);
+        }
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.after_enemy_attack_seen(self, owner, actor, target, was_shielded);
+            }
+        }
+        self.resolve_follow_ups();
+    }
+
+    fn resolve_official_enemy_multi_hit(
+        &mut self,
+        actor: usize,
+        primary: usize,
+        targets: &[(usize, u32)],
+        element: Element,
+        sp_hit_milli: u32,
+        on_hit: Option<EnemyOnHit>,
+    ) {
+        let shielded: Vec<_> = targets
+            .iter()
+            .map(|&(target, _)| (target, self.shield_amount(target) > 0))
+            .collect();
+        for &(target, _) in targets {
+            if let Some(rules) = self.mechanics(target) {
+                rules.on_enemy_targeted(self, target);
+            }
+        }
+        self.notify_active_ability(actor);
+        self.begin_attack();
+        self.emit(EventKind::EnemyAttack, Some(actor), Some(primary));
+        self.enemy_action = Some(actor);
+        for &(target, _) in targets {
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.before_enemy_attack_seen(self, owner, target);
+                }
+            }
+        }
+        for &(target, multiplier_bp) in targets {
+            if self.units[target].hp == 0 {
+                continue;
+            }
+            self.strike(
+                actor,
+                target,
+                DamageKind::Direct,
+                Hit {
+                    element,
+                    multiplier_bp,
+                    toughness: 0,
+                    origin: None,
+                    scale: DamageScale::Attack,
+                },
+            );
+            self.apply_enemy_post_hit_effects(actor, target, on_hit);
+        }
+        self.finish_enemy_action();
+        for &(target, was_shielded) in &shielded {
+            let energy_recipient = self.memosprite_owner(target).unwrap_or(target);
+            if self.units[energy_recipient].hp > 0 && sp_hit_milli > 0 {
+                self.gain_energy(actor, energy_recipient, sp_hit_milli);
+            }
+            if self.units[target].hp > 0
+                && let Some(mechanics) = self.mechanics(target)
+            {
+                mechanics.after_enemy_attack(self, target);
+            }
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.after_enemy_attack_seen(self, owner, actor, target, was_shielded);
+                }
+            }
+        }
+        self.resolve_follow_ups();
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn resolve_official_enemy_bounce(
+        &mut self,
+        actor: usize,
+        primary: usize,
+        element: Element,
+        primary_multiplier_bp: u32,
+        primary_sp_hit_milli: u32,
+        bounce_count: u8,
+        bounce_multiplier_bp: u32,
+        bounce_sp_hit_milli: u32,
+    ) {
+        let mut hit_records: Vec<(usize, bool, u32)> = Vec::new();
+        let mut record_hit = |battle: &mut Self, target: usize, sp_milli: u32| {
+            if let Some((_, _, total_sp)) = hit_records
+                .iter_mut()
+                .find(|(recorded, _, _)| *recorded == target)
+            {
+                *total_sp = total_sp.saturating_add(sp_milli);
+            } else {
+                hit_records.push((target, battle.shield_amount(target) > 0, sp_milli));
+            }
+        };
+
+        if let Some(rules) = self.mechanics(primary) {
+            rules.on_enemy_targeted(self, primary);
+        }
+        record_hit(self, primary, primary_sp_hit_milli);
+        self.notify_active_ability(actor);
+        self.begin_attack();
+        self.emit(EventKind::EnemyAttack, Some(actor), Some(primary));
+        self.enemy_action = Some(actor);
+        for owner in self.allies() {
+            if self.units[owner].hp > 0
+                && let Some(mechanics) = self.mechanics(owner)
+            {
+                mechanics.before_enemy_attack_seen(self, owner, primary);
+            }
+        }
+        self.strike(
+            actor,
+            primary,
+            DamageKind::Direct,
+            Hit {
+                element,
+                multiplier_bp: primary_multiplier_bp,
+                toughness: 0,
+                origin: None,
+                scale: DamageScale::Attack,
+            },
+        );
+        self.apply_enemy_post_hit_effects(actor, primary, None);
+
+        for _ in 0..bounce_count {
+            let candidates: Vec<_> = self
+                .party_units()
+                .filter(|&unit| self.can_enemy_target(unit))
+                .collect();
+            if candidates.is_empty() {
+                break;
+            }
+            let target = candidates[self.random_index(candidates.len())];
+            record_hit(self, target, bounce_sp_hit_milli);
+            self.strike(
+                actor,
+                target,
+                DamageKind::Direct,
+                Hit {
+                    element,
+                    multiplier_bp: bounce_multiplier_bp,
+                    toughness: 0,
+                    origin: None,
+                    scale: DamageScale::Attack,
+                },
+            );
+            self.apply_enemy_post_hit_effects(actor, target, None);
+        }
+        self.finish_enemy_action();
+        for (target, was_shielded, total_sp) in hit_records {
+            let energy_recipient = self.memosprite_owner(target).unwrap_or(target);
+            if self.units[energy_recipient].hp > 0 && total_sp > 0 {
+                self.gain_energy(actor, energy_recipient, total_sp);
+            }
+            if self.units[target].hp > 0
+                && let Some(mechanics) = self.mechanics(target)
+            {
+                mechanics.after_enemy_attack(self, target);
+            }
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.after_enemy_attack_seen(self, owner, actor, target, was_shielded);
+                }
+            }
+        }
+        self.resolve_follow_ups();
+    }
+
+    fn apply_enemy_post_hit_effects(
+        &mut self,
+        actor: usize,
+        target: usize,
+        on_hit: Option<EnemyOnHit>,
+    ) {
+        if self.units[target].hp == 0 {
+            return;
+        }
+        let upgraded_reverberation = self.trigger_reverberation_on_hit(actor, target);
+        let Some(effect) = on_hit else {
+            return;
+        };
+        match effect {
+            EnemyOnHit::Debuff {
+                kind,
+                base_chance_bp,
+                magnitude_bp,
+                turns,
+            } => {
+                if self.roll_status(actor, target, base_chance_bp, false) {
+                    let debuff_kind = match kind {
+                        EnemyDebuffKind::DefenseDown => DebuffKind::DefenseDown,
+                        EnemyDebuffKind::Slow => DebuffKind::Slow,
+                        EnemyDebuffKind::Weaken => DebuffKind::Weaken,
+                        EnemyDebuffKind::EffectResistanceDown => DebuffKind::EffectResistanceDown,
+                    };
+                    self.apply_debuff(actor, target, debuff_kind, magnitude_bp, turns);
+                }
+            }
+            EnemyOnHit::ActionDelay {
+                base_chance_bp,
+                delay_bp,
+            } => {
+                if self.roll_status(actor, target, base_chance_bp, false) {
+                    self.delay_action(actor, target, delay_bp);
+                }
+            }
+            EnemyOnHit::Dot {
+                element,
+                scale,
+                base_chance_bp,
+                turns,
+            } => {
+                let damage = match scale {
+                    EnemyDotScale::Attack(bp) => DotScale::Attack(bp),
+                    EnemyDotScale::TargetMaxHp(hp_bp) => DotScale::TargetHp {
+                        hp_bp,
+                        attack_cap_bp: u16::MAX,
+                    },
+                };
+                self.apply_skill_dot(
+                    actor,
+                    target,
+                    base_chance_bp,
+                    SkillDot {
+                        element,
+                        damage,
+                        origin: Action::Basic,
+                        turns,
+                        max_stacks: 5,
+                    },
+                );
+            }
+            EnemyOnHit::Reverberation {
+                base_chance_bp,
+                turns,
+            } => {
+                if !upgraded_reverberation && self.roll_status(actor, target, base_chance_bp, false)
+                {
+                    self.apply_debuff(actor, target, DebuffKind::Reverberation, 0, turns);
+                }
+            }
+        }
+    }
+
     pub(super) fn enemy_targeting_weight(&self, unit: usize) -> u64 {
         let weight =
             u32::from(self.plan.units[unit].stats.base_aggro) + self.lynx_aggro_bonus(unit);
@@ -2071,7 +2531,7 @@ impl Battle<'_> {
             })
         });
         let personal_penetration = personal_penetration.saturating_add(sprite_penetration);
-        let outgoing_damage_factor_bp = if event.kind == DamageKind::DamageOverTime
+        let mut outgoing_damage_factor_bp = if event.kind == DamageKind::DamageOverTime
             || self.memosprite_owner(actor).is_some()
             || (event.kind == DamageKind::Direct && self.is_ultimate_damage(actor, event))
         {
@@ -2085,6 +2545,16 @@ impl Battle<'_> {
         } else {
             outgoing_damage_factor_bp
         };
+        if !self.enemies().contains(&actor) {
+            for status in &self.units[actor].debuffs {
+                if status.kind == DebuffKind::Weaken {
+                    outgoing_damage_factor_bp = combine_damage_factors(
+                        outgoing_damage_factor_bp,
+                        10_000_u32.saturating_sub(status.bp),
+                    );
+                }
+            }
+        }
         let mut stats = plan.stats;
         stats.hp = self.effective_max_hp(target);
         stats.defense = self.defense(target);
@@ -3648,6 +4118,28 @@ impl Battle<'_> {
         amount: u32,
         critical: bool,
     ) {
+        if self.units[target].enemy_state.barrier_active
+            && !matches!(kind, DamageKind::DamageOverTime)
+        {
+            self.units[target].enemy_state.barrier_active = false;
+            self.emit(
+                EventKind::Damage {
+                    kind,
+                    amount: 0,
+                    hp_loss: 0,
+                    absorbed: amount,
+                    critical,
+                },
+                Some(actor),
+                Some(target),
+            );
+            self.emit(
+                EventKind::StatusExpired(StatusKind::Barrier),
+                Some(actor),
+                Some(target),
+            );
+            return;
+        }
         let shield_absorbed = self.shield_amount(target).min(amount);
         let mut absorbed = shield_absorbed;
         let mut incoming = amount - absorbed;
@@ -3668,7 +4160,10 @@ impl Battle<'_> {
         let state = &mut self.units[target];
         let hp_loss = state.hp.saturating_sub(preserved_hp).min(incoming);
         state.hp -= hp_loss;
-        if matches!(self.plan.units[target].kit, Kit::Enemy(_)) {
+        if matches!(
+            self.plan.units[target].kit,
+            Kit::Enemy(_) | Kit::OfficialEnemy(_)
+        ) {
             self.enemy_hp_lost += hp_loss;
         }
         self.emit(

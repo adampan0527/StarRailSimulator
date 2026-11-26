@@ -47,6 +47,8 @@ pub(super) enum DebuffKind {
     Sublimation {
         blocks_action: bool,
     },
+    Reverberation,
+    StrongReverberation,
 }
 
 impl DebuffKind {
@@ -55,6 +57,7 @@ impl DebuffKind {
             self,
             Self::BreakImprisonment
                 | Self::SkillImprisonment
+                | Self::StrongReverberation
                 | Self::Sublimation {
                     blocks_action: true
                 }
@@ -102,6 +105,8 @@ impl DebuffKind {
             }
             Self::RestrictedWeakness => StatusKind::RestrictedWeakness,
             Self::Sublimation { .. } => StatusKind::Sublimation,
+            Self::Reverberation => StatusKind::Reverberation,
+            Self::StrongReverberation => StatusKind::StrongReverberation,
         }
     }
 
@@ -593,6 +598,36 @@ impl Battle<'_> {
             self.remove_debuff(status.source, target, status.kind);
         }
         blocks_action
+    }
+
+    pub(super) fn consume_strong_reverberation(&mut self, target: usize) -> bool {
+        let mut skipped = false;
+        while let Some(status) = self.units[target]
+            .debuffs
+            .iter()
+            .find(|status| status.kind == DebuffKind::StrongReverberation)
+            .copied()
+        {
+            skipped = true;
+            self.remove_debuff(status.source, target, status.kind);
+        }
+        if skipped {
+            self.reset_gauge(target);
+        }
+        skipped
+    }
+
+    pub(super) fn trigger_reverberation_on_hit(&mut self, source: usize, target: usize) -> bool {
+        let Some(status) = self.units[target]
+            .debuffs
+            .iter()
+            .find(|status| status.kind == DebuffKind::Reverberation)
+            .copied()
+        else {
+            return false;
+        };
+        self.remove_debuff(status.source, target, status.kind);
+        self.apply_debuff(source, target, DebuffKind::StrongReverberation, 0, 1)
     }
 
     pub(super) fn expire_debuffs(&mut self, target: usize) {

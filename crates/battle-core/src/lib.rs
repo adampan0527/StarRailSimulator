@@ -10,9 +10,10 @@ mod rng;
 
 pub use battle::{
     Battle, CombatPath, CombatType, DprCharacter, DprCredit, DprHit, DprResult, DprScenario,
-    DprTarget, OfficialCharacter, OfficialStats, PreparedBattle, STANDARD_DPR_SCENARIO,
-    VictorySearch, VictorySolution, calculate_dpr, search_fastest_victory, supports_official_dpr,
-    supports_official_dpr_variant,
+    DprTarget, OfficialCharacter, OfficialEnemy, OfficialEnemyStats, OfficialStats, PreparedBattle,
+    STANDARD_DPR_SCENARIO, VictorySearch, VictorySolution, calculate_dpr, official_enemy_stats,
+    search_fastest_victory, supports_official_dpr, supports_official_dpr_variant,
+    supports_official_enemy,
 };
 pub use contract::{
     Action, AllyInput, BattleError, Command, Config, EnemyInput, InitialInput, LightCone, Relic,

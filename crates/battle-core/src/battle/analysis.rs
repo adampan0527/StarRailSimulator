@@ -242,7 +242,10 @@ fn supports_fastest_victory(plan: &PreparedBattle) -> bool {
                 Kit::Enemy(kit) => {
                     matches!(kit.target, EnemyTarget::FirstLiving) || plan.ally_count == 1
                 }
-                Kit::Dummy { .. } | Kit::Official(_) | Kit::Memosprite { .. } => false,
+                Kit::Dummy { .. }
+                | Kit::Official(_)
+                | Kit::OfficialEnemy(_)
+                | Kit::Memosprite { .. } => false,
             }
     })
 }

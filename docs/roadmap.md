@@ -188,6 +188,7 @@
 
 #### 进展记录
 
+- 2026-11-26 完成敌方行动逻辑接入第二步：在 `battle-core` 接入冻结 4.7.0 敌方数据与通用敌方执行器（`PreparedBattle::official_encounter`、`official_enemy_stats`、`supports_official_enemy`），实现嘲讽/锁定/仇恨权重选敌、单体/扩散/全体/弹射攻击、受击回能（含主次 `SPHitRatio`）、单次免伤屏障、敌方群体回复、我方回合初敌方 DoT 结算、行动延后、虚弱减伤、降防/减速/降抗及「震荡 → 强烈震荡」跳过回合控制，并支持 `Sequence` 与 `CooldownWeighted` 两类通用调度器。首批 16 个无被动 `sequence_only` 敌方单位已对照 `ConfigAbility` 逐一核对并通过 9 项单元与集成回归；未接入被动或专属机制的敌人显式返回 `UnsupportedData`。[敌方执行器](../crates/battle-core/src/battle/enemy.rs) · [敌方战斗回归](../crates/battle-core/tests/official_enemy.rs)
 - 2026-11-26 完成敌方行动逻辑接入第一步：从同修订 4.7.0 `TurnBasedGameData` 拉取并 SHA-256 锁定 275 份敌方技能表、状态表、`ConfigAI` 与 `ConfigCharacter` 文件，离线解析 159 个高难可选敌人的完整战斗基础属性、1–100 级成长曲线、七属性抗性与控制抵抗、970 条技能（含受击回能 `SPHitBase`、目标类型与冷却）及 AI 决策树结构，归类出 36 个纯固定序列单位（16 个无被动白板、20 个含被动天赋）、1 个通用 CD 规则单位与 122 个需专属机制模块的单位，显式标记待补全的 `ConfigAbility` 分段倍率与异常概率项，为第二步通用敌方执行器提供离线数据源。[敌方 AI 归类审计](enemy-ai-audit.md) · [敌方数据回归](../tests/enemy-combat.test.mjs)
 - 2026-11-25 确定性搜索和快照对照继续用于自动化回归。方案回放组件在正式编队可计算后接入桌面。[开发计划](battle-simulation-plan.md)
 - 2026-11-25 合成最快胜利返回冻结输入的初始快照、逐指令快照与事件边界，界面支持前进、后退和自动播放。回归用相同指令逐步比对正式回放接口的快照与事件。自动敌方行动目前在指令结算中显示，后台进度、取消、正式敌方规则与随机搜索待开发。[开发计划](battle-simulation-plan.md) · [快照回归](../src-tauri/src/workbench_tests.rs)

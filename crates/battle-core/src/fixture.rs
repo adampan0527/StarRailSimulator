@@ -15,7 +15,7 @@ pub(crate) const BREAK_DELAY_BP: u16 = 2_500;
 pub(crate) const KILL_ENERGY_MILLI: u32 = 10_000;
 pub(crate) const BREAK_BASE_AT_LEVEL_30: u32 = 100;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Element {
     Physical,
     Wind,
