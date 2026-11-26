@@ -1,6 +1,7 @@
 import { check, lookup, textValue } from './sources.mjs';
 
 const BOSS_RANKS = new Set(['LittleBoss', 'BigBoss']);
+const MINION_RANKS = new Set(['Minion', 'MinionLv2']);
 const STANDARD_ICON = /^SpriteOutput\/MosterIcon\/Monster_\d+\.png$/;
 const STANDARD_IMAGE = /^SpriteOutput\/MonsterFigure\/Monster_\d+\.png$/;
 
@@ -55,6 +56,24 @@ function hasStandardArt(template) {
   );
 }
 
+function isCombatantEntity(monster, template) {
+  // Exclude background encounter controllers / gimmick mascots with no toughness bar,
+  // as well as gimmick minions without fixed weaknesses (e.g. Royal Trashcan, Spirithief).
+  if (!((template.StanceBase?.Value ?? 0) > 0)) return false;
+  if (MINION_RANKS.has(template.Rank) && monster.StanceWeakList.length === 0) {
+    return false;
+  }
+  return true;
+}
+
+function isApocalypticShadowStage(stage) {
+  return (
+    stage.StageType === 'Challenge' &&
+    Number.isInteger(stage.StageID) &&
+    Math.floor(stage.StageID / 1000) === 420
+  );
+}
+
 function findSummoners(entries) {
   const summoners = new Map();
   for (const { monster, key } of entries.values()) {
@@ -68,33 +87,32 @@ function findSummoners(entries) {
   return summoners;
 }
 
-function collectStageOccurrences(tables, entries, summoners) {
+function collectChallengeOccurrences(tables, entries, summoners) {
+  // Only enemies that appear directly in endgame challenge modes
+  // (Memory of Chaos, Pure Fiction, Apocalyptic Shadow, Anomaly Arbitration)
+  // belong in the combat simulator roster.
   const direct = new Set();
-  const stageTypes = new Map();
-  function visit(ids, stageType) {
-    // Only entries in MonsterConfig participate in the catalog.
-    const units = ids.map((id) => entries.get(id)).filter(Boolean);
-    const names = new Set(units.map(({ key }) => key));
-    for (const { monster, key } of units) {
-      const owners = summoners.get(key);
-      if (!owners || ![...owners].some((owner) => names.has(owner))) {
-        direct.add(monster.MonsterID);
-        if (stageType !== undefined) {
-          if (!stageTypes.has(monster.MonsterID))
-            stageTypes.set(monster.MonsterID, new Set());
-          stageTypes.get(monster.MonsterID).add(stageType);
+  const modes = new Map();
+  for (const stage of [...tables.StageConfig, ...tables.StageConfigLD]) {
+    if (stage.Release === false || stage.StageType !== 'Challenge') continue;
+    const mode = isApocalypticShadowStage(stage) ? 'apocalyptic' : 'standard';
+    for (const wave of stage.MonsterList) {
+      const units = Object.values(wave)
+        .map((id) => entries.get(id))
+        .filter(Boolean);
+      const names = new Set(units.map(({ key }) => key));
+      for (const { monster, key } of units) {
+        const owners = summoners.get(key);
+        if (!owners || ![...owners].some((owner) => names.has(owner))) {
+          direct.add(monster.MonsterID);
+          if (!modes.has(monster.MonsterID))
+            modes.set(monster.MonsterID, new Set());
+          modes.get(monster.MonsterID).add(mode);
         }
       }
     }
   }
-  for (const stage of [...tables.StageConfig, ...tables.StageConfigLD]) {
-    if (stage.Release === false) continue;
-    for (const wave of stage.MonsterList)
-      visit(Object.values(wave), stage.StageType);
-  }
-  for (const group of tables.StageInfiniteMonsterGroup)
-    visit(group.MonsterList, undefined);
-  return { direct, stageTypes };
+  return { direct, modes };
 }
 
 function canonicalOrder(a, b) {
@@ -114,36 +132,33 @@ function canonicalOrder(a, b) {
   );
 }
 
-function familyStageTypes(candidates, stageTypes) {
-  const types = new Set();
+function familyModes(candidates, modes) {
+  const result = new Set();
   for (const { monster } of candidates) {
-    const entryTypes = stageTypes.get(monster.MonsterID);
-    if (!entryTypes) continue;
-    for (const type of entryTypes) types.add(type);
+    const entryModes = modes.get(monster.MonsterID);
+    if (!entryModes) continue;
+    for (const mode of entryModes) result.add(mode);
   }
-  return types;
+  return result;
 }
 
-function classifyTemplate(template, types, atlasPrimaryGroups, atlasIcons) {
+function classifyTemplate(template, modes, atlasPrimaryGroups, atlasIcons) {
   if (isCanonicalAtlasTemplate(template, atlasPrimaryGroups)) {
     return { keep: true, variant: null };
   }
   if (
     BOSS_RANKS.has(template.Rank) &&
-    types.size > 0 &&
-    [...types].every((type) => type === 'Challenge')
+    modes.size === 1 &&
+    modes.has('apocalyptic')
   ) {
     return { keep: true, variant: '末日幻影' };
   }
-  const hasIndependentGroup =
-    template.TemplateGroupID === undefined ||
-    template.TemplateGroupID === template.MonsterTemplateID;
-  const appearsOutsideChallenge = [...types].some(
-    (type) => type !== 'Challenge',
-  );
+  // Keep standalone endgame bosses that have their own template group and art
+  // even when not listed in the atlas (e.g. Anomaly Arbitration bosses).
   if (
-    hasIndependentGroup &&
-    appearsOutsideChallenge &&
+    BOSS_RANKS.has(template.Rank) &&
+    template.TemplateGroupID === template.MonsterTemplateID &&
+    modes.has('standard') &&
     hasStandardArt(template) &&
     !atlasIcons.has(template.IconPath)
   ) {
@@ -188,34 +203,33 @@ export function selectableEnemies(tables, monsters, templates, textMap) {
   }
 
   const summoners = findSummoners(entries);
-  const { direct, stageTypes } = collectStageOccurrences(
+  const { direct, modes } = collectChallengeOccurrences(
     tables,
     entries,
     summoners,
   );
   const lineup = [];
-  for (const [key, family] of families) {
+  for (const [, family] of families) {
     // Argenti's totems are auxiliary targets even in pools that preload them.
     // MonsterConfig entries that rename a template are story/event reskins.
     const candidates = family.filter(
-      ({ monster, matchesTemplateName }) =>
+      ({ monster, template, matchesTemplateName }) =>
         matchesTemplateName &&
-        !monster.CustomValueTags.includes('Argenti_Totem'),
+        !monster.CustomValueTags.includes('Argenti_Totem') &&
+        isCombatantEntity(monster, template),
     );
     if (!candidates.length) continue;
 
-    const types = familyStageTypes(candidates, stageTypes);
+    if (!candidates.some(({ monster }) => direct.has(monster.MonsterID))) {
+      continue;
+    }
+
+    const challengeModes = familyModes(candidates, modes);
     const supported = new Map();
-    for (const { monster, template } of candidates) {
-      const isDirect = direct.has(monster.MonsterID);
-      const isCanonicalAtlas = isCanonicalAtlasTemplate(
-        template,
-        atlasPrimaryGroups,
-      );
-      if (!isDirect && (summoners.has(key) || !isCanonicalAtlas)) continue;
+    for (const { template } of candidates) {
       const result = classifyTemplate(
         template,
-        types,
+        challengeModes,
         atlasPrimaryGroups,
         atlasIcons,
       );

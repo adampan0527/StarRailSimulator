@@ -12,9 +12,9 @@ const preview = JSON.parse(
 );
 const byId = new Map(preview.enemies.map((enemy) => [enemy.id, enemy]));
 
-test('lists each canonical 4.7.0 enemy once with every level preview', () => {
+test('lists each endgame combat 4.7.0 enemy once with complete level previews', () => {
   assert.equal(preview.revision, 'dad9155eb00fdeda31fb8456507c53590d49071f');
-  assert.equal(preview.enemies.length, 185);
+  assert.equal(preview.enemies.length, 159);
   assert.equal(byId.size, preview.enemies.length);
   assert.equal(
     new Set(
@@ -22,7 +22,7 @@ test('lists each canonical 4.7.0 enemy once with every level preview', () => {
         name.normalize('NFKC').replace(/\s+/g, ''),
       ),
     ).size,
-    185,
+    159,
   );
   assert.deepEqual(
     preview.levels,
@@ -47,20 +47,16 @@ test('lists each canonical 4.7.0 enemy once with every level preview', () => {
       standardAvatars.add(enemy.avatar);
     }
     for (const stat of [enemy.hp, enemy.defense, enemy.speed]) {
-      if (stat === null) continue;
+      assert.notEqual(stat, null, `missing stat on ${enemy.name}`);
       const series = preview.statSeries[stat];
       assert.equal(series.length, preview.levels.length);
-      assert.ok(
-        series.every(
-          (value) => value === null || (Number.isFinite(value) && value > 0),
-        ),
-      );
+      assert.ok(series.every((value) => Number.isFinite(value) && value > 0));
     }
   }
-  assert.equal(apocalypticCount, 19);
+  assert.equal(apocalypticCount, 18);
 });
 
-test('uses canonical stats and excludes story reskins, universe variants, and pure summons', () => {
+test('uses canonical stats and excludes reskins, summons, controllers, and gimmick units', () => {
   const lieutenant = byId.get('1003010');
   const at100 = (series) =>
     preview.statSeries[series][preview.levels.indexOf(100)];
@@ -71,10 +67,15 @@ test('uses canonical stats and excludes story reskins, universe variants, and pu
   assert.equal(at100(lieutenant.hp), 338371.3674);
   assert.equal(at100(lieutenant.speed), 158.4);
   assert.equal(byId.get('3024010').name, '银枝');
+  assert.equal(byId.get('3025010').name, '「齐响诗班」神主日');
+  assert.equal(byId.get('3025010').variant, null);
+  assert.equal(byId.get('4014010').name, '蛮神，疯王，纷争的化身');
   assert.equal(byId.get('4034010').name, '至黑之剑，盗火行者');
   assert.equal(byId.get('4034010').variant, null);
   assert.equal(byId.get('4034013').name, '末日歧途的盗火者');
   assert.equal(byId.get('4034013').variant, '末日幻影');
+  assert.equal(byId.get('4035020').name, '铁墓，反诺斯，灵知的葬仪');
+  assert.equal(byId.get('4035020').variant, null);
   for (const name of [
     '「盾」',
     '「授勋」',
@@ -95,6 +96,20 @@ test('uses canonical stats and excludes story reskins, universe variants, and pu
     '飞剑',
     '肃风之杪',
     '繁花之杪',
+    '「合金保姆」',
+    '「贼灵」巴特鲁斯',
+    '颁赐者，千军首，天谴之矛',
+    '王下一桶',
+    '浮烟',
+    '昔在、今在、永在的剧目',
+    '奇想林中的蕉研组',
+    '蕉研组的助蕉',
+    '次元扑满',
+    '序列扑满',
+    '狂兽的胚芽',
+    '千星戍卫',
+    '毁灭的容器，卡厄斯兰那',
+    '黑塔#错误型号',
   ]) {
     assert.ok(
       preview.enemies.every((enemy) => enemy.name !== name),
@@ -103,11 +118,9 @@ test('uses canonical stats and excludes story reskins, universe variants, and pu
   }
   assert.equal(byId.get('8033020').sourceIds.length, 4);
   assert.ok(byId.get('1012020'));
-  assert.equal(byId.get('5032010').name, '狂兽的胚芽');
-  assert.equal(byId.get('5012120').name, '「合金保姆」');
 });
 
-test('keeps canonical atlas, apocalyptic bosses, and unique standalone units while dropping reskins', () => {
+test('keeps endgame combatants and apocalyptic bosses while dropping reskins, summons, controllers, and gimmicks', () => {
   const specs = [
     {
       id: 100,
@@ -117,6 +130,8 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
       atlas: 1,
       group: 100,
       icon: 100,
+      stance: 480,
+      weak: ['Fire'],
       summons: [200, 300],
     },
     {
@@ -127,6 +142,8 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
       atlas: 1,
       group: 100,
       icon: 100,
+      stance: 480,
+      weak: ['Fire'],
       summons: [],
     },
     {
@@ -138,6 +155,8 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
       atlas: 1,
       group: 100,
       icon: 100,
+      stance: 480,
+      weak: ['Fire'],
       summons: [],
     },
     {
@@ -146,6 +165,8 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
       name: '？？？',
       rank: 'LittleBoss',
       icon: 100,
+      stance: 480,
+      weak: ['Fire'],
       summons: [],
     },
     {
@@ -155,6 +176,8 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
       rank: 'LittleBoss',
       group: 100,
       icon: 100,
+      stance: 960,
+      weak: ['Fire', 'Ice'],
       summons: [],
     },
     {
@@ -165,6 +188,31 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
       atlas: 1,
       group: 100,
       icon: 100,
+      stance: 480,
+      weak: ['Fire'],
+      summons: [],
+    },
+    {
+      id: 106,
+      templateId: 106,
+      name: '后台载体',
+      rank: 'LittleBoss',
+      atlas: 4,
+      group: 106,
+      icon: 106,
+      stance: 0,
+      weak: [],
+      summons: [],
+    },
+    {
+      id: 107,
+      templateId: 107,
+      name: '王棋独立首领',
+      rank: 'BigBoss',
+      group: 107,
+      icon: 107,
+      stance: 690,
+      weak: ['Ice'],
       summons: [],
     },
     {
@@ -172,42 +220,83 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
       templateId: 200,
       name: '随从',
       rank: 'MinionLv2',
+      atlas: 5,
+      group: 200,
       icon: 200,
+      stance: 60,
+      weak: ['Wind'],
       summons: [],
     },
     {
       id: 300,
       templateId: 300,
-      name: '独立小怪',
+      name: '常规小怪',
       rank: 'MinionLv2',
+      atlas: 2,
+      group: 300,
       icon: 300,
+      stance: 60,
+      weak: ['Physical'],
+      summons: [],
+    },
+    {
+      id: 301,
+      templateId: 301,
+      name: '无弱点机制桶',
+      rank: 'MinionLv2',
+      atlas: 6,
+      group: 301,
+      icon: 301,
+      stance: 360,
+      weak: [],
       summons: [],
     },
     {
       id: 400,
       templateId: 400,
-      name: '图鉴单位',
+      name: '仅主线图鉴怪',
       rank: 'Elite',
-      atlas: 2,
+      atlas: 3,
       group: 400,
       icon: 400,
+      stance: 300,
+      weak: ['Quantum'],
       summons: [],
     },
   ];
   const tables = {
     StageConfig: [
       {
-        StageType: 'Mainline',
+        StageID: 30101011,
+        StageType: 'Challenge',
         MonsterList: [
           { Monster0: 101, Monster1: 200, Monster2: 300 },
-          { Monster0: 300, Monster1: 102, Monster2: 103 },
+          {
+            Monster0: 300,
+            Monster1: 102,
+            Monster2: 103,
+            Monster3: 106,
+            Monster4: 301,
+          },
         ],
       },
       {
+        StageID: 420101,
         StageType: 'Challenge',
         MonsterList: [{ Monster0: 104 }],
       },
       {
+        StageID: 305090211,
+        StageType: 'Challenge',
+        MonsterList: [{ Monster0: 107 }],
+      },
+      {
+        StageID: 103201,
+        StageType: 'Mainline',
+        MonsterList: [{ Monster0: 400, Monster1: 200 }],
+      },
+      {
+        StageID: 307111,
         StageType: 'VerseSimulation',
         MonsterList: [{ Monster0: 105 }],
       },
@@ -230,6 +319,7 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
         Rank: spec.rank,
         IconPath: `SpriteOutput/MosterIcon/Monster_${spec.icon}.png`,
         ImagePath: `SpriteOutput/MonsterFigure/Monster_${spec.icon}.png`,
+        ...(spec.stance > 0 ? { StanceBase: { Value: spec.stance } } : {}),
         ...(spec.atlas !== undefined ? { AtlasSortID: spec.atlas } : {}),
         ...(spec.group !== undefined ? { TemplateGroupID: spec.group } : {}),
       });
@@ -238,6 +328,7 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
       MonsterID: spec.id,
       MonsterTemplateID: spec.templateId,
       MonsterName: { Hash: monHash },
+      StanceWeakList: spec.weak,
       SummonIDList: spec.summons,
       CustomValueTags: [],
     });
@@ -249,8 +340,8 @@ test('keeps canonical atlas, apocalyptic bosses, and unique standalone units whi
     [
       { name: '首领', variant: null },
       { name: '末日首领', variant: '末日幻影' },
-      { name: '独立小怪', variant: null },
-      { name: '图鉴单位', variant: null },
+      { name: '王棋独立首领', variant: null },
+      { name: '常规小怪', variant: null },
     ],
   );
   assert.deepEqual(lineup[0].sourceIds, ['100', '101']);
