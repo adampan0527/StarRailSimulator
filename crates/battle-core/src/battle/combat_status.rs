@@ -177,6 +177,7 @@ pub(super) struct Entanglement {
     source: usize,
     origin: Action,
     stacks: u16,
+    skill_damage_bp: Option<u16>,
 }
 
 impl Battle<'_> {
@@ -781,6 +782,7 @@ impl Battle<'_> {
             source,
             origin,
             stacks: 1,
+            skill_damage_bp: None,
         });
         self.record_enemy_debuff(target);
         self.emit(
@@ -797,6 +799,31 @@ impl Battle<'_> {
         );
     }
 
+    pub(super) fn apply_enemy_entanglement(
+        &mut self,
+        source: usize,
+        target: usize,
+        delay_bp: u16,
+        damage_multiplier_bp: u16,
+    ) {
+        if self.resists_enemy_control(source, target) || self.resists_debuff(target) {
+            return;
+        }
+        self.units[target].entanglement = Some(Entanglement {
+            source,
+            origin: Action::Basic,
+            stacks: 1,
+            skill_damage_bp: Some(damage_multiplier_bp),
+        });
+        self.record_enemy_debuff(target);
+        self.emit(
+            EventKind::StatusApplied(StatusKind::Entangled),
+            Some(source),
+            Some(target),
+        );
+        self.delay_action(source, target, delay_bp);
+    }
+
     pub(super) fn stack_entanglement(&mut self, target: usize) {
         if let Some(status) = &mut self.units[target].entanglement {
             status.stacks = (status.stacks + 1).min(5);
@@ -807,14 +834,25 @@ impl Battle<'_> {
         let Some(status) = self.units[target].entanglement.take() else {
             return;
         };
-        self.break_status_hit_scaled(
-            status.source,
-            target,
-            Element::Quantum,
-            status.origin,
-            DamageKind::Additional,
-            6_000 * status.stacks,
-        );
+        if let Some(multiplier_bp) = status.skill_damage_bp {
+            self.secondary_hit(
+                status.source,
+                target,
+                Element::Quantum,
+                multiplier_bp.saturating_mul(status.stacks),
+                DamageKind::Additional,
+                status.origin,
+            );
+        } else {
+            self.break_status_hit_scaled(
+                status.source,
+                target,
+                Element::Quantum,
+                status.origin,
+                DamageKind::Additional,
+                6_000 * status.stacks,
+            );
+        }
         self.emit(
             EventKind::StatusExpired(StatusKind::Entangled),
             Some(status.source),

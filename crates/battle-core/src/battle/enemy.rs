@@ -38,6 +38,20 @@ pub(super) struct EnemyRuntimeState {
     pub locked_target: Option<usize>,
     pub skill_cooldowns: Vec<u16>,
     pub barrier_active: bool,
+    pub ai_phase: u8,
+    pub ai_flag: u8,
+    pub attack_bonus_bp: u32,
+    pub counter_stance: bool,
+    pub counter_attack: Option<EnemyCounterSpec>,
+    pub enhanced_state: bool,
+    pub dormant_summon: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct EnemyCounterSpec {
+    pub element: Element,
+    pub multiplier_bp: u32,
+    pub sp_hit_milli: u32,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -76,6 +90,16 @@ pub(super) enum EnemyOnHit {
         base_chance_bp: u32,
         turns: u32,
     },
+    Freeze {
+        base_chance_bp: u32,
+        damage_multiplier_bp: u16,
+        turns: u32,
+    },
+    Entanglement {
+        base_chance_bp: u32,
+        delay_bp: u16,
+        damage_multiplier_bp: u16,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -86,7 +110,12 @@ pub(super) enum EnemySkillAction {
         sp_hit_milli: u32,
         on_hit: Option<EnemyOnHit>,
     },
-    #[allow(dead_code)]
+    SingleAttackPreferFrozen {
+        element: Element,
+        multiplier_bp: u32,
+        frozen_bonus_bp: u32,
+        sp_hit_milli: u32,
+    },
     BlastAttack {
         element: Element,
         main_multiplier_bp: u32,
@@ -94,7 +123,6 @@ pub(super) enum EnemySkillAction {
         sp_hit_milli: u32,
         on_hit: Option<EnemyOnHit>,
     },
-    #[allow(dead_code)]
     AllAttack {
         element: Element,
         multiplier_bp: u32,
@@ -108,6 +136,7 @@ pub(super) enum EnemySkillAction {
         bounce_count: u8,
         bounce_multiplier_bp: u32,
         bounce_sp_hit_milli: u32,
+        on_hit: Option<EnemyOnHit>,
     },
     HealAllEnemies {
         max_hp_ratio_bp: u32,
@@ -117,6 +146,40 @@ pub(super) enum EnemySkillAction {
         multiplier_bp: u32,
         sp_hit_milli: u32,
     },
+    EnterEnhancedState {
+        target_phase: u8,
+        next_flag: u8,
+    },
+    SelfAttackBuff {
+        attack_bonus_bp: u32,
+    },
+    LockSingleTarget,
+    ClearLockAndSingleAttack {
+        element: Element,
+        multiplier_bp: u32,
+        sp_hit_milli: u32,
+        on_hit: Option<EnemyOnHit>,
+    },
+    EnterCounterStance {
+        counter: EnemyCounterSpec,
+    },
+    ClearCounterAndSingleAttack {
+        element: Element,
+        multiplier_bp: u32,
+        sp_hit_milli: u32,
+    },
+    SummonAllies {
+        count: u8,
+        grant_extra_action: bool,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum EliteAiKind {
+    IceOutOfSpace,
+    BlazeOutOfSpace,
+    VoidrangerTrampler,
+    SilvermaneLieutenant,
 }
 
 #[derive(Clone, Debug)]
@@ -140,6 +203,7 @@ pub(super) enum EnemyActionSelector {
     Sequence(Vec<usize>),
     #[allow(dead_code)]
     CooldownWeighted(Vec<CooldownDecision>),
+    Elite(EliteAiKind),
 }
 
 #[derive(Clone, Debug)]
@@ -149,6 +213,9 @@ pub(super) struct OfficialEnemyKit {
     pub max_toughness: u16,
     pub weakness: [bool; Element::COUNT],
     pub initial_delay_ratio_bp: u32,
+    pub actions_per_turn: u8,
+    pub starts_dormant: bool,
+    pub summon_specs: Vec<String>,
     pub debuff_resist_bp: Vec<(String, u32)>,
     pub selector: EnemyActionSelector,
     pub skills: Vec<EnemySkillPlan>,
@@ -157,7 +224,7 @@ pub(super) struct OfficialEnemyKit {
 impl OfficialEnemyKit {
     pub fn init_runtime_state(&self) -> EnemyRuntimeState {
         let skill_cooldowns = match &self.selector {
-            EnemyActionSelector::Sequence(_) => Vec::new(),
+            EnemyActionSelector::Sequence(_) | EnemyActionSelector::Elite(_) => Vec::new(),
             EnemyActionSelector::CooldownWeighted(decisions) => decisions
                 .iter()
                 .map(|decision| decision.initial_cd)
@@ -168,10 +235,21 @@ impl OfficialEnemyKit {
             locked_target: None,
             skill_cooldowns,
             barrier_active: false,
+            ai_phase: 1,
+            ai_flag: 1,
+            attack_bonus_bp: 0,
+            counter_stance: false,
+            counter_attack: None,
+            enhanced_state: false,
+            dormant_summon: self.starts_dormant,
         }
     }
 
-    pub fn select_next_skill(&self, state: &mut EnemyRuntimeState) -> Option<usize> {
+    pub fn select_next_skill(
+        &self,
+        state: &mut EnemyRuntimeState,
+        living_teammates: usize,
+    ) -> Option<usize> {
         match &self.selector {
             EnemyActionSelector::Sequence(sequence) => {
                 if sequence.is_empty() {
@@ -208,6 +286,7 @@ impl OfficialEnemyKit {
                 state.skill_cooldowns[slot] = decisions[slot].cd;
                 Some(decisions[slot].skill_index)
             }
+            EnemyActionSelector::Elite(kind) => select_elite_skill(*kind, state, living_teammates),
         }
     }
 
@@ -216,6 +295,104 @@ impl OfficialEnemyKit {
             .iter()
             .find_map(|(entry_key, bp)| (entry_key == key).then_some(*bp))
             .unwrap_or(0)
+    }
+}
+
+fn select_elite_skill(
+    kind: EliteAiKind,
+    state: &mut EnemyRuntimeState,
+    living_teammates: usize,
+) -> Option<usize> {
+    match kind {
+        EliteAiKind::IceOutOfSpace => match (state.ai_phase, state.ai_flag) {
+            (1, 1) => {
+                state.ai_flag = 2;
+                Some(0) // Skill01 叹息之寒
+            }
+            (1, _) => {
+                state.ai_flag = 3;
+                Some(1) // Skill02 汲取霜晶 (sets phase=2)
+            }
+            (_, 3) => {
+                state.ai_flag = 1;
+                Some(2) // Skill03 永冬之雨
+            }
+            _ => {
+                state.ai_flag = 3;
+                Some(0) // Skill01 叹息之寒 (enhanced, prefers frozen)
+            }
+        },
+        EliteAiKind::BlazeOutOfSpace => match (state.ai_phase, state.ai_flag) {
+            (1, 1) => {
+                state.ai_flag = 2;
+                Some(0) // Skill01 咆哮之火
+            }
+            (1, _) => {
+                state.ai_flag = 1;
+                Some(1) // Skill03 汲取炎华 (sets phase=2)
+            }
+            (_, 1) => {
+                state.ai_flag = 2;
+                Some(2) // Skill05 净炎之雨
+            }
+            _ => {
+                state.ai_flag = 1;
+                Some(3) // Skill07 熔聚
+            }
+        },
+        EliteAiKind::VoidrangerTrampler => match state.ai_flag {
+            1 => {
+                state.ai_flag = 2;
+                Some(1) // Skill02 侵略的铁蹄
+            }
+            2 => {
+                state.ai_flag = 3;
+                Some(3) // Skill04 螺旋的弓矢 (lock)
+            }
+            3 => {
+                state.ai_flag = 4;
+                if state.locked_target.is_some() {
+                    Some(4) // Skill05 强弩的终结
+                } else {
+                    Some(1) // Skill02 fallback if broken before firing
+                }
+            }
+            4 => {
+                state.ai_flag = 5;
+                Some(2) // Skill03 战争的践踏 (blast)
+            }
+            5 => {
+                state.ai_flag = 6;
+                Some(0) // Skill01 虚实的投影
+            }
+            _ => {
+                state.ai_flag = 1;
+                Some(2) // Skill03 战争的践踏 (blast)
+            }
+        },
+        EliteAiKind::SilvermaneLieutenant => match state.ai_flag {
+            1 => {
+                state.ai_flag = 2;
+                Some(0) // Skill01 突击
+            }
+            2 => {
+                if living_teammates <= 3 {
+                    state.ai_flag = 3;
+                    Some(3) // Skill08 增援 (summon + extra action)
+                } else {
+                    state.ai_flag = 4;
+                    Some(2) // Skill07 盾反 (field full at 5 enemies)
+                }
+            }
+            3 => {
+                state.ai_flag = 4;
+                Some(2) // Skill07 盾反
+            }
+            _ => {
+                state.ai_flag = 1;
+                Some(1) // Skill06 穿刺 (clears counter stance)
+            }
+        },
     }
 }
 
@@ -320,9 +497,10 @@ fn catalog() -> Result<&'static EnemyCatalog, BattleError> {
         .map_err(|error| BattleError::InvalidInput(format!("enemy catalog: {error}")))
 }
 
-/// Pure zero-passive `sequence_only` 4.7.0 enemies whose skill multipliers, hit splits,
-/// and secondary effects have been verified directly against `ConfigAbility/Monster/*.json`.
-const VERIFIED_PURE_SEQUENCE_ENEMIES: [&str; 16] = [
+/// Verified 4.7.0 enemies (16 pure zero-passive `sequence_only` units + Batch 1 of 4
+/// representative Space Station / Jarilo-VI Elites) whose AI state machines, skill multipliers,
+/// hit splits, and secondary effects have been verified against `ConfigAI` and `ConfigAbility`.
+const VERIFIED_OFFICIAL_ENEMIES: [&str; 20] = [
     "8001010", // 炎华造物
     "8001020", // 霜晶造物
     "1002040", // 银鬃近卫
@@ -339,10 +517,14 @@ const VERIFIED_PURE_SEQUENCE_ENEMIES: [&str; 16] = [
     "8001050", // 巽风造物
     "3001010", // 惊梦剧团的弹簧荷官
     "3011010", // 忆域迷因「视线无处不在」
+    "8003010", // 外宇宙之冰
+    "8003020", // 外宇宙之炎
+    "8013010", // 虚卒•践踏者
+    "1003010", // 银鬃尉官
 ];
 
 pub fn supports_official_enemy(enemy_id: &str) -> bool {
-    VERIFIED_PURE_SEQUENCE_ENEMIES.contains(&enemy_id)
+    VERIFIED_OFFICIAL_ENEMIES.contains(&enemy_id)
 }
 
 pub fn official_enemy_stats(enemy_id: &str, level: u16) -> Result<OfficialEnemyStats, BattleError> {
@@ -503,6 +685,29 @@ fn build_verified_kit(
     raw: &RawEnemy,
     stats: OfficialEnemyStats,
 ) -> Result<OfficialEnemyKit, BattleError> {
+    let mut debuff_resist_bp = Vec::with_capacity(raw.combat_stats.debuff_resist.len());
+    for entry in &raw.combat_stats.debuff_resist {
+        debuff_resist_bp.push((
+            entry.key.clone(),
+            ratio_to_bp(entry.value, "debuffResist", &raw.id)?,
+        ));
+    }
+    if let Some((selector, actions_per_turn, summon_specs, skills)) = build_verified_elite_kit(raw)?
+    {
+        return Ok(OfficialEnemyKit {
+            enemy_id: raw.id.clone(),
+            max_toughness: stats.max_toughness,
+            weakness: stats.weaknesses,
+            initial_delay_ratio_bp: stats.initial_delay_ratio_bp,
+            actions_per_turn,
+            starts_dormant: false,
+            summon_specs,
+            debuff_resist_bp,
+            selector,
+            skills,
+        });
+    }
+
     let mut skills = Vec::with_capacity(raw.skills.len());
     for skill in &raw.skills {
         let action = resolve_verified_skill(&raw.id, skill)?;
@@ -530,22 +735,289 @@ fn build_verified_kit(
             raw.id
         )));
     }
-    let mut debuff_resist_bp = Vec::with_capacity(raw.combat_stats.debuff_resist.len());
-    for entry in &raw.combat_stats.debuff_resist {
-        debuff_resist_bp.push((
-            entry.key.clone(),
-            ratio_to_bp(entry.value, "debuffResist", &raw.id)?,
-        ));
-    }
     Ok(OfficialEnemyKit {
         enemy_id: raw.id.clone(),
         max_toughness: stats.max_toughness,
         weakness: stats.weaknesses,
         initial_delay_ratio_bp: stats.initial_delay_ratio_bp,
+        actions_per_turn: 1,
+        starts_dormant: false,
+        summon_specs: Vec::new(),
         debuff_resist_bp,
         selector: EnemyActionSelector::Sequence(sequence),
         skills,
     })
+}
+
+type EliteKitSpec = (EnemyActionSelector, u8, Vec<String>, Vec<EnemySkillPlan>);
+
+fn build_verified_elite_kit(raw: &RawEnemy) -> Result<Option<EliteKitSpec>, BattleError> {
+    let find_skill = |skill_id: &str| -> Result<&RawSkill, BattleError> {
+        raw.skills
+            .iter()
+            .find(|skill| skill.id == skill_id)
+            .ok_or_else(|| {
+                BattleError::InvalidInput(format!("enemy {} missing skill {skill_id}", raw.id))
+            })
+    };
+    let param_bp = |skill: &RawSkill, idx: usize| -> Result<u32, BattleError> {
+        let value = skill.params.get(idx).copied().ok_or_else(|| {
+            BattleError::InvalidInput(format!(
+                "enemy {} skill {} missing param[{idx}]",
+                raw.id, skill.id
+            ))
+        })?;
+        ratio_to_bp(value, "skillParam", &raw.id)
+    };
+    let param_u16_bp = |skill: &RawSkill, idx: usize| -> Result<u16, BattleError> {
+        u16::try_from(param_bp(skill, idx)?).map_err(|_| {
+            BattleError::InvalidInput(format!(
+                "enemy {} skill {} param[{idx}] overflow",
+                raw.id, skill.id
+            ))
+        })
+    };
+    let param_turns = |skill: &RawSkill, idx: usize| -> Result<u32, BattleError> {
+        let value = skill.params.get(idx).copied().ok_or_else(|| {
+            BattleError::InvalidInput(format!(
+                "enemy {} skill {} missing param[{idx}]",
+                raw.id, skill.id
+            ))
+        })?;
+        scaled_u32(value, "turns", &raw.id)
+    };
+    let sp_milli = |skill: &RawSkill| -> Result<u32, BattleError> {
+        let base = skill.sp_hit_base.ok_or_else(|| {
+            BattleError::InvalidInput(format!(
+                "enemy {} skill {} missing spHitBase",
+                raw.id, skill.id
+            ))
+        })?;
+        scaled_u32(base * 1_000.0, "spHitBase", &raw.id)
+    };
+
+    match raw.id.as_str() {
+        // 8003010 外宇宙之冰: 2 actions/turn, Freezing Point stance, AoE Freeze, bonus DMG vs Frozen
+        "8003010" => {
+            let s1 = find_skill("800301001")?;
+            let s2 = find_skill("800301002")?;
+            let s3 = find_skill("800301003")?;
+            let skills = vec![
+                EnemySkillPlan {
+                    id: s1.id.clone(),
+                    action: EnemySkillAction::SingleAttackPreferFrozen {
+                        element: Element::Ice,
+                        multiplier_bp: param_bp(s1, 0)?,
+                        frozen_bonus_bp: param_bp(s1, 4)?,
+                        sp_hit_milli: sp_milli(s1)?,
+                    },
+                },
+                EnemySkillPlan {
+                    id: s2.id.clone(),
+                    action: EnemySkillAction::EnterEnhancedState {
+                        target_phase: 2,
+                        next_flag: 3,
+                    },
+                },
+                EnemySkillPlan {
+                    id: s3.id.clone(),
+                    action: EnemySkillAction::AllAttack {
+                        element: Element::Ice,
+                        multiplier_bp: param_bp(s3, 0)?,
+                        sp_hit_milli: sp_milli(s3)?,
+                        on_hit: Some(EnemyOnHit::Freeze {
+                            base_chance_bp: param_bp(s3, 2)?,
+                            damage_multiplier_bp: param_u16_bp(s3, 3)?,
+                            turns: param_turns(s3, 4)?,
+                        }),
+                    },
+                },
+            ];
+            Ok(Some((
+                EnemyActionSelector::Elite(EliteAiKind::IceOutOfSpace),
+                2,
+                Vec::new(),
+                skills,
+            )))
+        }
+        // 8003020 外宇宙之炎: 2 actions/turn, Deep Burn stance, 5-hit Fire bounce + Burn, +30% ATK buff
+        "8003020" => {
+            let s1 = find_skill("800302001")?;
+            let s3 = find_skill("800302002")?;
+            let s5 = find_skill("800302003")?;
+            let s7 = find_skill("800302004")?;
+            let total_hits = scaled_u32(
+                s5.params.get(4).copied().unwrap_or(5.0),
+                "bounceHits",
+                &raw.id,
+            )?;
+            let bounce_count = u8::try_from(total_hits.saturating_sub(1)).map_err(|_| {
+                BattleError::InvalidInput(format!("enemy {} invalid bounce count", raw.id))
+            })?;
+            let skills = vec![
+                EnemySkillPlan {
+                    id: s1.id.clone(),
+                    action: EnemySkillAction::SingleAttack {
+                        element: Element::Fire,
+                        multiplier_bp: param_bp(s1, 0)?,
+                        sp_hit_milli: sp_milli(s1)?,
+                        on_hit: Some(EnemyOnHit::Dot {
+                            element: Element::Fire,
+                            scale: EnemyDotScale::Attack(param_u16_bp(s1, 3)?),
+                            base_chance_bp: param_bp(s1, 1)?,
+                            turns: param_turns(s1, 2)?,
+                        }),
+                    },
+                },
+                EnemySkillPlan {
+                    id: s3.id.clone(),
+                    action: EnemySkillAction::EnterEnhancedState {
+                        target_phase: 2,
+                        next_flag: 1,
+                    },
+                },
+                EnemySkillPlan {
+                    id: s5.id.clone(),
+                    action: EnemySkillAction::BounceAttack {
+                        element: Element::Fire,
+                        primary_multiplier_bp: param_bp(s5, 0)?,
+                        primary_sp_hit_milli: sp_milli(s5)?,
+                        bounce_count,
+                        bounce_multiplier_bp: param_bp(s5, 0)?,
+                        bounce_sp_hit_milli: sp_milli(s5)?,
+                        on_hit: Some(EnemyOnHit::Dot {
+                            element: Element::Fire,
+                            scale: EnemyDotScale::Attack(param_u16_bp(s5, 3)?),
+                            base_chance_bp: param_bp(s5, 1)?,
+                            turns: param_turns(s5, 2)?,
+                        }),
+                    },
+                },
+                EnemySkillPlan {
+                    id: s7.id.clone(),
+                    action: EnemySkillAction::SelfAttackBuff {
+                        attack_bonus_bp: param_bp(s7, 0)?,
+                    },
+                },
+            ];
+            Ok(Some((
+                EnemyActionSelector::Elite(EliteAiKind::BlazeOutOfSpace),
+                2,
+                Vec::new(),
+                skills,
+            )))
+        }
+        // 8013010 虚卒•践踏者: 2 actions/turn, Target Lock -> 600% Quantum + Entanglement, Blast
+        "8013010" => {
+            let s1 = find_skill("801301001")?;
+            let s2 = find_skill("801301002")?;
+            let s3 = find_skill("801301003")?;
+            let s4 = find_skill("801301004")?;
+            let s5 = find_skill("801301005")?;
+            let skills = vec![
+                EnemySkillPlan {
+                    id: s1.id.clone(),
+                    action: EnemySkillAction::SingleAttack {
+                        element: Element::Quantum,
+                        multiplier_bp: param_bp(s1, 0)?,
+                        sp_hit_milli: sp_milli(s1)?,
+                        on_hit: None,
+                    },
+                },
+                EnemySkillPlan {
+                    id: s2.id.clone(),
+                    action: EnemySkillAction::SingleAttack {
+                        element: Element::Quantum,
+                        multiplier_bp: param_bp(s2, 0)?,
+                        sp_hit_milli: sp_milli(s2)?,
+                        on_hit: None,
+                    },
+                },
+                EnemySkillPlan {
+                    id: s3.id.clone(),
+                    action: EnemySkillAction::BlastAttack {
+                        element: Element::Quantum,
+                        main_multiplier_bp: param_bp(s3, 0)?,
+                        adjacent_multiplier_bp: param_bp(s3, 0)?,
+                        sp_hit_milli: sp_milli(s3)?,
+                        on_hit: None,
+                    },
+                },
+                EnemySkillPlan {
+                    id: s4.id.clone(),
+                    action: EnemySkillAction::LockSingleTarget,
+                },
+                EnemySkillPlan {
+                    id: s5.id.clone(),
+                    action: EnemySkillAction::ClearLockAndSingleAttack {
+                        element: Element::Quantum,
+                        multiplier_bp: param_bp(s5, 0)?,
+                        sp_hit_milli: sp_milli(s5)?,
+                        on_hit: Some(EnemyOnHit::Entanglement {
+                            base_chance_bp: 10_000,
+                            delay_bp: param_u16_bp(s5, 1)?,
+                            damage_multiplier_bp: param_u16_bp(s5, 2)?,
+                        }),
+                    },
+                },
+            ];
+            Ok(Some((
+                EnemyActionSelector::Elite(EliteAiKind::VoidrangerTrampler),
+                2,
+                Vec::new(),
+                skills,
+            )))
+        }
+        // 1003010 银鬃尉官: 2 actions/turn, Summon 2 Silvermane Guards (+1 extra action), Counter Stance (650% Physical)
+        "1003010" => {
+            let s1 = find_skill("100301001")?;
+            let s6 = find_skill("100301002")?;
+            let s7 = find_skill("100301003")?;
+            let s8 = find_skill("100301004")?;
+            let counter = EnemyCounterSpec {
+                element: Element::Physical,
+                multiplier_bp: param_bp(s6, 0)?,
+                sp_hit_milli: sp_milli(s6)?,
+            };
+            let skills = vec![
+                EnemySkillPlan {
+                    id: s1.id.clone(),
+                    action: EnemySkillAction::SingleAttack {
+                        element: Element::Physical,
+                        multiplier_bp: param_bp(s1, 0)?,
+                        sp_hit_milli: sp_milli(s1)?,
+                        on_hit: None,
+                    },
+                },
+                EnemySkillPlan {
+                    id: s6.id.clone(),
+                    action: EnemySkillAction::ClearCounterAndSingleAttack {
+                        element: counter.element,
+                        multiplier_bp: counter.multiplier_bp,
+                        sp_hit_milli: counter.sp_hit_milli,
+                    },
+                },
+                EnemySkillPlan {
+                    id: s7.id.clone(),
+                    action: EnemySkillAction::EnterCounterStance { counter },
+                },
+                EnemySkillPlan {
+                    id: s8.id.clone(),
+                    action: EnemySkillAction::SummonAllies {
+                        count: 2,
+                        grant_extra_action: true,
+                    },
+                },
+            ];
+            Ok(Some((
+                EnemyActionSelector::Elite(EliteAiKind::SilvermaneLieutenant),
+                2,
+                vec!["1002040".into(), "1002040".into()],
+                skills,
+            )))
+        }
+        _ => Ok(None),
+    }
 }
 
 fn resolve_verified_skill(
@@ -709,6 +1181,7 @@ fn resolve_verified_skill(
                 bounce_count,
                 bounce_multiplier_bp: multiplier_bp,
                 bounce_sp_hit_milli: primary_sp / 5,
+                on_hit: None,
             })
         }
         // 8001040 鸣雷造物: Thunder Single 250%, SP 10, 100% Shock (80% ATK, 2 turns)
@@ -797,6 +1270,9 @@ mod tests {
             max_toughness: 20,
             weakness: [false; Element::COUNT],
             initial_delay_ratio_bp: 10_000,
+            actions_per_turn: 1,
+            starts_dormant: false,
+            summon_specs: Vec::new(),
             debuff_resist_bp: Vec::new(),
             selector: EnemyActionSelector::CooldownWeighted(vec![
                 CooldownDecision {
@@ -833,15 +1309,15 @@ mod tests {
         let mut state = kit.init_runtime_state();
         assert_eq!(state.skill_cooldowns, vec![0, 1]);
         // Turn 1: skill 1 on initial_cd=1 -> selects skill 0, decrements skill 1 cd to 0.
-        assert_eq!(kit.select_next_skill(&mut state), Some(0));
+        assert_eq!(kit.select_next_skill(&mut state, 0), Some(0));
         // Turn 2: both ready, skill 1 has higher weight -> selects skill 1, sets its cd to 2.
-        assert_eq!(kit.select_next_skill(&mut state), Some(1));
+        assert_eq!(kit.select_next_skill(&mut state, 0), Some(1));
         // Turn 3: skill 1 cd=2 -> selects skill 0, decrements skill 1 cd to 1.
-        assert_eq!(kit.select_next_skill(&mut state), Some(0));
+        assert_eq!(kit.select_next_skill(&mut state, 0), Some(0));
         // Turn 4: skill 1 cd=1 -> selects skill 0, decrements skill 1 cd to 0.
-        assert_eq!(kit.select_next_skill(&mut state), Some(0));
+        assert_eq!(kit.select_next_skill(&mut state, 0), Some(0));
         // Turn 5: skill 1 ready again -> selects skill 1.
-        assert_eq!(kit.select_next_skill(&mut state), Some(1));
+        assert_eq!(kit.select_next_skill(&mut state, 0), Some(1));
     }
 
     #[test]
@@ -851,14 +1327,17 @@ mod tests {
             max_toughness: 10,
             weakness: [false; Element::COUNT],
             initial_delay_ratio_bp: 10_000,
+            actions_per_turn: 1,
+            starts_dormant: false,
+            summon_specs: Vec::new(),
             debuff_resist_bp: vec![("STAT_DOT_Burn".into(), 10_000)],
             selector: EnemyActionSelector::Sequence(vec![0, 1]),
             skills: Vec::new(),
         };
         let mut state = kit.init_runtime_state();
-        assert_eq!(kit.select_next_skill(&mut state), Some(0));
-        assert_eq!(kit.select_next_skill(&mut state), Some(1));
-        assert_eq!(kit.select_next_skill(&mut state), Some(0));
+        assert_eq!(kit.select_next_skill(&mut state, 0), Some(0));
+        assert_eq!(kit.select_next_skill(&mut state, 0), Some(1));
+        assert_eq!(kit.select_next_skill(&mut state, 0), Some(0));
         assert_eq!(kit.debuff_resist_for("STAT_DOT_Burn"), 10_000);
         assert_eq!(kit.debuff_resist_for("STAT_DOT_Bleed"), 0);
     }

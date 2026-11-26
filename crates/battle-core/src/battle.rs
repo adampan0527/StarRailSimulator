@@ -301,7 +301,11 @@ impl<'a> Battle<'a> {
                 .units
                 .iter()
                 .map(|unit| UnitState {
-                    hp: if matches!(unit.kit, Kit::Memosprite { .. }) { 0 } else { unit.stats.hp },
+                    hp: if matches!(unit.kit, Kit::Memosprite { .. }) || unit.kit.starts_dormant() {
+                        0
+                    } else {
+                        unit.stats.hp
+                    },
                     energy_milli: unit.starting_energy_milli,
                     toughness: unit.kit.max_toughness(),
                     extra_toughness: None,
@@ -316,7 +320,7 @@ impl<'a> Battle<'a> {
                     memosprite_max_hp: None,
                     memosprite_generation: 0,
                     normal_turns: 0,
-                    departed: false,
+                    departed: unit.kit.starts_dormant(),
                     advanced_to_front: false,
                     statuses: [None; StatusKind::COUNT],
                     attack_bonus: None,
@@ -742,6 +746,7 @@ impl<'a> Battle<'a> {
             random_draws: self.rng.draws,
             enemy_hp_lost: self.enemy_hp_lost,
             units: (0..self.enemies().end)
+                .filter(|&unit| !(self.units[unit].departed && self.units[unit].hp == 0))
                 .chain(
                     self.memosprites()
                         .filter(|&sprite| self.is_targetable(sprite)),
@@ -1436,6 +1441,7 @@ impl<'a> Battle<'a> {
                     self.tick_skill_dots(actor);
                     self.finish_dot_batch(DotTiming::TurnStart(actor));
                     self.dot_timing = DotTiming::Other;
+                    self.tick_entanglement(actor);
                     if self.units[actor].hp == 0 {
                         self.resolve_wave_or_end();
                         continue;
@@ -1522,8 +1528,18 @@ impl<'a> Battle<'a> {
                 }
                 Kit::OfficialEnemy(enemy) => {
                     let enemy = Arc::clone(enemy);
-                    self.resolve_official_enemy(actor, &enemy);
-                    acted = true;
+                    let mut remaining = enemy.actions_per_turn.max(1);
+                    while remaining > 0
+                        && self.units[actor].hp > 0
+                        && self.units[actor].toughness > 0
+                        && !self.is_crowd_controlled(actor)
+                        && self.allies().any(|ally| self.units[ally].hp > 0)
+                    {
+                        remaining -= 1;
+                        let extra = self.resolve_official_enemy(actor, &enemy);
+                        remaining = remaining.saturating_add(extra);
+                        acted = true;
+                    }
                 }
                 _ => {}
             }

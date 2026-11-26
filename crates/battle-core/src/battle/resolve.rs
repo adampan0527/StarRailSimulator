@@ -1739,15 +1739,23 @@ impl Battle<'_> {
             }
         }
         let crossed_half = std::mem::take(&mut self.crossed_half);
-        if crossed_half.is_empty() {
-            return;
-        }
-        for owner in self.allies() {
-            if self.units[owner].hp > 0
-                && let Some(mechanics) = self.mechanics(owner)
-            {
-                mechanics.after_attack(self, owner, actor, &crossed_half, origin);
+        if !crossed_half.is_empty() {
+            for owner in self.allies() {
+                if self.units[owner].hp > 0
+                    && let Some(mechanics) = self.mechanics(owner)
+                {
+                    mechanics.after_attack(self, owner, actor, &crossed_half, origin);
+                }
             }
+        }
+        if landed && self.is_party_unit(actor) {
+            let attacked_enemies: Vec<_> = self
+                .attack_targets
+                .iter()
+                .copied()
+                .filter(|&target| self.enemies().contains(&target))
+                .collect();
+            self.trigger_enemy_counter_stances(actor, &attacked_enemies);
         }
     }
 
@@ -1802,12 +1810,18 @@ impl Battle<'_> {
         }
     }
 
-    pub(super) fn resolve_official_enemy(&mut self, actor: usize, kit: &OfficialEnemyKit) {
-        let Some(skill_index) = kit.select_next_skill(&mut self.units[actor].enemy_state) else {
-            return;
+    pub(super) fn resolve_official_enemy(&mut self, actor: usize, kit: &OfficialEnemyKit) -> u8 {
+        let living_teammates = self
+            .enemies()
+            .filter(|&unit| unit != actor && self.units[unit].hp > 0)
+            .count();
+        let Some(skill_index) =
+            kit.select_next_skill(&mut self.units[actor].enemy_state, living_teammates)
+        else {
+            return 0;
         };
         let Some(skill) = kit.skills.get(skill_index) else {
-            return;
+            return 0;
         };
         match skill.action {
             EnemySkillAction::SingleAttack {
@@ -1826,6 +1840,49 @@ impl Battle<'_> {
                         on_hit,
                     );
                 }
+                0
+            }
+            EnemySkillAction::SingleAttackPreferFrozen {
+                element,
+                multiplier_bp,
+                frozen_bonus_bp,
+                sp_hit_milli,
+            } => {
+                let enhanced = self.units[actor].enemy_state.enhanced_state;
+                let frozen_target = if enhanced {
+                    self.party_units()
+                        .find(|&unit| self.can_enemy_target(unit) && self.is_frozen(unit))
+                } else {
+                    None
+                };
+                if let Some(target) =
+                    frozen_target.or_else(|| self.select_official_enemy_target(actor))
+                {
+                    let was_frozen = enhanced && self.is_frozen(target);
+                    self.resolve_official_enemy_single_hit(
+                        actor,
+                        target,
+                        element,
+                        multiplier_bp,
+                        sp_hit_milli,
+                        None,
+                    );
+                    if was_frozen && self.units[target].hp > 0 && frozen_bonus_bp > 0 {
+                        self.strike(
+                            actor,
+                            target,
+                            DamageKind::Additional,
+                            Hit {
+                                element,
+                                multiplier_bp: frozen_bonus_bp,
+                                toughness: 0,
+                                origin: None,
+                                scale: DamageScale::Attack,
+                            },
+                        );
+                    }
+                }
+                0
             }
             EnemySkillAction::SelfBarrierAndSingleAttack {
                 element,
@@ -1850,6 +1907,7 @@ impl Battle<'_> {
                         None,
                     );
                 }
+                0
             }
             EnemySkillAction::BlastAttack {
                 element,
@@ -1880,6 +1938,7 @@ impl Battle<'_> {
                         on_hit,
                     );
                 }
+                0
             }
             EnemySkillAction::AllAttack {
                 element,
@@ -1902,6 +1961,7 @@ impl Battle<'_> {
                         on_hit,
                     );
                 }
+                0
             }
             EnemySkillAction::BounceAttack {
                 element,
@@ -1910,6 +1970,7 @@ impl Battle<'_> {
                 bounce_count,
                 bounce_multiplier_bp,
                 bounce_sp_hit_milli,
+                on_hit,
             } => {
                 if let Some(primary) = self.select_official_enemy_target(actor) {
                     self.resolve_official_enemy_bounce(
@@ -1921,8 +1982,10 @@ impl Battle<'_> {
                         bounce_count,
                         bounce_multiplier_bp,
                         bounce_sp_hit_milli,
+                        on_hit,
                     );
                 }
+                0
             }
             EnemySkillAction::HealAllEnemies { max_hp_ratio_bp } => {
                 self.notify_active_ability(actor);
@@ -1936,7 +1999,238 @@ impl Battle<'_> {
                 }
                 self.finish_enemy_action();
                 self.resolve_follow_ups();
+                0
             }
+            EnemySkillAction::EnterEnhancedState {
+                target_phase,
+                next_flag,
+            } => {
+                self.notify_active_ability(actor);
+                let state = &mut self.units[actor].enemy_state;
+                state.ai_phase = target_phase;
+                state.ai_flag = next_flag;
+                if !state.enhanced_state {
+                    state.enhanced_state = true;
+                    self.emit(
+                        EventKind::StatusApplied(StatusKind::EnemyEnhanced),
+                        Some(actor),
+                        Some(actor),
+                    );
+                }
+                self.finish_enemy_action();
+                0
+            }
+            EnemySkillAction::SelfAttackBuff { attack_bonus_bp } => {
+                self.notify_active_ability(actor);
+                self.units[actor].enemy_state.attack_bonus_bp = self.units[actor]
+                    .enemy_state
+                    .attack_bonus_bp
+                    .saturating_add(attack_bonus_bp);
+                self.emit(
+                    EventKind::StatusApplied(StatusKind::EnemyEnhanced),
+                    Some(actor),
+                    Some(actor),
+                );
+                self.finish_enemy_action();
+                0
+            }
+            EnemySkillAction::LockSingleTarget => {
+                self.notify_active_ability(actor);
+                if let Some(target) = self.select_official_enemy_target(actor) {
+                    self.units[actor].enemy_state.locked_target = Some(target);
+                    self.emit(
+                        EventKind::StatusApplied(StatusKind::TargetLock),
+                        Some(actor),
+                        Some(target),
+                    );
+                }
+                self.finish_enemy_action();
+                0
+            }
+            EnemySkillAction::ClearLockAndSingleAttack {
+                element,
+                multiplier_bp,
+                sp_hit_milli,
+                on_hit,
+            } => {
+                let target = self.select_official_enemy_target(actor);
+                if let Some(locked) = self.units[actor].enemy_state.locked_target.take() {
+                    self.emit(
+                        EventKind::StatusExpired(StatusKind::TargetLock),
+                        Some(actor),
+                        Some(locked),
+                    );
+                }
+                if let Some(target) = target {
+                    self.resolve_official_enemy_single_hit(
+                        actor,
+                        target,
+                        element,
+                        multiplier_bp,
+                        sp_hit_milli,
+                        on_hit,
+                    );
+                }
+                0
+            }
+            EnemySkillAction::EnterCounterStance { counter } => {
+                self.notify_active_ability(actor);
+                let state = &mut self.units[actor].enemy_state;
+                state.counter_stance = true;
+                state.counter_attack = Some(counter);
+                self.emit(
+                    EventKind::StatusApplied(StatusKind::CounterStance),
+                    Some(actor),
+                    Some(actor),
+                );
+                self.finish_enemy_action();
+                0
+            }
+            EnemySkillAction::ClearCounterAndSingleAttack {
+                element,
+                multiplier_bp,
+                sp_hit_milli,
+            } => {
+                if self.units[actor].enemy_state.counter_stance {
+                    self.units[actor].enemy_state.counter_stance = false;
+                    self.units[actor].enemy_state.counter_attack = None;
+                    self.emit(
+                        EventKind::StatusExpired(StatusKind::CounterStance),
+                        Some(actor),
+                        Some(actor),
+                    );
+                }
+                if let Some(target) = self.select_official_enemy_target(actor) {
+                    self.resolve_official_enemy_single_hit(
+                        actor,
+                        target,
+                        element,
+                        multiplier_bp,
+                        sp_hit_milli,
+                        None,
+                    );
+                }
+                0
+            }
+            EnemySkillAction::SummonAllies {
+                count,
+                grant_extra_action,
+            } => {
+                self.notify_active_ability(actor);
+                self.summon_official_enemies(actor, count);
+                self.finish_enemy_action();
+                u8::from(grant_extra_action)
+            }
+        }
+    }
+
+    fn summon_official_enemies(&mut self, actor: usize, count: u8) {
+        let living = self
+            .enemies()
+            .filter(|&unit| self.units[unit].hp > 0)
+            .count();
+        let to_spawn = usize::from(count).min(5_usize.saturating_sub(living));
+        let candidates: Vec<_> = self
+            .enemies()
+            .filter(|&unit| {
+                unit != actor
+                    && self.units[unit].enemy_state.dormant_summon
+                    && self.units[unit].hp == 0
+            })
+            .take(to_spawn)
+            .collect();
+        for slot in candidates {
+            let plan = &self.plan.units[slot];
+            let max_hp = plan.stats.hp;
+            let max_toughness = plan.kit.max_toughness();
+            let initial_gauge = u64::try_from(
+                u128::from(GAUGE_FULL) * u128::from(plan.kit.initial_delay_ratio_bp()) / 10_000,
+            )
+            .unwrap_or(GAUGE_FULL);
+            let mut runtime = match &plan.kit {
+                Kit::OfficialEnemy(kit) => kit.init_runtime_state(),
+                _ => Default::default(),
+            };
+            runtime.dormant_summon = true;
+            let state = &mut self.units[slot];
+            state.hp = max_hp;
+            state.toughness = max_toughness;
+            state.gauge_quanta = initial_gauge;
+            state.departed = false;
+            state.advanced_to_front = false;
+            state.frozen = None;
+            state.debuffs.clear();
+            state.skill_dots.clear();
+            state.break_dots.clear();
+            state.shocks.clear();
+            state.entanglement = None;
+            state.enemy_state = runtime;
+        }
+    }
+
+    fn trigger_enemy_counter_stances(&mut self, attacker: usize, attacked_enemies: &[usize]) {
+        if self.units[attacker].hp == 0 || !self.can_enemy_target(attacker) {
+            return;
+        }
+        for &enemy in attacked_enemies {
+            if self.units[attacker].hp == 0 || !self.can_enemy_target(attacker) {
+                break;
+            }
+            if self.units[enemy].hp == 0
+                || self.units[enemy].toughness == 0
+                || self.is_crowd_controlled(enemy)
+                || !self.units[enemy].enemy_state.counter_stance
+            {
+                continue;
+            }
+            let Some(counter) = self.units[enemy].enemy_state.counter_attack else {
+                continue;
+            };
+            self.resolve_official_enemy_single_hit(
+                enemy,
+                attacker,
+                counter.element,
+                counter.multiplier_bp,
+                counter.sp_hit_milli,
+                None,
+            );
+        }
+    }
+
+    fn on_enemy_weakness_broken(&mut self, actor: usize, target: usize) {
+        if !matches!(self.plan.units[target].kit, Kit::OfficialEnemy(_)) {
+            return;
+        }
+        let state = &mut self.units[target].enemy_state;
+        state.ai_phase = 1;
+        state.ai_flag = 1;
+        let had_enhanced = state.enhanced_state || state.attack_bonus_bp > 0;
+        state.enhanced_state = false;
+        state.attack_bonus_bp = 0;
+        let locked = state.locked_target.take();
+        let had_counter = state.counter_stance;
+        state.counter_stance = false;
+        state.counter_attack = None;
+        if had_enhanced {
+            self.emit(
+                EventKind::StatusExpired(StatusKind::EnemyEnhanced),
+                Some(actor),
+                Some(target),
+            );
+        }
+        if let Some(locked_unit) = locked {
+            self.emit(
+                EventKind::StatusExpired(StatusKind::TargetLock),
+                Some(actor),
+                Some(locked_unit),
+            );
+        }
+        if had_counter {
+            self.emit(
+                EventKind::StatusExpired(StatusKind::CounterStance),
+                Some(actor),
+                Some(target),
+            );
         }
     }
 
@@ -2097,6 +2391,7 @@ impl Battle<'_> {
         bounce_count: u8,
         bounce_multiplier_bp: u32,
         bounce_sp_hit_milli: u32,
+        on_hit: Option<EnemyOnHit>,
     ) {
         let mut hit_records: Vec<(usize, bool, u32)> = Vec::new();
         let mut record_hit = |battle: &mut Self, target: usize, sp_milli: u32| {
@@ -2137,7 +2432,7 @@ impl Battle<'_> {
                 scale: DamageScale::Attack,
             },
         );
-        self.apply_enemy_post_hit_effects(actor, primary, None);
+        self.apply_enemy_post_hit_effects(actor, primary, on_hit);
 
         for _ in 0..bounce_count {
             let candidates: Vec<_> = self
@@ -2161,7 +2456,7 @@ impl Battle<'_> {
                     scale: DamageScale::Attack,
                 },
             );
-            self.apply_enemy_post_hit_effects(actor, target, None);
+            self.apply_enemy_post_hit_effects(actor, target, on_hit);
         }
         self.finish_enemy_action();
         for (target, was_shielded, total_sp) in hit_records {
@@ -2256,6 +2551,29 @@ impl Battle<'_> {
                 if !upgraded_reverberation && self.roll_status(actor, target, base_chance_bp, false)
                 {
                     self.apply_debuff(actor, target, DebuffKind::Reverberation, 0, turns);
+                }
+            }
+            EnemyOnHit::Freeze {
+                base_chance_bp,
+                damage_multiplier_bp,
+                turns,
+            } => {
+                self.apply_skill_freeze(
+                    actor,
+                    target,
+                    base_chance_bp,
+                    turns,
+                    damage_multiplier_bp,
+                    Action::Basic,
+                );
+            }
+            EnemyOnHit::Entanglement {
+                base_chance_bp,
+                delay_bp,
+                damage_multiplier_bp,
+            } => {
+                if self.roll_status(actor, target, base_chance_bp, true) {
+                    self.apply_enemy_entanglement(actor, target, delay_bp, damage_multiplier_bp);
                 }
             }
         }
@@ -3376,6 +3694,7 @@ impl Battle<'_> {
         source: crate::fixture::Stats,
     ) {
         self.emit(EventKind::WeaknessBroken, Some(actor), Some(target));
+        self.on_enemy_weakness_broken(actor, target);
         self.resolve_damage(
             actor,
             target,

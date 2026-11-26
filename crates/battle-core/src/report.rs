@@ -79,10 +79,13 @@ pub enum StatusKind {
     Barrier,
     Reverberation,
     StrongReverberation,
+    CounterStance,
+    TargetLock,
+    EnemyEnhanced,
 }
 
 impl StatusKind {
-    pub(crate) const COUNT: usize = Self::StrongReverberation.index() + 1;
+    pub(crate) const COUNT: usize = Self::EnemyEnhanced.index() + 1;
     pub(crate) const ALL: [Self; 3] = [Self::Shield, Self::Vulnerability, Self::SpeedUp];
 
     pub(crate) const fn index(self) -> usize {
@@ -146,6 +149,9 @@ impl StatusKind {
             Self::Barrier => 56,
             Self::Reverberation => 57,
             Self::StrongReverberation => 58,
+            Self::CounterStance => 59,
+            Self::TargetLock => 60,
+            Self::EnemyEnhanced => 61,
         }
     }
 }

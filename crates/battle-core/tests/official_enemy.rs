@@ -197,6 +197,7 @@ fn verifies_supported_and_unsupported_official_enemies_and_level_stats() {
     let supported = [
         "8001010", "8001020", "1002040", "1002050", "1012010", "1012030", "1022010", "1022020",
         "2002030", "2011010", "2011020", "2022060", "8001040", "8001050", "3001010", "3011010",
+        "8003010", "8003020", "8013010", "1003010",
     ];
     for id in supported {
         assert!(supports_official_enemy(id), "{id} should be supported");
@@ -688,4 +689,174 @@ fn aggro_weights_steer_enemy_targeting_and_multi_wave_encounter_reaches_victory(
         })
         .unwrap();
     assert_eq!(wave_battle.outcome(), Outcome::Victory);
+}
+
+#[test]
+fn ice_and_blaze_out_of_space_take_two_actions_enter_enhanced_stance_and_reset_on_break() {
+    // 1. Ice Out of Space (8003010): Turn 1 uses Skill01 + Freezing Point; Turn 2 uses AoE Freeze + enhanced Skill01.
+    let ice_plan = PreparedBattle::official_encounter(
+        &[
+            arlan("ally.arlan", 45_000_000, 50_000, 100),
+            herta("ally.herta", 45_000_000, 50_000, 75),
+        ],
+        &[vec![enemy("enemy.ice", "8003010", 80)]],
+        7,
+        3,
+    )
+    .unwrap();
+    let ice_battle = Battle::start(&ice_plan, LogMode::Detailed);
+    assert!(ice_battle.events().iter().any(|event| {
+        event.kind == EventKind::StatusApplied(StatusKind::EnemyEnhanced)
+            && event.target_id.as_deref() == Some("enemy.ice")
+    }));
+    // Turn 2's Everwinter Rain hits both allies and can freeze them (then Turn 2 Action 2 hits frozen target for Additional Ice dmg).
+    let enemy_attacks = ice_battle
+        .events()
+        .iter()
+        .filter(|event| {
+            event.kind == EventKind::EnemyAttack && event.source_id.as_deref() == Some("enemy.ice")
+        })
+        .count();
+    assert!(
+        enemy_attacks >= 3,
+        "Ice Out of Space must take 2 actions/turn (expected >=3 attacks across 2 turns, got {enemy_attacks})"
+    );
+    assert!(ice_battle.events().iter().any(|event| {
+        event.kind == EventKind::StatusApplied(StatusKind::Frozen)
+            && event.source_id.as_deref() == Some("enemy.ice")
+    }));
+
+    // 2. Blaze Out of Space (8003020): Turn 1 Single Burn + Deep Burn; Turn 2 5-hit Fire Bounce + +30% ATK buff.
+    let blaze_plan = PreparedBattle::official_encounter(
+        &[arlan("ally.arlan", 45_000_000, 80_000, 100)],
+        &[vec![enemy("enemy.blaze", "8003020", 80)]],
+        9,
+        3,
+    )
+    .unwrap();
+    let blaze_battle = Battle::start(&blaze_plan, LogMode::Detailed);
+    let direct_hits = blaze_battle
+        .events()
+        .iter()
+        .filter(|event| {
+            matches!(
+                event.kind,
+                EventKind::Damage {
+                    kind: DamageKind::Direct,
+                    ..
+                }
+            ) && event.source_id.as_deref() == Some("enemy.blaze")
+        })
+        .count();
+    // Turn 1: 1 hit (Roaring Flame) + Turn 2: 5 hits (Rain of Purifying Flames) = at least 6 direct hits.
+    assert!(
+        direct_hits >= 6,
+        "Blaze Out of Space must execute 1 hit + 5-hit bounce across turns 1-2 (got {direct_hits})"
+    );
+    assert!(blaze_battle.events().iter().any(|event| {
+        matches!(
+            event.kind,
+            EventKind::Damage {
+                kind: DamageKind::DamageOverTime,
+                hp_loss,
+                ..
+            } if hp_loss > 0
+        ) && event.target_id.as_deref() == Some("ally.arlan")
+    }));
+}
+
+#[test]
+fn voidranger_trampler_locks_target_fires_entangling_shot_and_uses_blast() {
+    // Trampler (8013010): Turn 1 Action 1 single + Action 2 Lock Target;
+    // Turn 2 Action 1 fires 600% Quantum + Entanglement at locked target + Action 2 Blast (hits adjacent!).
+    let plan = PreparedBattle::official_encounter(
+        &[
+            arlan("ally.left", 45_000_000, 80_000, 500),
+            herta("ally.mid", 45_000_000, 80_000, 100),
+        ],
+        &[vec![enemy("enemy.trampler", "8013010", 80)]],
+        11,
+        3,
+    )
+    .unwrap();
+    let battle = Battle::start(&plan, LogMode::Detailed);
+    let locked_target = battle
+        .events()
+        .iter()
+        .find_map(|event| {
+            (event.kind == EventKind::StatusApplied(StatusKind::TargetLock))
+                .then(|| event.target_id.clone())
+                .flatten()
+        })
+        .expect("Trampler Turn 1 Action 2 must lock a target");
+    assert!(battle.events().iter().any(|event| {
+        event.kind == EventKind::StatusExpired(StatusKind::TargetLock)
+            && event.target_id.as_deref() == Some(locked_target.as_str())
+    }));
+    assert!(battle.events().iter().any(|event| {
+        event.kind == EventKind::StatusApplied(StatusKind::Entangled)
+            && event.target_id.as_deref() == Some(locked_target.as_str())
+    }));
+    // Blast hits both adjacent allies.
+    assert!(unit(&battle.snapshot(), "ally.left").hp < 80_000);
+    assert!(unit(&battle.snapshot(), "ally.mid").hp < 80_000);
+}
+
+#[test]
+fn silvermane_lieutenant_summons_guards_enters_counter_stance_and_counters_attacker() {
+    // Lieutenant (1003010, Lv80 SPD 132) vs slower Arlan (SPD 100):
+    // Turn 1: Action 1 Assault -> Action 2 Reinforce (summons 2 Silvermane Guards + grants extra action)
+    // -> Action 3 Shield Counter (enters CounterStance!).
+    let plan = PreparedBattle::official_encounter(
+        &[arlan("ally.arlan", 100_000_000, 80_000, 100)],
+        &[vec![enemy("enemy.lt", "1003010", 80)]],
+        3,
+        3,
+    )
+    .unwrap();
+    let mut battle = Battle::start(&plan, LogMode::Detailed);
+    let snap = battle.snapshot();
+    let summon_count = snap
+        .units
+        .iter()
+        .filter(|entry| entry.unit_id.starts_with("enemy.lt:summon:") && entry.hp > 0)
+        .count();
+    assert_eq!(
+        summon_count, 2,
+        "Lieutenant Turn 1 Reinforce must summon 2 living Silvermane Guards"
+    );
+    assert!(battle.events().iter().any(|event| {
+        event.kind == EventKind::StatusApplied(StatusKind::CounterStance)
+            && event.target_id.as_deref() == Some("enemy.lt")
+    }));
+
+    // When Arlan attacks Lieutenant while CounterStance is active, Lieutenant immediately counters with Pierce (+20_000 energy)!
+    let attacks_before = battle
+        .events()
+        .iter()
+        .filter(|event| {
+            event.kind == EventKind::EnemyAttack && event.source_id.as_deref() == Some("enemy.lt")
+        })
+        .count();
+    let hp_before = unit(&battle.snapshot(), "ally.arlan").hp;
+    battle
+        .apply(&Command {
+            decision_index: 0,
+            actor_id: "ally.arlan".into(),
+            action: Action::Basic,
+            target_id: Some("enemy.lt".into()),
+        })
+        .unwrap();
+    let attacks_after = battle
+        .events()
+        .iter()
+        .filter(|event| {
+            event.kind == EventKind::EnemyAttack && event.source_id.as_deref() == Some("enemy.lt")
+        })
+        .count();
+    assert!(
+        attacks_after > attacks_before,
+        "attacking Lieutenant in CounterStance must trigger immediate Pierce counter"
+    );
+    assert!(unit(&battle.snapshot(), "ally.arlan").hp < hp_before);
 }

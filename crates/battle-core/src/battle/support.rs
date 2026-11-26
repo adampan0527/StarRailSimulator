@@ -646,7 +646,8 @@ impl Battle<'_> {
                 stats.base_attack,
                 personal_bp
                     .saturating_add(buffs.attack_bp)
-                    .saturating_add(break_conversion_bp),
+                    .saturating_add(break_conversion_bp)
+                    .saturating_add(self.units[actor].enemy_state.attack_bonus_bp),
             ))
             .saturating_add(percentage_of(defense, conversion_bp))
             .saturating_add(flat)

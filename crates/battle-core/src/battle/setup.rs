@@ -67,6 +67,10 @@ impl Kit {
             _ => 10_000,
         }
     }
+
+    pub fn starts_dormant(&self) -> bool {
+        matches!(self, Self::OfficialEnemy(kit) if kit.starts_dormant)
+    }
 }
 
 #[derive(Clone)]
@@ -201,6 +205,7 @@ impl PreparedBattle {
         }
         let mut wave_ends = Vec::with_capacity(waves.len());
         for wave in waves {
+            let mut pending_summons: Vec<(String, String, u16)> = Vec::new();
             for enemy_input in wave {
                 if !valid_id(&enemy_input.unit_id) || !ids.insert(enemy_input.unit_id.clone()) {
                     return Err(BattleError::InvalidInput(format!(
@@ -209,8 +214,39 @@ impl PreparedBattle {
                     )));
                 }
                 let (kit, stats) = enemy::build_official_enemy(enemy_input)?;
+                for summon_id in &kit.summon_specs {
+                    pending_summons.push((
+                        enemy_input.unit_id.clone(),
+                        summon_id.clone(),
+                        enemy_input.level,
+                    ));
+                }
                 units.push(UnitPlan {
                     id: enemy_input.unit_id.clone(),
+                    official_form: None,
+                    combat_type: None,
+                    has_control_resistance: false,
+                    elation_bp: 0,
+                    kit: Kit::OfficialEnemy(Arc::new(kit)),
+                    stats,
+                    starting_energy_milli: 0,
+                });
+            }
+            let remaining_slots = 5_usize.saturating_sub(wave.len());
+            for (slot, (owner_id, summon_enemy_id, level)) in pending_summons
+                .into_iter()
+                .take(remaining_slots)
+                .enumerate()
+            {
+                let summon_input = OfficialEnemy {
+                    unit_id: format!("{owner_id}:summon:{}", slot + 1),
+                    enemy_id: summon_enemy_id,
+                    level,
+                };
+                let (mut kit, stats) = enemy::build_official_enemy(&summon_input)?;
+                kit.starts_dormant = true;
+                units.push(UnitPlan {
+                    id: summon_input.unit_id,
                     official_form: None,
                     combat_type: None,
                     has_control_resistance: false,

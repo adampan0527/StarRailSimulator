@@ -188,6 +188,7 @@
 
 #### 进展记录
 
+- 2026-11-26 推进敌方行动逻辑接入第三步（首批精英）：在 `battle-core` 补齐精英/首领通用的回合内多连动、蓄力/态变与破韧状态重置、敌方攻击力增益、我方冻结与纠缠、敌方盾反反击姿态及波次内预分配休眠位动态召唤能力，并对照 `ConfigAI`/`ConfigAbility` 接入首批 4 个代表性精英（外宇宙之冰、外宇宙之炎、虚卒•践踏者、银鬃尉官），已验证敌方单位增至 20/159，全部 10 项集成回归与工作区检查通过。[敌方执行器](../crates/battle-core/src/battle/enemy.rs) · [敌方战斗回归](../crates/battle-core/tests/official_enemy.rs)
 - 2026-11-26 完成敌方行动逻辑接入第二步：在 `battle-core` 接入冻结 4.7.0 敌方数据与通用敌方执行器（`PreparedBattle::official_encounter`、`official_enemy_stats`、`supports_official_enemy`），实现嘲讽/锁定/仇恨权重选敌、单体/扩散/全体/弹射攻击、受击回能（含主次 `SPHitRatio`）、单次免伤屏障、敌方群体回复、我方回合初敌方 DoT 结算、行动延后、虚弱减伤、降防/减速/降抗及「震荡 → 强烈震荡」跳过回合控制，并支持 `Sequence` 与 `CooldownWeighted` 两类通用调度器。首批 16 个无被动 `sequence_only` 敌方单位已对照 `ConfigAbility` 逐一核对并通过 9 项单元与集成回归；未接入被动或专属机制的敌人显式返回 `UnsupportedData`。[敌方执行器](../crates/battle-core/src/battle/enemy.rs) · [敌方战斗回归](../crates/battle-core/tests/official_enemy.rs)
 - 2026-11-26 完成敌方行动逻辑接入第一步：从同修订 4.7.0 `TurnBasedGameData` 拉取并 SHA-256 锁定 275 份敌方技能表、状态表、`ConfigAI` 与 `ConfigCharacter` 文件，离线解析 159 个高难可选敌人的完整战斗基础属性、1–100 级成长曲线、七属性抗性与控制抵抗、970 条技能（含受击回能 `SPHitBase`、目标类型与冷却）及 AI 决策树结构，归类出 36 个纯固定序列单位（16 个无被动白板、20 个含被动天赋）、1 个通用 CD 规则单位与 122 个需专属机制模块的单位，显式标记待补全的 `ConfigAbility` 分段倍率与异常概率项，为第二步通用敌方执行器提供离线数据源。[敌方 AI 归类审计](enemy-ai-audit.md) · [敌方数据回归](../tests/enemy-combat.test.mjs)
 - 2026-11-25 确定性搜索和快照对照继续用于自动化回归。方案回放组件在正式编队可计算后接入桌面。[开发计划](battle-simulation-plan.md)
