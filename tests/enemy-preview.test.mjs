@@ -12,8 +12,16 @@ const preview = JSON.parse(
 );
 const byId = new Map(preview.enemies.map((enemy) => [enemy.id, enemy]));
 
-test('lists each endgame combat 4.7.0 enemy once with complete level previews', () => {
+test('lists each endgame combat 4.7.0 enemy once ordered by debut planet and rank', () => {
   assert.equal(preview.revision, 'dad9155eb00fdeda31fb8456507c53590d49071f');
+  assert.deepEqual(preview.planets, [
+    '空间站「黑塔」',
+    '雅利洛-VI',
+    '仙舟「罗浮」',
+    '匹诺康尼',
+    '翁法罗斯',
+    '二相乐园',
+  ]);
   assert.equal(preview.enemies.length, 159);
   assert.equal(byId.size, preview.enemies.length);
   assert.equal(
@@ -30,11 +38,28 @@ test('lists each endgame combat 4.7.0 enemy once with complete level previews', 
   );
   const ids = preview.enemies.flatMap((enemy) => enemy.sourceIds);
   assert.equal(new Set(ids).size, ids.length);
+  const planetIndex = new Map(
+    preview.planets.map((planet, index) => [planet, index]),
+  );
+  const rankIndex = { 首领: 0, 精英: 1, 普通: 2 };
   const standardAvatars = new Set();
   let apocalypticCount = 0;
+  let previousPlanet = -1;
+  let previousRank = -1;
   for (const enemy of preview.enemies) {
     assert.ok(enemy.name && /^\d+$/.test(enemy.id));
     assert.ok(enemy.sourceIds.includes(enemy.id));
+    assert.ok(planetIndex.has(enemy.planet), `unknown planet ${enemy.planet}`);
+    const currentPlanet = planetIndex.get(enemy.planet);
+    const currentRank = rankIndex[enemy.rank];
+    assert.ok(currentRank !== undefined, `unknown rank ${enemy.rank}`);
+    assert.ok(
+      currentPlanet > previousPlanet ||
+        (currentPlanet === previousPlanet && currentRank >= previousRank),
+      `out of planet/rank order at ${enemy.name}`,
+    );
+    previousPlanet = currentPlanet;
+    previousRank = currentRank;
     assert.ok(enemy.variant === null || enemy.variant === '末日幻影');
     if (enemy.variant === '末日幻影') {
       assert.equal(enemy.rank, '首领');
@@ -54,6 +79,16 @@ test('lists each endgame combat 4.7.0 enemy once with complete level previews', 
     }
   }
   assert.equal(apocalypticCount, 18);
+  assert.equal(byId.get('8024011').planet, '空间站「黑塔」');
+  assert.equal(byId.get('8015012').planet, '空间站「黑塔」');
+  assert.equal(byId.get('8032010').planet, '雅利洛-VI');
+  assert.equal(byId.get('8033010').planet, '雅利洛-VI');
+  assert.equal(byId.get('8015022').planet, '仙舟「罗浮」');
+  assert.equal(byId.get('8034010').planet, '匹诺康尼');
+  assert.equal(byId.get('4034010').planet, '翁法罗斯');
+  assert.equal(byId.get('4034013').planet, '翁法罗斯');
+  assert.equal(byId.get('8033020').planet, '二相乐园');
+  assert.equal(byId.get('8015030').planet, '二相乐园');
 });
 
 test('uses canonical stats and excludes reskins, summons, controllers, and gimmick units', () => {
@@ -339,8 +374,8 @@ test('keeps endgame combatants and apocalyptic bosses while dropping reskins, su
     lineup.map(({ name, variant }) => ({ name, variant })),
     [
       { name: '首领', variant: null },
-      { name: '末日首领', variant: '末日幻影' },
       { name: '王棋独立首领', variant: null },
+      { name: '末日首领', variant: '末日幻影' },
       { name: '常规小怪', variant: null },
     ],
   );

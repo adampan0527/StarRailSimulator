@@ -1,5 +1,39 @@
 import { check, lookup, textValue } from './sources.mjs';
 
+export const PLANETS = [
+  '空间站「黑塔」',
+  '雅利洛-VI',
+  '仙舟「罗浮」',
+  '匹诺康尼',
+  '翁法罗斯',
+  '二相乐园',
+];
+
+const PLANET_INDEX = new Map(PLANETS.map((planet, index) => [planet, index]));
+const PLANET_BY_ID_PREFIX = {
+  1: '雅利洛-VI',
+  2: '仙舟「罗浮」',
+  3: '匹诺康尼',
+  4: '翁法罗斯',
+  5: '二相乐园',
+};
+const PLANET_BY_JSON_WORLD = {
+  W1: '雅利洛-VI',
+  W2: '仙舟「罗浮」',
+  W3: '匹诺康尼',
+  W4: '翁法罗斯',
+  W5: '二相乐园',
+  AML: '空间站「黑塔」',
+  SW: '空间站「黑塔」',
+};
+const RANK_ORDER = {
+  BigBoss: 0,
+  LittleBoss: 0,
+  Elite: 1,
+  Minion: 2,
+  MinionLv2: 2,
+};
+
 const BOSS_RANKS = new Set(['LittleBoss', 'BigBoss']);
 const MINION_RANKS = new Set(['Minion', 'MinionLv2']);
 const STANDARD_ICON = /^SpriteOutput\/MosterIcon\/Monster_\d+\.png$/;
@@ -74,6 +108,81 @@ function isApocalypticShadowStage(stage) {
   );
 }
 
+function stageWorldIndex(stageId) {
+  const text = String(stageId);
+  if (text.startsWith('200')) return 0;
+  if (text.startsWith('201')) return 1;
+  if (text.startsWith('202')) return 2;
+  if (text.startsWith('103') || text.startsWith('203')) return 3;
+  if (text.startsWith('104') || text.startsWith('204')) return 4;
+  if (text.startsWith('105') || text.startsWith('205')) return 5;
+  return null;
+}
+
+function findById(map, id) {
+  return map.get(id) ?? map.get(String(id));
+}
+
+function collectFirstMainlineWorlds(tables, monsters, templates) {
+  const groupWorld = new Map();
+  function record(groupId, world) {
+    const previous = groupWorld.get(groupId);
+    if (previous === undefined || world < previous) {
+      groupWorld.set(groupId, world);
+    }
+  }
+  for (const stage of [...tables.StageConfig, ...tables.StageConfigLD]) {
+    if (stage.Release === false || stage.StageType !== 'Mainline') continue;
+    const world = stageWorldIndex(stage.StageID);
+    if (world === null) continue;
+    for (const wave of stage.MonsterList) {
+      for (const id of Object.values(wave)) {
+        const monster = findById(monsters, id);
+        if (!monster) continue;
+        const template = findById(templates, monster.MonsterTemplateID);
+        const groupId = template?.TemplateGroupID ?? monster.MonsterTemplateID;
+        record(groupId, world);
+      }
+    }
+  }
+  // Propagate a same-camp summoner's earliest mainline world to units it summons
+  // (e.g. IPC Team Leader debuting on Jarilo-VI with Field/Security Personnel).
+  for (const monster of monsters.values()) {
+    const ownerTemplate = findById(templates, monster.MonsterTemplateID);
+    const ownerCamp = ownerTemplate?.MonsterCampID;
+    if (ownerCamp === undefined) continue;
+    const ownerGroup =
+      ownerTemplate?.TemplateGroupID ?? monster.MonsterTemplateID;
+    const ownerWorld = groupWorld.get(ownerGroup);
+    if (ownerWorld === undefined) continue;
+    for (const summonedId of monster.SummonIDList) {
+      const summoned = findById(monsters, summonedId);
+      if (!summoned) continue;
+      const summonedTemplate = findById(templates, summoned.MonsterTemplateID);
+      if (summonedTemplate?.MonsterCampID !== ownerCamp) continue;
+      const summonedGroup =
+        summonedTemplate?.TemplateGroupID ?? summoned.MonsterTemplateID;
+      record(summonedGroup, ownerWorld);
+    }
+  }
+  return groupWorld;
+}
+
+function resolvePlanet(template, templates, groupWorld) {
+  const groupId = template.TemplateGroupID ?? template.MonsterTemplateID;
+  const prefix = Math.floor(groupId / 1_000_000);
+  if (PLANET_BY_ID_PREFIX[prefix]) return PLANET_BY_ID_PREFIX[prefix];
+  const world = groupWorld.get(groupId);
+  if (world !== undefined) return PLANETS[world];
+  const primary = findById(templates, groupId) ?? template;
+  const jsonPath = primary.JsonConfig ?? template.JsonConfig ?? '';
+  const match = jsonPath.match(/Monster_(W[1-5]|AML|SW)_/);
+  if (match && PLANET_BY_JSON_WORLD[match[1]]) {
+    return PLANET_BY_JSON_WORLD[match[1]];
+  }
+  return PLANETS[0];
+}
+
 function findSummoners(entries) {
   const summoners = new Map();
   for (const { monster, key } of entries.values()) {
@@ -128,6 +237,15 @@ function canonicalOrder(a, b) {
     Number(isAtlas(b)) - Number(isAtlas(a)) ||
     Number(isBase(b)) - Number(isBase(a)) ||
     Number(isDefault(b)) - Number(isDefault(a)) ||
+    a.monster.MonsterID - b.monster.MonsterID
+  );
+}
+
+function lineupOrder(a, b) {
+  return (
+    PLANET_INDEX.get(a.planet) - PLANET_INDEX.get(b.planet) ||
+    RANK_ORDER[a.template.Rank] - RANK_ORDER[b.template.Rank] ||
+    Number(a.variant !== null) - Number(b.variant !== null) ||
     a.monster.MonsterID - b.monster.MonsterID
   );
 }
@@ -203,6 +321,7 @@ export function selectableEnemies(tables, monsters, templates, textMap) {
   }
 
   const summoners = findSummoners(entries);
+  const groupWorld = collectFirstMainlineWorlds(tables, monsters, templates);
   const { direct, modes } = collectChallengeOccurrences(
     tables,
     entries,
@@ -219,7 +338,6 @@ export function selectableEnemies(tables, monsters, templates, textMap) {
         isCombatantEntity(monster, template),
     );
     if (!candidates.length) continue;
-
     if (!candidates.some(({ monster }) => direct.has(monster.MonsterID))) {
       continue;
     }
@@ -242,11 +360,12 @@ export function selectableEnemies(tables, monsters, templates, textMap) {
     if (!canonical) continue;
 
     const { variant } = supported.get(canonical.template.MonsterTemplateID);
+    const planet = resolvePlanet(canonical.template, templates, groupWorld);
     const sourceIds = candidates
       .map(({ monster }) => monster.MonsterID)
       .sort((a, b) => a - b)
       .map(String);
-    lineup.push({ ...canonical, variant, sourceIds });
+    lineup.push({ ...canonical, planet, variant, sourceIds });
   }
-  return lineup.sort((a, b) => a.monster.MonsterID - b.monster.MonsterID);
+  return lineup.sort(lineupOrder);
 }

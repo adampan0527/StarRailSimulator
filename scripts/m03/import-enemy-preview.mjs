@@ -5,7 +5,7 @@ import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 import { format, resolveConfig } from 'prettier';
 import { check, index, lookup, readLock, sha256 } from './sources.mjs';
-import { selectableEnemies } from './selectable-enemies.mjs';
+import { PLANETS, selectableEnemies } from './selectable-enemies.mjs';
 
 const revision = 'dad9155eb00fdeda31fb8456507c53590d49071f';
 const blobs = {
@@ -92,7 +92,7 @@ export function enemyPreview(tables, textMap) {
     return seriesIds.get(key);
   }
   const enemies = selectableEnemies(tables, monsters, templates, textMap).map(
-    ({ monster, template, name, variant, sourceIds }) => {
+    ({ monster, template, name, planet, variant, sourceIds }) => {
       const id = monster.MonsterID;
       const group = lookup(elite, monster.EliteGroup, 'elite group');
       const levelCurves = levels.map((level) =>
@@ -111,6 +111,7 @@ export function enemyPreview(tables, textMap) {
         id: String(id),
         name,
         sourceIds,
+        planet,
         rank: lookup(ranks, template.Rank, 'rank'),
         variant,
         avatar: assetName(template.IconPath, 'MosterIcon'),
@@ -134,7 +135,7 @@ export function enemyPreview(tables, textMap) {
       };
     },
   );
-  return { revision, levels, statSeries, enemies };
+  return { revision, levels, planets: PLANETS, statSeries, enemies };
 }
 
 async function main() {
